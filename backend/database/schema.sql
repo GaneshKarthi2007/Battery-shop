@@ -78,3 +78,8 @@ CREATE TABLE IF NOT EXISTS `sessions` (
     INDEX (`user_id`),
     INDEX (`last_activity`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 6. Default Data
+INSERT INTO `users` (`name`, `email`, `password`, `role`, `created_at`, `updated_at`) VALUES
+('Admin User', 'admin@powershell.com', '$2y$10$MTJTSRU7ykHpHZeUKRANbNrm88jvvdGr89VGcVVK', 'admin', NOW(), NOW()),
+('Staff User', 'staff@powershell.com', '$2y$10$MTJTSRU7ykHpHZeUKRANbNrm88jvvdGr89VGcVVK', 'staff', NOW(), NOW());

@@ -10,8 +10,8 @@ import {
   ArrowDown,
   Sparkles,
   ChevronRight,
-  Loader2,
 } from "lucide-react";
+import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "../contexts/AuthContext";
 import { apiClient } from "../api/client";
@@ -20,6 +20,13 @@ interface DashboardData {
   todaySales: number;
   totalStock: number;
   pendingServices: number;
+  assignedJobs: Array<{
+    id: number;
+    customer_name: string;
+    vehicle_details: string;
+    status: string;
+    created_at: string;
+  }>;
   monthlyProfit: number;
   weeklySales: Array<{ day: string; sales: number; count: number }>;
   lowStockItems: Array<{
@@ -40,9 +47,10 @@ interface StatCardProps {
   icon: React.ComponentType<{ className?: string }>;
   color: string;
   onClick?: () => void;
+  children?: React.ReactNode;
 }
 
-function StatCard({ title, value, change, icon: Icon, color, onClick }: StatCardProps) {
+function StatCard({ title, value, change, icon: Icon, color, onClick, children }: StatCardProps) {
   const isPositive = change >= 0;
 
   return (
@@ -73,6 +81,7 @@ function StatCard({ title, value, change, icon: Icon, color, onClick }: StatCard
           <Icon className="w-6 h-6 text-white" />
         </div>
       </div>
+      {children}
     </div>
   );
 }
@@ -103,12 +112,7 @@ export function Dashboard() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-        <p className="text-gray-500 font-bold animate-pulse uppercase tracking-widest text-sm">Loading PowerCell Data...</p>
-      </div>
-    );
+    return <BatteryLoader />;
   }
 
   if (error) {
@@ -178,13 +182,30 @@ export function Dashboard() {
           onClick={() => navigate('/inventory')}
         />
         <StatCard
-          title="Pending Services"
+          title={isAdmin ? "Pending Services" : "My Assigned Jobs"}
           value={`${data?.pendingServices}`}
           change={0}
           icon={Wrench}
           color="bg-gradient-to-br from-orange-500 to-orange-700"
           onClick={() => navigate('/service')}
-        />
+        >
+          {!isAdmin && data?.assignedJobs && data.assignedJobs.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Jobs</p>
+              <div className="space-y-2">
+                {data.assignedJobs.slice(0, 2).map((job) => (
+                  <div key={job.id} onClick={(e) => { e.stopPropagation(); navigate(`/service/${job.id}`); }} className="flex items-center justify-between p-2 rounded-xl bg-gray-50 hover:bg-blue-50 transition-colors group cursor-pointer border border-transparent hover:border-blue-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                      <span className="text-xs font-bold text-gray-700">{job.customer_name}</span>
+                    </div>
+                    <ChevronRight className="w-3 h-3 text-gray-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </StatCard>
         {isAdmin && (
           <StatCard
             title="Monthly Profit"

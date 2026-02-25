@@ -10,7 +10,7 @@ class ServiceController extends Controller
 {
     public function index()
     {
-        return response()->json(Service::latest()->get());
+        return response()->json(Service::with('assignedStaff')->latest()->get());
     }
 
     public function store(Request $request)
@@ -24,15 +24,26 @@ class ServiceController extends Controller
             'battery_brand' => 'nullable|string',
             'battery_model' => 'nullable|string',
             'pickup_date' => 'nullable|date',
+            'assigned_to' => 'nullable|exists:users,id',
         ]);
 
         $service = Service::create($validated);
-        return response()->json($service, 201);
+
+        if ($service->assigned_to) {
+            \App\Models\Notification::create([
+                'user_id' => $service->assigned_to,
+                'type' => 'SERVICE',
+                'title' => 'New Job Assigned',
+                'message' => "You have been assigned to a new service for {$service->customer_name}.",
+            ]);
+        }
+
+        return response()->json($service->load('assignedStaff'), 201);
     }
 
     public function show(Service $service)
     {
-        return response()->json($service);
+        return response()->json($service->load('assignedStaff'));
     }
 
     public function update(Request $request, Service $service)
@@ -46,10 +57,22 @@ class ServiceController extends Controller
             'battery_brand' => 'nullable|string',
             'battery_model' => 'nullable|string',
             'pickup_date' => 'nullable|date',
+            'assigned_to' => 'nullable|exists:users,id',
         ]);
 
+        $oldAssignedTo = $service->assigned_to;
         $service->update($validated);
-        return response()->json($service);
+
+        if ($service->assigned_to && $service->assigned_to != $oldAssignedTo) {
+            \App\Models\Notification::create([
+                'user_id' => $service->assigned_to,
+                'type' => 'SERVICE',
+                'title' => 'New Job Assigned',
+                'message' => "You have been assigned to service #{$service->id} for {$service->customer_name}.",
+            ]);
+        }
+
+        return response()->json($service->load('assignedStaff'));
     }
 
     public function destroy(Service $service)

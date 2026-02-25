@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Package, Plus, Edit, AlertTriangle, TrendingUp, Loader2, Trash2 } from "lucide-react";
+import { Package, Plus, Edit, AlertTriangle, TrendingUp, Trash2 } from "lucide-react";
+import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { apiClient } from "../api/client";
@@ -117,12 +118,7 @@ export function Inventory() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-        <p className="text-gray-500 font-bold animate-pulse uppercase tracking-widest text-sm">Synchronizing Inventory...</p>
-      </div>
-    );
+    return <BatteryLoader />;
   }
 
   if (error) {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, ShieldCheck, AlertCircle, Loader2, AlertTriangle } from "lucide-react";
+import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, ShieldCheck, AlertCircle, AlertTriangle, Zap } from "lucide-react";
+import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { Button } from "../components/Button";
 import { useAuth } from "../contexts/AuthContext";
 import { useNotifications } from "../contexts/NotificationContext";
@@ -16,11 +17,18 @@ interface ServiceRequest {
     issue?: string;
     battery_brand?: string;
     battery_model?: string;
-    assigned_staff?: string;
+    assigned_to?: number;
+    assigned_staff?: {
+        id: number;
+        name: string;
+    };
     created_at: string;
 }
 
-const mockStaff = ["Suresh Raina", "Hardik Pandya", "Jasprit Bumrah", "Virat Kohli"];
+interface Staff {
+    id: number;
+    name: string;
+}
 
 export function ServiceDetails() {
     const { id } = useParams();
@@ -30,13 +38,26 @@ export function ServiceDetails() {
     const isAdmin = user?.role === "admin";
 
     const [service, setService] = useState<ServiceRequest | null>(null);
+    const [staffList, setStaffList] = useState<Staff[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [updating, setUpdating] = useState(false);
 
     useEffect(() => {
         fetchService();
-    }, [id]);
+        if (isAdmin) {
+            fetchStaff();
+        }
+    }, [id, isAdmin]);
+
+    const fetchStaff = async () => {
+        try {
+            const data = await apiClient.get<Staff[]>('/staff');
+            setStaffList(data);
+        } catch (err) {
+            console.error("Failed to load staff list", err);
+        }
+    };
 
     const fetchService = async () => {
         try {
@@ -72,16 +93,16 @@ export function ServiceDetails() {
         }
     };
 
-    const handleAssignStaff = async (staffName: string) => {
+    const handleAssignStaff = async (staffId: number) => {
         if (!service) return;
         setUpdating(true);
         try {
-            const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, { assigned_staff: staffName });
+            const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, { assigned_to: staffId });
             setService(updated);
 
             addNotification({
                 type: "SERVICE",
-                title: "New Service Assigned",
+                title: "New Job Assigned",
                 message: `You have been assigned to service #${service.id} (${service.customer_name}).`,
                 role: "staff"
             });
@@ -93,12 +114,7 @@ export function ServiceDetails() {
     };
 
     if (loading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-                <p className="text-gray-500 font-bold animate-pulse">Loading Details...</p>
-            </div>
-        );
+        return <BatteryLoader />;
     }
 
     if (error || !service) {
@@ -124,8 +140,8 @@ export function ServiceDetails() {
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
             {updating && (
-                <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-50 flex items-center justify-center rounded-2xl">
-                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                <div className="fixed inset-0 bg-white/40 backdrop-blur-[1px] z-50 flex items-center justify-center">
+                    <Zap className="w-12 h-12 text-blue-600 animate-pulse fill-current" />
                 </div>
             )}
 
@@ -213,7 +229,7 @@ export function ServiceDetails() {
                                     {service.assigned_staff && (
                                         <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-100">
                                             <User className="w-3 h-3" />
-                                            Assigned to: {service.assigned_staff}
+                                            Assigned to: {service.assigned_staff.name}
                                         </div>
                                     )}
                                 </div>
@@ -230,17 +246,17 @@ export function ServiceDetails() {
                                 Assign Staff
                             </h3>
                             <div className="space-y-2">
-                                {mockStaff.map(staff => (
+                                {staffList.map(staff => (
                                     <button
-                                        key={staff}
-                                        onClick={() => handleAssignStaff(staff)}
-                                        className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center justify-between group ${service.assigned_staff === staff
+                                        key={staff.id}
+                                        onClick={() => handleAssignStaff(staff.id)}
+                                        className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center justify-between group ${service.assigned_to === staff.id
                                             ? "border-blue-600 bg-blue-50 text-blue-800"
                                             : "border-gray-100 hover:border-gray-200 text-gray-700"
                                             }`}
                                     >
-                                        <span className="font-medium">{staff}</span>
-                                        {service.assigned_staff === staff && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                                        <span className="font-medium">{staff.name}</span>
+                                        {service.assigned_to === staff.id && <CheckCircle className="w-4 h-4 text-blue-600" />}
                                     </button>
                                 ))}
                             </div>

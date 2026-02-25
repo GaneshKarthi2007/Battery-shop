@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, ShieldCheck, Wrench, Package, Info, User, Zap, AlertTriangle } from "lucide-react";
+import {
+    ArrowLeft, User, FileText, Zap, ShieldCheck, Wrench,
+    AlertTriangle, Car, Home, Truck, RefreshCcw, CheckCircle,
+    Banknote, QrCode
+} from "lucide-react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { apiClient } from "../api/client";
 import { useNotifications } from "../contexts/NotificationContext";
+import { useAuth } from "../contexts/AuthContext";
+import { BatteryLoader } from "../components/ui/BatteryLoader";
 
 interface SalesItem {
     id: number | string;
@@ -17,10 +23,59 @@ interface SalesItem {
     originalData?: any;
 }
 
+interface ExchangeRecord {
+    id: number;
+    customer_name: string;
+    battery_brand: string;
+    battery_model: string;
+    valuation_amount: number;
+    status: string;
+}
+
+function WarrantyInput({
+    label,
+    value,
+    unit,
+    onValueChange,
+    onUnitChange,
+}: {
+    label: string;
+    value: string;
+    unit: string;
+    onValueChange: (v: string) => void;
+    onUnitChange: (u: string) => void;
+}) {
+    return (
+        <div className="space-y-2">
+            <label className="text-[13px] font-semibold text-slate-500 ml-1">{label}</label>
+            <div className="flex gap-2">
+                <input
+                    type="number"
+                    min="0"
+                    value={value}
+                    onChange={(e) => onValueChange(e.target.value)}
+                    className="flex-1 bg-[#F8FAFF] border border-transparent rounded-xl px-4 h-14 text-slate-900 font-bold focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none"
+                    placeholder="0"
+                />
+                <select
+                    value={unit}
+                    onChange={(e) => onUnitChange(e.target.value)}
+                    className="h-14 bg-[#F8FAFF] border border-transparent rounded-xl px-3 text-slate-700 font-semibold focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none min-w-[110px]"
+                >
+                    <option value="Months">Months</option>
+                    <option value="Years">Years</option>
+                </select>
+            </div>
+        </div>
+    );
+}
+
 export function Checkout() {
     const location = useLocation();
     const navigate = useNavigate();
     const { addNotification } = useNotifications();
+    const { user } = useAuth();
+
     const state = location.state as {
         items: SalesItem[];
         subtotal: number;
@@ -28,103 +83,188 @@ export function Checkout() {
         total: number;
     } | undefined;
 
-    const [installCharges, setInstallCharges] = useState<number>(0);
-    const [otherCharges, setOtherCharges] = useState<number>(0);
-    const [exchangeRate, setExchangeRate] = useState<number>(0);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [warrantyDetails, setWarrantyDetails] = useState({
-        freeReplacement: "18 Months",
-        proRata: "18 Months",
-        totalWarranty: "36 Months"
-    });
-
+    /** ── Customer ── */
     const [customerInfo, setCustomerInfo] = useState({
         name: "",
-        phone: "",
-        city: "Chennai"
+        phone: "+91 ",
+        billingAddress: "",
     });
-    const [vehicleInfo, setVehicleInfo] = useState({
-        type: "Car",
-        number: ""
-    });
+    const [billedBy, setBilledBy] = useState("");
+
+    /** ── Product / Type ── */
+    const [productType, setProductType] = useState<"Vehicle" | "Inverter">("Vehicle");
+    const [vehicleNumber, setVehicleNumber] = useState("");
+    const [installAddress, setInstallAddress] = useState("");
+    const [sameAsBilling, setSameAsBilling] = useState(false);
+
+    /** ── Charges ── */
+    const [installCharges, setInstallCharges] = useState(0);
+    const [deliveryCharges, setDeliveryCharges] = useState(0);
+
+    /** ── Exchange ── */
+    const [exchangeRecords, setExchangeRecords] = useState<ExchangeRecord[]>([]);
+    const [selectedExchange, setSelectedExchange] = useState<ExchangeRecord | null>(null);
+    const [loadingExchanges, setLoadingExchanges] = useState(false);
+
+    /** ── Warranty ── */
+    const [totalWarrantyVal, setTotalWarrantyVal] = useState("36");
+    const [totalWarrantyUnit, setTotalWarrantyUnit] = useState("Months");
+    const [freeReplacementVal, setFreeReplacementVal] = useState("18");
+    const [freeReplacementUnit, setFreeReplacementUnit] = useState("Months");
+
+    /** ── Payment ── */
+    const [paymentMethod, setPaymentMethod] = useState<"Cash" | "UPI">("Cash");
+
+    /** ── UI state ── */
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
     const serviceItem = state?.items?.find(item => item.type === "Service");
     const hasService = !!serviceItem;
 
+    /* Auto-fill billedBy from logged-in user */
     useEffect(() => {
-        if (serviceItem && serviceItem.originalData) {
-            const serviceData = serviceItem.originalData;
-            setCustomerInfo({
-                name: serviceData.customer_name || "",
-                phone: serviceData.contact_number || "", // Adjusted for backend field name
-                city: serviceData.city || "Chennai"
-            });
+        if (user) setBilledBy(user.name);
+    }, [user]);
+
+    /* Auto-fill customer from service data */
+    useEffect(() => {
+        if (serviceItem?.originalData) {
+            const svc = serviceItem.originalData;
+            setCustomerInfo(prev => ({
+                ...prev,
+                name: svc.customer_name || "",
+                phone: svc.contact_number || "+91 ",
+            }));
         }
-    }, [hasService]);
+    }, [hasService, serviceItem]);
+
+    /* Same-as-billing checkbox logic */
+    useEffect(() => {
+        if (sameAsBilling) setInstallAddress(customerInfo.billingAddress);
+    }, [sameAsBilling, customerInfo.billingAddress]);
+
+    /* Fetch pending exchange records on mount */
+    useEffect(() => {
+        const fetchExchanges = async () => {
+            try {
+                setLoadingExchanges(true);
+                const data = await apiClient.get<ExchangeRecord[]>('/exchanges/pending');
+                setExchangeRecords(data);
+            } catch {
+                // Silent fail – exchange is optional
+            } finally {
+                setLoadingExchanges(false);
+            }
+        };
+        fetchExchanges();
+    }, []);
 
     if (!state) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                <p className="text-gray-500 mb-4">No items selected for checkout.</p>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <p className="text-gray-500">No items selected for checkout.</p>
                 <Button onClick={() => navigate("/sales")}>Go to Sales</Button>
             </div>
         );
     }
 
-    const baseSubtotal = state.subtotal;
-    const baseGst = state.gst;
-    const extraCharges = installCharges + otherCharges;
-    const extraGst = extraCharges * 0.18;
-    const finalSubtotal = baseSubtotal + extraCharges;
-    const finalGst = baseGst + extraGst;
-    const grandTotal = finalSubtotal + finalGst - exchangeRate;
+    /* ── Calculations ── */
+    // GST applies only to product subtotal
+    const productSubtotal = state.items
+        .filter(i => i.type === "Product")
+        .reduce((s, i) => s + i.price * i.quantity, 0);
+    const serviceSubtotal = state.items
+        .filter(i => i.type === "Service")
+        .reduce((s, i) => s + i.price * i.quantity, 0);
 
-    const handleGenerateInvoice = async () => {
+    const productGst = productSubtotal * 0.18;
+    const exchangeDiscount = selectedExchange ? Number(selectedExchange.valuation_amount) : 0;
+    const grandTotal = productSubtotal + productGst + serviceSubtotal + installCharges + deliveryCharges - exchangeDiscount;
+
+    /* ── Warranty expiry calculation (hidden, for invoice) ── */
+    const calcExpiry = (val: string, unit: string) => {
+        const n = parseInt(val) || 0;
+        const d = new Date();
+        if (unit === "Years") d.setFullYear(d.getFullYear() + n);
+        else d.setMonth(d.getMonth() + n);
+        return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    };
+    const totalWarrantyExpiry = calcExpiry(totalWarrantyVal, totalWarrantyUnit);
+    const freeReplacementExpiry = calcExpiry(freeReplacementVal, freeReplacementUnit);
+
+    /* ── Build invoice state helper ── */
+    const buildInvoiceState = () => {
+        const installationAddress = productType === "Inverter" ? installAddress : "";
+        return {
+            ...state,
+            installCharges,
+            deliveryCharges,
+            exchangeDiscount,
+            selectedExchange,
+            customerInfo: { ...customerInfo },
+            productType,
+            vehicleNumber,
+            installAddress: installationAddress,
+            warrantyDetails: {
+                totalWarranty: `${totalWarrantyVal} ${totalWarrantyUnit}`,
+                totalWarrantyExpiry,
+                freeReplacement: `${freeReplacementVal} ${freeReplacementUnit}`,
+                freeReplacementExpiry,
+            },
+            billedBy,
+            finalTotal: grandTotal,
+            productGst,
+            productSubtotal,
+            serviceSubtotal,
+            paymentMethod,
+        };
+    };
+
+    /* ── Submit Sale ── */
+    const handleProcessSale = async () => {
+        if (!customerInfo.name.trim()) { setError("Customer name is required."); return; }
+        if (!customerInfo.phone.replace("+91 ", "").trim()) { setError("Phone number is required."); return; }
+
         setLoading(true);
         setError("");
 
         try {
-            // Prepare data for backend
+            const vehicleDetails = productType === "Vehicle"
+                ? `Vehicle: ${vehicleNumber}`
+                : `Inverter Installation`;
+
+            const installationAddress = productType === "Inverter" ? installAddress : "";
+
             const saleData = {
                 customer_name: customerInfo.name || "Walk-in Customer",
                 customer_phone: customerInfo.phone,
-                vehicle_details: `${vehicleInfo.type}: ${vehicleInfo.number}`,
+                vehicle_details: vehicleDetails,
+                installation_address: installationAddress,
+                product_category: productType,
                 items: state.items.map(item => ({
-                    product_id: item.type === "Product" ? item.id : null,
-                    service_id: item.type === "Service" ? item.id.toString().replace('service-', '') : null,
+                    product_id: item.type === "Product" ? Number(item.id) : null,
+                    service_id: item.type === "Service" ? Number(item.id.toString().replace("service-", "")) : null,
                     quantity: item.quantity,
-                    price: item.price
+                    price: item.price,
                 })),
                 total_amount: grandTotal,
-                extra_charges: extraCharges,
-                discount_amount: exchangeRate
+                extra_charges: installCharges + deliveryCharges,
+                discount_amount: exchangeDiscount,
+                exchange_record_id: selectedExchange?.id ?? null,
+                payment_method: paymentMethod,
             };
 
             await apiClient.post('/sales', saleData);
 
-            // Add notifications
             addNotification({
                 type: "SALES",
                 title: `New Sale: ₹${grandTotal.toLocaleString()}`,
-                message: `${state.items.length} items sold to ${customerInfo.name || 'Walk-in Customer'}.`,
-                role: "admin"
+                message: `${state.items.length} item(s) sold via ${paymentMethod} to ${customerInfo.name || "Walk-in Customer"}.`,
+                role: "admin",
             });
 
-            // Navigate to invoice
-            navigate("/invoice", {
-                state: {
-                    ...state,
-                    installCharges,
-                    otherCharges,
-                    exchangeRate,
-                    warrantyDetails,
-                    customerInfo,
-                    vehicleInfo,
-                    finalTotal: grandTotal,
-                    finalGst: finalGst
-                }
-            });
+            navigate("/invoice", { state: { ...buildInvoiceState() } });
         } catch (err: any) {
             setError(err.message || "Failed to process sale. Please try again.");
         } finally {
@@ -132,18 +272,30 @@ export function Checkout() {
         }
     };
 
-    return (
-        <div className="relative">
-            {loading && (
-                <div className="fixed inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center gap-4 animate-in fade-in duration-300">
-                    <div className="w-16 h-16 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
-                    <p className="text-blue-900 font-bold uppercase tracking-widest text-xs animate-pulse">Processing Transaction...</p>
-                </div>
-            )}
+    const inputClass = "bg-[#F8FAFF] border border-transparent h-14 text-slate-900 font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 rounded-xl";
+    const chargeInput = "bg-transparent border-none w-24 text-right font-black text-slate-900 focus:ring-0 outline-none p-0 text-[16px]";
 
-            <div className="space-y-6 max-w-5xl mx-auto pb-20">
+    return (
+        <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-slate-900">
+            {loading && <BatteryLoader />}
+
+            {/* ── Fixed Checkout Header ── */}
+            <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                    <ArrowLeft className="w-5 h-5 text-gray-800" />
+                </button>
+                <h1 className="text-lg font-bold text-gray-900 tracking-tight">Final Checkout</h1>
+                <div className="w-9" />
+            </header>
+
+            <main className="flex-1 px-4 pt-20 pb-10 space-y-8 max-w-2xl mx-auto w-full">
+
+                {/* Error Alert */}
                 {error && (
-                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-start gap-3 animate-in slide-in-from-top duration-300">
+                    <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-start gap-3">
                         <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                         <div>
                             <p className="text-red-900 font-bold text-sm">Transaction Failed</p>
@@ -152,250 +304,380 @@ export function Checkout() {
                     </div>
                 )}
 
-                {/* Header */}
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="p-2 hover:bg-white rounded-full transition-colors border border-gray-200"
-                    >
-                        <ArrowLeft className="w-5 h-5 text-gray-600" />
-                    </button>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Final Checkout</h1>
-                        <p className="text-gray-600 mt-1">Add extra charges and warranty details</p>
+                {/* ── Section: Customer Details ── */}
+                <section className="space-y-4">
+                    <SectionHead icon={<User className="w-5 h-5 text-[#2E6DFF]" />} title="Customer Details" />
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
+                        <div className="grid grid-cols-1 gap-5">
+                            <Field label="Full Name">
+                                <Input
+                                    type="text"
+                                    value={customerInfo.name}
+                                    onChange={(e) => !hasService && setCustomerInfo({ ...customerInfo, name: e.target.value })}
+                                    readOnly={hasService}
+                                    className={inputClass}
+                                    placeholder="e.g. Ganesh S"
+                                />
+                            </Field>
+                            <Field label="Mobile Number">
+                                <Input
+                                    type="tel"
+                                    value={customerInfo.phone}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (!val.startsWith("+91 ")) setCustomerInfo({ ...customerInfo, phone: "+91 " + val.replace(/^\+91\s?/, "") });
+                                        else setCustomerInfo({ ...customerInfo, phone: val });
+                                    }}
+                                    className={inputClass}
+                                    placeholder="+91 98765 43210"
+                                />
+                            </Field>
+                            <Field label="Billing Address">
+                                <textarea
+                                    value={customerInfo.billingAddress}
+                                    onChange={(e) => {
+                                        setCustomerInfo({ ...customerInfo, billingAddress: e.target.value });
+                                        if (sameAsBilling) setInstallAddress(e.target.value);
+                                    }}
+                                    rows={3}
+                                    className="w-full bg-[#F8FAFF] border border-transparent rounded-xl px-4 py-3 text-slate-900 font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none"
+                                    placeholder="Door No, Street, City, Pincode"
+                                />
+                            </Field>
+                        </div>
                     </div>
-                </div>
+                </section>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column: Form Details */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Customer & Vehicle Info */}
-                        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-                            <h2 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                <User className="w-5 h-5 text-blue-600" />
-                                Customer Information
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name</label>
-                                    <Input
-                                        type="text"
-                                        placeholder="e.g., Ganesh S"
-                                        value={customerInfo.name}
-                                        onChange={(e) => !hasService && setCustomerInfo({ ...customerInfo, name: e.target.value })}
-                                        readOnly={hasService}
-                                        className={hasService ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-100" : ""}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                                    <Input
-                                        type="text"
-                                        placeholder="e.g., +91 9876543210"
-                                        value={customerInfo.phone}
-                                        onChange={(e) => !hasService && setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                                        readOnly={hasService}
-                                        className={hasService ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-100" : ""}
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-                                    <Input
-                                        type="text"
-                                        placeholder="e.g., Chennai"
-                                        value={customerInfo.city}
-                                        onChange={(e) => setCustomerInfo({ ...customerInfo, city: e.target.value })}
-                                    />
-                                </div>
-                            </div>
+                {/* ── Section: Product Information ── */}
+                <section className="space-y-4">
+                    <SectionHead icon={<Zap className="w-5 h-5 text-[#2E6DFF]" />} title="Product Information" />
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
+                        {/* Toggle: Vehicle vs Inverter */}
+                        <div className="bg-[#E4E9F2] p-1.5 rounded-2xl flex gap-1">
+                            {([
+                                { value: "Vehicle", icon: <Car className="w-4 h-4" />, label: "Vehicle" },
+                                { value: "Inverter", icon: <Home className="w-4 h-4" />, label: "Inverter" },
+                            ] as const).map(({ value, icon, label }) => (
+                                <button
+                                    key={value}
+                                    onClick={() => setProductType(value)}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all ${productType === value
+                                        ? "bg-white text-[#2E6DFF] shadow-md"
+                                        : "text-slate-500 hover:bg-white/50"
+                                        }`}
+                                >
+                                    {icon} {label}
+                                </button>
+                            ))}
+                        </div>
 
-                            <h2 className="font-bold text-gray-900 mt-8 mb-6 flex items-center gap-2">
-                                <Zap className="w-5 h-5 text-blue-600" />
-                                Vehicle Information
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Type</label>
-                                    <select
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={vehicleInfo.type}
-                                        onChange={(e) => setVehicleInfo({ ...vehicleInfo, type: e.target.value })}
+                        {/* Conditional fields */}
+                        {productType === "Vehicle" ? (
+                            <Field label="Vehicle Number">
+                                <Input
+                                    type="text"
+                                    value={vehicleNumber}
+                                    onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+                                    className={inputClass}
+                                    placeholder="e.g. TN 09 AB 1234"
+                                />
+                            </Field>
+                        ) : (
+                            <div className="space-y-3">
+                                {/* Same-as-billing checkbox */}
+                                <label className="flex items-center gap-3 cursor-pointer select-none">
+                                    <div
+                                        onClick={() => {
+                                            const next = !sameAsBilling;
+                                            setSameAsBilling(next);
+                                            if (next) setInstallAddress(customerInfo.billingAddress);
+                                        }}
+                                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${sameAsBilling ? "bg-[#2E6DFF] border-[#2E6DFF]" : "border-gray-300"}`}
                                     >
-                                        <option value="Car">Car</option>
-                                        <option value="Bike">Bike</option>
-                                        <option value="Inverter">Inverter (Home)</option>
-                                        <option value="Commercial">Commercial</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle/Unit Number</label>
-                                    <Input
-                                        type="text"
-                                        placeholder="e.g., TN 09 AB 1234"
-                                        value={vehicleInfo.number}
-                                        onChange={(e) => setVehicleInfo({ ...vehicleInfo, number: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Order Summary Snapshot */}
-                        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-                            <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                <Package className="w-5 h-5 text-blue-600" />
-                                Selected Products
-                            </h2>
-                            <div className="divide-y divide-gray-100">
-                                {state.items.map((item) => (
-                                    <div key={item.id} className="py-3 flex justify-between items-center">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.type === "Product" ? "bg-blue-50 text-blue-600" : "bg-green-50 text-green-600"}`}>
-                                                {item.type === "Product" ? <Package className="w-5 h-5" /> : <Wrench className="w-5 h-5" />}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-gray-900 leading-none mb-1">{item.name} {item.model}</p>
-                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{item.quantity} unit(s) x ₹{item.price.toLocaleString()}</p>
-                                            </div>
-                                        </div>
-                                        <p className="font-bold text-gray-900">₹{(item.price * item.quantity).toLocaleString()}</p>
+                                        {sameAsBilling && <CheckCircle className="w-3.5 h-3.5 text-white" />}
                                     </div>
-                                ))}
+                                    <span className="text-[13px] font-semibold text-slate-600">
+                                        Installation address same as billing address
+                                    </span>
+                                </label>
+                                <Field label="Installation Address">
+                                    <textarea
+                                        value={installAddress}
+                                        onChange={(e) => {
+                                            setInstallAddress(e.target.value);
+                                            if (sameAsBilling) setSameAsBilling(false);
+                                        }}
+                                        rows={3}
+                                        className="w-full bg-[#F8FAFF] border border-transparent rounded-xl px-4 py-3 text-slate-900 font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none"
+                                        placeholder="Installation address…"
+                                    />
+                                </Field>
                             </div>
+                        )}
+                    </div>
+                </section>
+
+                {/* ── Section: Order Items & Charges ── */}
+                <section className="space-y-4">
+                    <SectionHead icon={<FileText className="w-5 h-5 text-[#2E6DFF]" />} title="Order Items & Charges" />
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                        {/* Items list */}
+                        <div className="divide-y divide-gray-50">
+                            {state.items.map((item) => (
+                                <div key={item.id} className="p-5 flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === "Product" ? "bg-blue-50 text-[#2E6DFF]" : "bg-emerald-50 text-emerald-600"}`}>
+                                            {item.type === "Product" ? <Zap className="w-5 h-5" /> : <Wrench className="w-5 h-5" />}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-[15px] font-bold text-slate-900">{item.name} {item.model}</h3>
+                                            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-tight">
+                                                {item.quantity} unit(s) · ₹{item.price.toLocaleString()}
+                                                {item.type === "Product" && <span className="text-slate-300"> · GST included</span>}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <p className="text-[16px] font-black text-slate-900">₹{(item.price * item.quantity).toLocaleString()}</p>
+                                </div>
+                            ))}
                         </div>
 
-                        {/* Additional Charges */}
-                        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-                            <h2 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                <Wrench className="w-5 h-5 text-blue-600" />
-                                Service & Additional Charges
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Installation Charges (₹)</label>
-                                    <Input
-                                        type="number"
-                                        placeholder="0"
+                        {/* Charges */}
+                        <div className="p-6 bg-[#F8FAFF]/50 space-y-5 border-t border-gray-100">
+                            <ChargeRow label="Installation Charges" sublabel="No GST applied">
+                                <div className="flex items-center bg-white rounded-xl px-4 py-2.5 border border-blue-100 shadow-sm">
+                                    <span className="text-slate-400 font-bold mr-1">₹</span>
+                                    <input
+                                        type="number" min="0"
                                         value={installCharges || ""}
                                         onChange={(e) => setInstallCharges(Number(e.target.value))}
+                                        className={chargeInput} placeholder="0"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Other Charges (₹)</label>
-                                    <Input
-                                        type="number"
-                                        placeholder="0"
-                                        value={otherCharges || ""}
-                                        onChange={(e) => setOtherCharges(Number(e.target.value))}
+                            </ChargeRow>
+
+                            <ChargeRow label="Delivery Charges" sublabel="No GST applied">
+                                <div className="flex items-center bg-white rounded-xl px-4 py-2.5 border border-blue-100 shadow-sm">
+                                    <Truck className="w-4 h-4 text-slate-300 mr-2" />
+                                    <input
+                                        type="number" min="0"
+                                        value={deliveryCharges || ""}
+                                        onChange={(e) => setDeliveryCharges(Number(e.target.value))}
+                                        className={chargeInput} placeholder="0"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Old Battery Exchange Rate (₹)</label>
-                                    <div className="relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-red-500 font-bold">-</div>
-                                        <Input
-                                            type="number"
-                                            placeholder="0"
-                                            className="pl-7 text-red-600"
-                                            value={exchangeRate || ""}
-                                            onChange={(e) => setExchangeRate(Number(e.target.value))}
-                                        />
+                            </ChargeRow>
+
+                            {/* Old Battery Exchange selection */}
+                            <div className="space-y-2 pt-1">
+                                <div className="flex items-center gap-2">
+                                    <RefreshCcw className="w-4 h-4 text-red-400" />
+                                    <span className="text-[14px] font-bold text-red-500">Old Battery Exchange</span>
+                                </div>
+                                {loadingExchanges ? (
+                                    <p className="text-xs text-slate-400 py-2">Loading exchange records…</p>
+                                ) : exchangeRecords.length === 0 ? (
+                                    <div className="bg-white rounded-xl p-4 border border-dashed border-gray-200 text-center">
+                                        <p className="text-[12px] text-slate-400 font-medium">No pending exchange records found</p>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">This amount will be deducted from the total</p>
-                                </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {/* Deselect option */}
+                                        {selectedExchange && (
+                                            <button
+                                                onClick={() => setSelectedExchange(null)}
+                                                className="text-xs text-slate-400 hover:text-slate-600 underline transition-colors"
+                                            >
+                                                Remove exchange selection
+                                            </button>
+                                        )}
+                                        {exchangeRecords.map(rec => (
+                                            <div
+                                                key={rec.id}
+                                                onClick={() => setSelectedExchange(selectedExchange?.id === rec.id ? null : rec)}
+                                                className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedExchange?.id === rec.id
+                                                    ? "border-red-400 bg-red-50"
+                                                    : "border-gray-100 bg-white hover:border-gray-200"
+                                                    }`}
+                                            >
+                                                <div>
+                                                    <p className="text-[13px] font-bold text-slate-900">{rec.battery_brand} {rec.battery_model}</p>
+                                                    <p className="text-[11px] text-slate-500">{rec.customer_name}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[14px] font-black text-red-500">- ₹{Number(rec.valuation_amount).toLocaleString()}</p>
+                                                    {selectedExchange?.id === rec.id && (
+                                                        <p className="text-[10px] text-red-400 font-bold">Selected</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        {/* Warranty Details */}
-                        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-                            <h2 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                <ShieldCheck className="w-5 h-5 text-blue-600" />
-                                Warranty Registration
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Total Warranty Period</label>
-                                    <Input
-                                        type="text"
-                                        value={warrantyDetails.totalWarranty}
-                                        onChange={(e) => setWarrantyDetails({ ...warrantyDetails, totalWarranty: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Free Replacement Period</label>
-                                    <Input
-                                        type="text"
-                                        value={warrantyDetails.freeReplacement}
-                                        onChange={(e) => setWarrantyDetails({ ...warrantyDetails, freeReplacement: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Pro-rata Period</label>
-                                    <Input
-                                        type="text"
-                                        value={warrantyDetails.proRata}
-                                        onChange={(e) => setWarrantyDetails({ ...warrantyDetails, proRata: e.target.value })}
-                                    />
-                                </div>
-                            </div>
+                        {/* GST note */}
+                        <div className="px-6 py-3 bg-amber-50 border-t border-amber-100">
+                            <p className="text-[11px] text-amber-700 font-medium">
+                                ⚡ GST (18%) applies only to product items. Installation and delivery charges are GST-exempt.
+                            </p>
+                        </div>
+
+                        {/* Summary breakdown */}
+                        <div className="p-6 space-y-2 border-t border-gray-100">
+                            {serviceSubtotal > 0 && (
+                                <SummaryRow label="Service Charges" value={`₹${serviceSubtotal.toLocaleString()}`} />
+                            )}
+                            <SummaryRow label={`Product Subtotal`} value={`₹${productSubtotal.toLocaleString()}`} />
+                            <SummaryRow label="Product GST (18%)" value={`₹${productGst.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
+                            {installCharges > 0 && <SummaryRow label="Installation Charges" value={`₹${installCharges.toLocaleString()}`} />}
+                            {deliveryCharges > 0 && <SummaryRow label="Delivery Charges" value={`₹${deliveryCharges.toLocaleString()}`} />}
+                            {exchangeDiscount > 0 && (
+                                <SummaryRow label="Exchange Discount" value={`- ₹${exchangeDiscount.toLocaleString()}`} accent="text-red-500" />
+                            )}
                         </div>
                     </div>
+                </section>
 
-                    {/* Right Column: Calculations */}
-                    <div className="lg:col-span-1">
-                        <div className="bg-white rounded-xl border border-gray-200 shadow-lg sticky top-24 overflow-hidden">
-                            <div className="p-5 bg-gradient-to-br from-gray-900 to-blue-900 text-white">
-                                <h2 className="font-bold">Billing Summary</h2>
-                                <p className="text-xs text-blue-200 opacity-80">Final totals including taxes</p>
-                            </div>
-
-                            <div className="p-6 space-y-4">
-                                <div className="space-y-2 pb-4 border-b border-gray-100">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Items Subtotal</span>
-                                        <span className="font-medium">₹{baseSubtotal.toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Extra Charges</span>
-                                        <span className="font-medium">₹{extraCharges.toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Total GST (18%)</span>
-                                        <span className="font-medium text-gray-900">₹{finalGst.toLocaleString()}</span>
-                                    </div>
-                                    {exchangeRate > 0 && (
-                                        <div className="flex justify-between text-sm text-red-600 font-medium">
-                                            <span>Exchange Discount</span>
-                                            <span>- ₹{exchangeRate.toLocaleString()}</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="pt-2">
-                                    <div className="flex justify-between items-end mb-6">
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">Grand Total</p>
-                                            <p className="text-3xl font-black text-blue-600">₹{grandTotal.toLocaleString()}</p>
-                                        </div>
-                                    </div>
-
-                                    <Button
-                                        onClick={handleGenerateInvoice}
-                                        className="w-full h-12 text-lg shadow-lg shadow-blue-200"
-                                    >
-                                        Generate Invoice
-                                    </Button>
-
-                                    <p className="text-center text-[10px] text-gray-400 mt-4 flex items-center justify-center gap-1">
-                                        <Info className="w-3 h-3" />
-                                        Prices are inclusive of all taxes
+                {/* ── Section: Warranty Registration ── */}
+                <section className="space-y-4">
+                    <SectionHead icon={<ShieldCheck className="w-5 h-5 text-[#2E6DFF]" />} title="Warranty Registration" />
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
+                        <div className="grid grid-cols-1 gap-5">
+                            <WarrantyInput
+                                label="Total Warranty"
+                                value={totalWarrantyVal}
+                                unit={totalWarrantyUnit}
+                                onValueChange={setTotalWarrantyVal}
+                                onUnitChange={setTotalWarrantyUnit}
+                            />
+                            <WarrantyInput
+                                label="Free Replacement Period"
+                                value={freeReplacementVal}
+                                unit={freeReplacementUnit}
+                                onValueChange={setFreeReplacementVal}
+                                onUnitChange={setFreeReplacementUnit}
+                            />
+                        </div>
+                        {(parseInt(totalWarrantyVal) > 0 || parseInt(freeReplacementVal) > 0) && (
+                            <div className="bg-blue-50 rounded-xl p-4 space-y-1.5 border border-blue-100">
+                                <p className="text-[11px] font-black text-blue-500 uppercase tracking-wider">Calculated Expiry Dates</p>
+                                {parseInt(totalWarrantyVal) > 0 && (
+                                    <p className="text-[13px] text-slate-700 font-semibold">
+                                        Total Warranty expires: <span className="text-[#2E6DFF] font-black">{totalWarrantyExpiry}</span>
                                     </p>
-                                </div>
+                                )}
+                                {parseInt(freeReplacementVal) > 0 && (
+                                    <p className="text-[13px] text-slate-700 font-semibold">
+                                        Free Replacement upto: <span className="text-[#2E6DFF] font-black">{freeReplacementExpiry}</span>
+                                    </p>
+                                )}
                             </div>
+                        )}
+                    </div>
+                </section>
+
+                {/* ── Payment Method & Action ── */}
+                <div className="bg-white rounded-3xl shadow-md border border-gray-100 p-6 space-y-5">
+                    {/* Grand Total */}
+                    <div className="flex items-end justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                                Grand Total
+                                <span className="text-[9px] normal-case font-medium ml-1">
+                                    (Incl. ₹{productGst.toLocaleString(undefined, { maximumFractionDigits: 0 })} GST)
+                                </span>
+                            </p>
+                            <p className="text-4xl font-black text-slate-900 tracking-tighter">
+                                ₹{Math.max(0, grandTotal).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                        <div className="bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-100">
+                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tight">Confirmed</p>
                         </div>
                     </div>
+
+                    {/* Payment Method Dropdown */}
+                    <div className="space-y-3">
+                        <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider block">Transaction Method</label>
+                        <select
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value as "Cash" | "UPI")}
+                            className="w-full bg-[#F8FAFF] border border-gray-100 rounded-2xl px-5 h-16 text-slate-900 font-bold focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none appearance-none cursor-pointer"
+                        >
+                            <option value="Cash">Cash Transaction</option>
+                            <option value="UPI">UPI / QR Payment</option>
+                        </select>
+                    </div>
+
+                    {/* Action button */}
+                    <Button
+                        onClick={handleProcessSale}
+                        disabled={loading}
+                        className={`w-full text-white h-16 rounded-[20px] text-xl font-black shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 ${paymentMethod === "Cash"
+                                ? "bg-green-500 hover:bg-green-600 shadow-green-400/25"
+                                : "bg-[#2E6DFF] hover:bg-[#1E5AFF] shadow-[#2E6DFF]/25"
+                            }`}
+                    >
+                        {loading ? (
+                            <Zap className="w-6 h-6 animate-pulse text-yellow-300 fill-current" />
+                        ) : (
+                            <>
+                                {paymentMethod === "Cash" ? <Banknote className="w-6 h-6" /> : <QrCode className="w-6 h-6" />}
+                                Complete Transaction & Invoice
+                            </>
+                        )}
+                    </Button>
                 </div>
+
+                {/* Bottom spacer for mobile nav */}
+                <div className="h-20" />
+            </main>
+        </div>
+    );
+}
+
+/** Helpers */
+function SectionHead({ icon, title }: { icon: React.ReactNode; title: string }) {
+    return (
+        <div className="flex items-center gap-2 px-1">
+            {icon}
+            <h2 className="text-[13px] font-bold text-slate-500 uppercase tracking-wider">{title}</h2>
+        </div>
+    );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div className="space-y-2">
+            <label className="text-[13px] font-semibold text-slate-500 ml-1">{label}</label>
+            {children}
+        </div>
+    );
+}
+
+function ChargeRow({
+    label, sublabel, children,
+}: {
+    label: string; sublabel?: string; children: React.ReactNode;
+}) {
+    return (
+        <div className="flex items-center justify-between">
+            <div>
+                <span className="text-[14px] font-bold text-slate-600">{label}</span>
+                {sublabel && <p className="text-[10px] text-slate-400 font-medium">{sublabel}</p>}
             </div>
+            {children}
+        </div>
+    );
+}
+
+function SummaryRow({ label, value, accent }: { label: string; value: string; accent?: string }) {
+    return (
+        <div className="flex justify-between items-center">
+            <span className="text-[13px] text-slate-500 font-medium">{label}</span>
+            <span className={`text-[14px] font-bold ${accent ?? "text-slate-900"}`}>{value}</span>
         </div>
     );
 }

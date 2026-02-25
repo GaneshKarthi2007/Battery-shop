@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Wrench, Clock, CheckCircle, Loader2, AlertTriangle, Plus } from "lucide-react";
+import { Wrench, Clock, CheckCircle, AlertTriangle, Plus } from "lucide-react";
+import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { apiClient } from "../api/client";
 import { Button } from "../components/Button";
 
@@ -57,12 +58,7 @@ export function ServiceManagement() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-        <p className="text-gray-500 font-bold animate-pulse uppercase tracking-widest text-sm">Loading Services...</p>
-      </div>
-    );
+    return <BatteryLoader />;
   }
 
   if (error) {

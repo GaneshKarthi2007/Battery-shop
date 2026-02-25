@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { apiClient } from "../api/client";
 import { UserRole } from "./AuthContext";
 
 export type NotificationType = "SALES" | "STOCK" | "SERVICE" | "SUMMARY";
@@ -9,6 +10,7 @@ export interface Notification {
     title: string;
     message: string;
     time: string;
+    createdAt: string; // ISO timestamp for grouping
     isRead: boolean;
     role: UserRole;
 }
@@ -16,7 +18,7 @@ export interface Notification {
 interface NotificationContextType {
     notifications: Notification[];
     unreadCount: number;
-    addNotification: (notification: Omit<Notification, "id" | "isRead" | "time">) => void;
+    addNotification: (notification: Omit<Notification, "id" | "isRead" | "time" | "createdAt">) => void;
     markAsRead: (id: string) => void;
     markAllAsRead: () => void;
     clearAll: () => void;
@@ -25,74 +27,58 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-    const [notifications, setNotifications] = useState<Notification[]>([
-        {
-            id: "1",
-            type: "SALES",
-            title: "New Sale: ₹12,500",
-            message: "2x Exide FEP0-EPIQ65 batteries sold.",
-            time: "2 mins ago",
-            isRead: false,
-            role: "admin",
-        },
-        {
-            id: "2",
-            type: "STOCK",
-            title: "Low Stock Alert: Okaya XL-5000T",
-            message: "Only 4 units remaining in inventory.",
-            time: "1 hour ago",
-            isRead: false,
-            role: "admin",
-        },
-        {
-            id: "3",
-            type: "SERVICE",
-            title: "New Service Assigned",
-            message: "Battery charging for Rajesh Kumar assigned by Admin.",
-            time: "30 mins ago",
-            isRead: false,
-            role: "staff",
-        },
-        {
-            id: "4",
-            type: "SERVICE",
-            title: "Service Completed",
-            message: "Service #3 (Amit Patel) marked as completed by Staff.",
-            time: "2 hours ago",
-            isRead: true,
-            role: "admin",
-        },
-        {
-            id: "5",
-            type: "SUMMARY",
-            title: "Daily Sales Summary",
-            message: "Total Sales today: ₹48,200. Most sold: Exide FEP0 (4 units).",
-            time: "Yesterday",
-            isRead: true,
-            role: "admin",
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+
+    const fetchNotifications = async () => {
+        try {
+            const data = await apiClient.get<Notification[]>('/notifications');
+            setNotifications(data);
+        } catch (err) {
+            console.error("Failed to fetch notifications", err);
         }
-    ]);
+    };
+
+    useEffect(() => {
+        fetchNotifications();
+        // Set up a polling interval for notifications (every 30 seconds)
+        const interval = setInterval(fetchNotifications, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
-    const addNotification = (n: Omit<Notification, "id" | "isRead" | "time">) => {
+    const addNotification = async (n: Omit<Notification, "id" | "isRead" | "time" | "createdAt">) => {
+        // For now, we usually create notifications on the backend during actions.
+        // This local add is for immediate UI feedback if needed, 
+        // but it won't persist unless the backend creates it.
         const newNotification: Notification = {
             ...n,
             id: Math.random().toString(36).substr(2, 9),
             isRead: false,
             time: "Just now",
+            createdAt: new Date().toISOString(),
         };
         setNotifications(prev => [newNotification, ...prev]);
     };
 
-    const markAsRead = (id: string) => {
-        setNotifications(prev =>
-            prev.map(n => n.id === id ? { ...n, isRead: true } : n)
-        );
+    const markAsRead = async (id: string) => {
+        try {
+            await apiClient.put(`/notifications/${id}/read`);
+            setNotifications(prev =>
+                prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+            );
+        } catch (err) {
+            console.error("Failed to mark notification as read", err);
+        }
     };
 
-    const markAllAsRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    const markAllAsRead = async () => {
+        try {
+            await apiClient.post('/notifications/read-all');
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        } catch (err) {
+            console.error("Failed to mark all as read", err);
+        }
     };
 
     const clearAll = () => {

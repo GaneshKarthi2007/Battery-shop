@@ -13,6 +13,9 @@ import { BatteryLoader } from "./components/ui/BatteryLoader";
 import { Checkout } from "./pages/Checkout";
 import BatteryInvoice from "./pages/BatteryInvoice";
 import { ServiceDetails } from "./pages/ServiceDetails";
+import { NewService } from "./pages/NewService";
+import { ErrorPage } from "./pages/ErrorPage";
+import { UPIPayment } from "./pages/UPIPayment";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
@@ -65,6 +68,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
+    errorElement: <ErrorPage />,
     children: [
       {
         path: "/login",
@@ -89,6 +93,7 @@ export const router = createBrowserRouter([
             ),
           },
           { path: "service", Component: ServiceManagement },
+          { path: "services/new", Component: NewService },
           { path: "service/:id", Component: ServiceDetails },
           {
             path: "inventory",
@@ -109,6 +114,7 @@ export const router = createBrowserRouter([
           { path: "profile", element: <Profile /> },
           { path: "checkout", Component: Checkout },
           { path: "invoice", Component: BatteryInvoice },
+          { path: "upi-payment", Component: UPIPayment },
         ],
       },
     ],

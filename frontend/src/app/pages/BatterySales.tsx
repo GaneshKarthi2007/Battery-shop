@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Plus, Minus, Trash2, ShoppingCart, Search, CreditCard, ChevronUp, Wrench, CheckCircle, CheckCheck, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Search, CreditCard, ChevronUp, Wrench, CheckCircle, CheckCheck, AlertTriangle } from "lucide-react";
 import { Button } from "../components/Button";
 import { apiClient } from "../api/client";
+import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Battery {
@@ -53,6 +54,7 @@ export function BatterySales() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
         const [productsData, servicesData] = await Promise.all([
           apiClient.get<Battery[]>('/products'),
           apiClient.get<ServiceRequest[]>('/services')
@@ -165,15 +167,6 @@ export function BatterySales() {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-        <p className="text-gray-500 font-bold animate-pulse uppercase tracking-widest text-sm">Loading Billing Systems...</p>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center">
@@ -192,6 +185,7 @@ export function BatterySales() {
 
   return (
     <div className="space-y-6">
+      {loading && <BatteryLoader />}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Billing</h1>

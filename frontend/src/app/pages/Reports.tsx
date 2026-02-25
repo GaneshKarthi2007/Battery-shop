@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { FileText, Download, DollarSign, TrendingUp, Filter, Search, Loader2 } from "lucide-react";
+import { FileText, Download, DollarSign, TrendingUp, Filter, Search } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
-import { apiClient } from "../api/client";
+import { apiClient, BASE_URL } from "../api/client";
+import { BatteryLoader } from "../components/ui/BatteryLoader";
 
 interface Invoice {
   id: string;
@@ -64,16 +65,71 @@ export function Reports() {
   }, [dateRange, filterType]);
 
   const handleDownloadInvoice = (invoiceId: string) => {
-    window.open(`${import.meta.env.VITE_API_BASE_URL}/invoices/${invoiceId}/download`, '_blank');
+    window.open(`${BASE_URL}/invoices/${invoiceId}/download`, '_blank');
   };
 
-  const handleDownloadReport = () => {
-    const params = new URLSearchParams({
-      from: dateRange.from,
-      to: dateRange.to,
-      type: filterType
-    });
-    window.open(`${import.meta.env.VITE_API_BASE_URL}/reports/download?${params.toString()}`, '_blank');
+  const handleDownloadReport = async () => {
+    try {
+      const params = new URLSearchParams({
+        from: dateRange.from,
+        to: dateRange.to,
+        type: filterType
+      });
+
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${BASE_URL}/reports/download?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Download failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      console.error(err.message || "Failed to download report");
+      alert("Failed to download report. Please try again.");
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      const params = new URLSearchParams({
+        from: dateRange.from,
+        to: dateRange.to,
+        type: filterType
+      });
+
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${BASE_URL}/reports/download/pdf?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Download failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      console.error(err.message || "Failed to download PDF report");
+      alert("Failed to download PDF report. Please try again.");
+    }
   };
 
   const typeConfig = {
@@ -82,29 +138,32 @@ export function Reports() {
     Service: { color: "bg-purple-100 text-purple-700", label: "Service" },
   };
 
-  if (loading && !summary) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-        <p className="text-gray-500 font-bold animate-pulse">Generating Reports...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
+      {loading && <BatteryLoader />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Reports & Billing</h1>
-          <p className="text-gray-600 mt-1">View sales reports and download invoices</p>
+          <p className="text-gray-600 mt-1">View sales reports and download records</p>
         </div>
-        <Button
-          onClick={handleDownloadReport}
-          className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white flex items-center gap-2"
-        >
-          <Download className="w-5 h-5" />
-          Download Report
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            onClick={handleDownloadReport}
+            variant="outline"
+            className="border-blue-200 text-blue-700 hover:bg-blue-50 flex items-center gap-2"
+          >
+            <Download className="w-5 h-5" />
+            CSV Report
+          </Button>
+          <Button
+            onClick={handleDownloadPdf}
+            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white flex items-center gap-2"
+          >
+            <FileText className="w-5 h-5" />
+            PDF Report
+          </Button>
+        </div>
       </div>
 
       {summary && (
@@ -225,11 +284,6 @@ export function Reports() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-[400px] relative">
-        {loading && (
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-          </div>
-        )}
         <div className="p-6 border-b border-gray-200 bg-gray-50">
           <h2 className="font-bold text-gray-900">Invoice History</h2>
           <p className="text-sm text-gray-600 mt-1">

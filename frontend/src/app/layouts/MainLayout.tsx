@@ -63,91 +63,95 @@ export function MainLayout() {
   // Filter notifications based on user role for the badge
   const roleUnreadCount = notifications.filter(n => n.role === user?.role && !n.isRead).length;
 
+  const isCheckoutPage = location.pathname === "/checkout" || location.pathname === "/upi-payment";
+
   return (
     <div className="min-h-screen bg-gray-50 pb-16 md:pb-0">
-      {/* Mobile/Tablet Header with Hamburger */}
-      <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-20 px-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 hover:bg-gray-100 rounded-lg text-gray-700 transition-colors"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-bold text-gray-900 text-lg hidden sm:block">PowerCell Pro</span>
-        </div>
-
-        {/* Right Side Actions */}
-        <div className="flex items-center gap-2 sm:gap-4 ml-auto">
-          <div className="relative">
+      {/* Mobile/Tablet Header with Hamburger – hidden on checkout */}
+      {!isCheckoutPage && (
+        <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-20 px-4 flex items-center justify-between print:hidden">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 hover:bg-gray-100 rounded-lg text-gray-700 transition-colors"
             >
-              <Bell className="w-5 h-5" />
-              {roleUnreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
-                  {roleUnreadCount}
-                </span>
-              )}
+              <Menu className="w-6 h-6" />
             </button>
-            <NotificationDropdown
-              isOpen={showNotifications}
-              onClose={() => setShowNotifications(false)}
-            />
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+              <Zap className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-bold text-gray-900 text-lg hidden sm:block">PowerCell Pro</span>
           </div>
 
-          {/* User Profile */}
-          <div className="relative">
-            <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 hover:bg-gray-100 p-1.5 rounded-lg transition-colors"
-            >
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-white" />
-              </div>
-            </button>
+          {/* Right Side Actions */}
+          <div className="flex items-center gap-2 sm:gap-4 ml-auto">
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Bell className="w-5 h-5" />
+                {roleUnreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
+                    {roleUnreadCount}
+                  </span>
+                )}
+              </button>
+              <NotificationDropdown
+                isOpen={showNotifications}
+                onClose={() => setShowNotifications(false)}
+              />
+            </div>
 
-            {/* User Dropdown Menu */}
-            {showUserMenu && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowUserMenu(false)}
-                ></div>
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
-                    <p className="text-xs text-gray-500">{user?.email || 'user@example.com'}</p>
-                    <p className="text-[10px] mt-1 uppercase font-bold text-blue-600 bg-blue-50 inline-block px-1.5 py-0.5 rounded">
-                      {user?.role}
-                    </p>
+            {/* User Profile */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 hover:bg-gray-100 p-1.5 rounded-lg transition-colors"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+              </button>
+
+              {/* User Dropdown Menu */}
+              {showUserMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowUserMenu(false)}
+                  ></div>
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
+                      <p className="text-xs text-gray-500">{user?.email || 'user@example.com'}</p>
+                      <p className="text-[10px] mt-1 uppercase font-bold text-blue-600 bg-blue-50 inline-block px-1.5 py-0.5 rounded">
+                        {user?.role}
+                      </p>
+                      <button
+                        onClick={() => {
+                          navigate('/profile');
+                          setShowUserMenu(false);
+                        }}
+                        className="block mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        View Profile
+                      </button>
+                    </div>
                     <button
-                      onClick={() => {
-                        navigate('/profile');
-                        setShowUserMenu(false);
-                      }}
-                      className="block mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      onClick={handleLogout}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
                     >
-                      View Profile
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
                     </button>
                   </div>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Logout</span>
-                  </button>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Sidebar Overlay */}
       {isSidebarOpen && (
@@ -159,7 +163,7 @@ export function MainLayout() {
 
       {/* Sidebar Drawer */}
       <aside
-        className={`fixed left-0 top-0 h-full w-72 bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed left-0 top-0 h-full w-72 bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out print:hidden ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
       >
         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">
@@ -220,12 +224,16 @@ export function MainLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:max-w-none">
         <Outlet />
       </main>
 
       {/* Bottom Navigation (Mobile Only) */}
-      <BottomNav onMenuClick={() => setIsSidebarOpen(true)} />
+      {!isCheckoutPage && (
+        <div className="print:hidden">
+          <BottomNav onMenuClick={() => setIsSidebarOpen(true)} />
+        </div>
+      )}
     </div>
   );
 }

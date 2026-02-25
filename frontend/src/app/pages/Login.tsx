@@ -4,6 +4,7 @@ import { Zap, User, Lock, ArrowRight } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { useAuth } from "../contexts/AuthContext";
+import { BatteryLoader } from "../components/ui/BatteryLoader";
 
 export function Login() {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ export function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-4">
+      {loading && <BatteryLoader />}
       <div className="w-full max-w-md">
         {/* Logo and Title */}
         <div className="text-center mb-8">

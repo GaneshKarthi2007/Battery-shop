@@ -43,4 +43,24 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('products', ProductController::class);
     Route::apiResource('sales', SalesController::class)->only(['index', 'store', 'show']);
     Route::apiResource('services', ServiceController::class);
+
+    Route::get('/reports', [\App\Http\Controllers\Api\ReportController::class, 'index']);
+    Route::get('/reports/download', [\App\Http\Controllers\Api\ReportController::class, 'download']);
+    Route::get('/reports/download/pdf', [\App\Http\Controllers\Api\ReportController::class, 'downloadPdf']);
+
+    // Staff & Notifications
+    Route::get('/staff', [\App\Http\Controllers\Api\UserController::class, 'getStaff']);
+    Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::put('/notifications/{notification}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
+
+    // Exchange records
+    Route::get('/exchanges/pending', [\App\Http\Controllers\Api\ExchangeController::class, 'pendingExchanges']);
+    Route::apiResource('exchanges', \App\Http\Controllers\Api\ExchangeController::class);
+
+    // UPI Payments
+    Route::post('/upi-payments', [\App\Http\Controllers\Api\UpiPaymentController::class, 'store']);
+    Route::get('/upi-payments/{upiPayment}/status', [\App\Http\Controllers\Api\UpiPaymentController::class, 'status']);
+    Route::post('/upi-payments/{upiPayment}/confirm', [\App\Http\Controllers\Api\UpiPaymentController::class, 'confirm']);
+    Route::post('/upi-payments/{upiPayment}/finalise', [\App\Http\Controllers\Api\UpiPaymentController::class, 'finalise']);
 });

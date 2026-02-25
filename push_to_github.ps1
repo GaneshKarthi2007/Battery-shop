@@ -7,19 +7,38 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     exit
 }
 
-Write-Host "Initializing Git repository..." -ForegroundColor Cyan
-git init
+# 1. Initialize Git if not already done
+if (!(Test-Path .git)) {
+    Write-Host "Initializing Git repository..." -ForegroundColor Cyan
+    git init
+} else {
+    Write-Host "Git repository already initialized." -ForegroundColor Green
+}
 
+# 2. Add files
 Write-Host "Adding files to staging..." -ForegroundColor Cyan
 git add .
 
-Write-Host "Creating initial commit..." -ForegroundColor Cyan
-git commit -m "Initial commit: Professional Battery Shop UI implementation"
+# 3. Commit
+$commitMsg = Read-Host "Enter commit message (default: 'Updated Battery Shop UI implementation')"
+if ([string]::IsNullOrWhiteSpace($commitMsg)) {
+    $commitMsg = "Updated Battery Shop UI implementation"
+}
+Write-Host "Creating commit..." -ForegroundColor Cyan
+git commit -m "$commitMsg"
 
-Write-Host "Setting remote origin..." -ForegroundColor Cyan
+# 4. Handle remote origin
 $repoUrl = "https://github.com/GaneshKarthi2007/Battery-shop.git"
-git remote add origin $repoUrl
+$remotes = git remote
+if ($remotes -contains "origin") {
+    Write-Host "Remote 'origin' already exists. Updating URL..." -ForegroundColor Cyan
+    git remote set-url origin $repoUrl
+} else {
+    Write-Host "Adding remote origin..." -ForegroundColor Cyan
+    git remote add origin $repoUrl
+}
 
+# 5. Push
 Write-Host "Pushing to main branch..." -ForegroundColor Cyan
 git branch -M main
 git push -u origin main
