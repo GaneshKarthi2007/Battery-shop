@@ -1,27 +1,20 @@
-FROM dunglas/frankenphp:1-php8.2-alpine
-
-WORKDIR /app
-
-RUN apk add --no-cache git curl zip unzip \
-    libpng-dev libjpeg-turbo-dev freetype-dev \
-    oniguruma-dev libxml2-dev
-
-RUN install-php-extensions \
-    pdo_mysql mbstring bcmath gd xml opcache
-
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# 🔥 IMPORTANT — copy only backend first
-COPY backend/composer.json backend/composer.lock ./backend/
+# Ultra-stable Laravel container
+FROM dunglas/frankenphp:php8.2
 
 WORKDIR /app/backend
+
+# Copy composer from official image
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Copy only backend composer first (better caching)
+COPY backend/composer.json backend/composer.lock ./
 
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Copy full backend source
 COPY backend/ .
 
-# Fix laravel folders
+# Fix laravel folders BEFORE start
 RUN mkdir -p bootstrap/cache \
     storage/framework/cache \
     storage/framework/sessions \
@@ -32,8 +25,6 @@ RUN mkdir -p bootstrap/cache \
 EXPOSE 8080
 
 CMD ["frankenphp", "php-server", "--port=8080", "--root=public"]
-
-
 
 
 
