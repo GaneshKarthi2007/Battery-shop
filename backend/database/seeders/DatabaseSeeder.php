@@ -115,11 +115,13 @@ class DatabaseSeeder extends Seeder
         $services = [
             [
                 'customer_name' => 'Rajesh Kumar',
+                'contact_number' => '9876543210',
                 'vehicle_details' => 'Toyota Fortuner',
                 'status' => 'pending',
             ],
             [
                 'customer_name' => 'Priya Sharma',
+                'contact_number' => '9123456780',
                 'vehicle_details' => 'Honda City',
                 'status' => 'pending',
                 'pickup_date' => now()->addDays(2),
