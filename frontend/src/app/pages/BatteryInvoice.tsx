@@ -83,22 +83,31 @@ const BatteryInvoice: React.FC = () => {
                 @media print {
                     @page {
                         size: A4;
-                        margin: 10mm;
+                        margin: 5mm;
                     }
                     body {
-                        background: white;
-                        margin: 0;
-                        padding: 0;
+                        background: white !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                     .no-print {
                         display: none !important;
                     }
                     .invoice-container {
                         width: 100% !important;
+                        max-width: none !important;
                         margin: 0 !important;
-                        padding: 10px !important;
-                        border: 1px solid #000 !important;
+                        padding: 10mm !important;
+                        border: 1px solid #eee !important;
                         box-shadow: none !important;
+                        border-radius: 0 !important;
+                        background-color: white !important;
+                    }
+                    .min-h-screen {
+                        min-height: auto !important;
+                        height: auto !important;
                     }
                 }
             `}</style>
@@ -184,14 +193,14 @@ const BatteryInvoice: React.FC = () => {
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    width: "800px",
+    maxWidth: "800px",
+    width: "100%",
     margin: "0 auto",
-    padding: "10px 20px",
-    border: "2px solid #222",
-    borderRadius: "10px",
-    fontFamily: "Arial, sans-serif",
-    backgroundColor: "#f9f9f9",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+    padding: "10mm",
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    fontFamily: "'Inter', system-ui, sans-serif",
+    backgroundColor: "#fff",
   },
   header: {
     textAlign: "center",
@@ -255,11 +264,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: "2px",
   },
   signatureSection: {
-    marginTop: "10px",
+    marginTop: "20px",
     display: "flex",
     justifyContent: "space-between",
     fontWeight: "bold",
     fontSize: "12px",
+    breakInside: "avoid",
   },
 };
 

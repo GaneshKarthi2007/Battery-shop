@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 import {
     ArrowLeft, User, FileText, Zap, ShieldCheck, Wrench,
-    AlertTriangle, Car, Home, Truck, RefreshCcw, CheckCircle,
+    Car, Home, Truck, RefreshCcw, CheckCircle,
     Banknote, QrCode
 } from "lucide-react";
 import { Button } from "../components/Button";
@@ -11,7 +11,6 @@ import { apiClient } from "../api/client";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { BatteryLoader } from "../components/ui/BatteryLoader";
-
 interface SalesItem {
     id: number | string;
     name: string;
@@ -117,7 +116,6 @@ export function Checkout() {
 
     /** ── UI state ── */
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
 
     const serviceItem = state?.items?.find(item => item.type === "Service");
     const hasService = !!serviceItem;
@@ -223,11 +221,10 @@ export function Checkout() {
 
     /* ── Submit Sale ── */
     const handleProcessSale = async () => {
-        if (!customerInfo.name.trim()) { setError("Customer name is required."); return; }
-        if (!customerInfo.phone.replace("+91 ", "").trim()) { setError("Phone number is required."); return; }
+        if (!customerInfo.name.trim()) { alert("Customer name is required."); return; }
+        if (!customerInfo.phone.replace("+91 ", "").trim()) { alert("Phone number is required."); return; }
 
         setLoading(true);
-        setError("");
 
         try {
             const vehicleDetails = productType === "Vehicle"
@@ -242,6 +239,7 @@ export function Checkout() {
                 vehicle_details: vehicleDetails,
                 installation_address: installationAddress,
                 product_category: productType,
+                type: "Sale", // Explicitly added the 'type' field
                 items: state.items.map(item => ({
                     product_id: item.type === "Product" ? Number(item.id) : null,
                     service_id: item.type === "Service" ? Number(item.id.toString().replace("service-", "")) : null,
@@ -266,7 +264,8 @@ export function Checkout() {
 
             navigate("/invoice", { state: { ...buildInvoiceState() } });
         } catch (err: any) {
-            setError(err.message || "Failed to process sale. Please try again.");
+            const msg = err.message || "Failed to process sale. Please try again.";
+            alert(msg); // standard browser warning popup
         } finally {
             setLoading(false);
         }
@@ -292,17 +291,6 @@ export function Checkout() {
             </header>
 
             <main className="flex-1 px-4 pt-20 pb-10 space-y-8 max-w-2xl mx-auto w-full">
-
-                {/* Error Alert */}
-                {error && (
-                    <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-red-900 font-bold text-sm">Transaction Failed</p>
-                            <p className="text-red-600 text-sm mt-0.5 font-medium">{error}</p>
-                        </div>
-                    </div>
-                )}
 
                 {/* ── Section: Customer Details ── */}
                 <section className="space-y-4">
@@ -616,8 +604,8 @@ export function Checkout() {
                         onClick={handleProcessSale}
                         disabled={loading}
                         className={`w-full text-white h-16 rounded-[20px] text-xl font-black shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 ${paymentMethod === "Cash"
-                                ? "bg-green-500 hover:bg-green-600 shadow-green-400/25"
-                                : "bg-[#2E6DFF] hover:bg-[#1E5AFF] shadow-[#2E6DFF]/25"
+                            ? "bg-green-500 hover:bg-green-600 shadow-green-400/25"
+                            : "bg-[#2E6DFF] hover:bg-[#1E5AFF] shadow-[#2E6DFF]/25"
                             }`}
                     >
                         {loading ? (
