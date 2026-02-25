@@ -1,41 +1,27 @@
-# --- Base image (Laravel optimized) ---
 FROM dunglas/frankenphp:1-php8.2-alpine
 
 WORKDIR /app
 
-# Install system deps
-RUN apk add --no-cache \
-    git \
-    curl \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    oniguruma-dev \
-    libxml2-dev \
-    zip \
-    unzip
+RUN apk add --no-cache git curl zip unzip \
+    libpng-dev libjpeg-turbo-dev freetype-dev \
+    oniguruma-dev libxml2-dev
 
-# PHP extensions
 RUN install-php-extensions \
-    pdo_mysql \
-    mbstring \
-    bcmath \
-    gd \
-    xml \
-    opcache
+    pdo_mysql mbstring bcmath gd xml opcache
 
-# Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copy composer first (cache layer)
-COPY composer.json composer.lock ./
+# 🔥 IMPORTANT — copy only backend first
+COPY backend/composer.json backend/composer.lock ./backend/
+
+WORKDIR /app/backend
 
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Copy project
-COPY . .
+# Copy full backend source
+COPY backend/ .
 
-# 🔥 Fix Laravel folders BEFORE artisan runs
+# Fix laravel folders
 RUN mkdir -p bootstrap/cache \
     storage/framework/cache \
     storage/framework/sessions \
@@ -43,12 +29,9 @@ RUN mkdir -p bootstrap/cache \
     storage/logs \
     && chmod -R 777 storage bootstrap/cache
 
-# Railway uses PORT env
 EXPOSE 8080
 
-# Start Laravel via FrankenPHP
 CMD ["frankenphp", "php-server", "--port=8080", "--root=public"]
-
 
 
 
