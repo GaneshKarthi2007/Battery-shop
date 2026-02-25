@@ -1,31 +1,24 @@
-# Ultra-stable Laravel container
-FROM dunglas/frankenphp:php8.2
+FROM php:8.2-cli
 
-WORKDIR /app/backend
+RUN apt-get update && apt-get install -y \
+    git curl unzip libzip-dev libpng-dev libonig-dev libxml2-dev libicu-dev \
+    && docker-php-ext-install pdo_mysql mbstring bcmath gd intl zip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy composer from official image
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copy only backend composer first (better caching)
-COPY backend/composer.json backend/composer.lock ./
+WORKDIR /var/www
+COPY . .
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader
+RUN chmod -R 775 storage bootstrap/cache
 
-# Copy full backend source
-COPY backend/ .
+# Copy entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Fix laravel folders BEFORE start
-RUN mkdir -p bootstrap/cache \
-    storage/framework/cache \
-    storage/framework/sessions \
-    storage/framework/views \
-    storage/logs \
-    && chmod -R 777 storage bootstrap/cache
-
-EXPOSE 8080
-
-CMD ["frankenphp", "php-server", "--port=8080", "--root=public"]
-
+EXPOSE 10000
+CMD ["/entrypoint.sh"]
 
 
 
