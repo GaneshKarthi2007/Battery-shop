@@ -9,7 +9,7 @@ echo "Running migrations..."
 php artisan migrate:fresh --force
 
 echo "Running seeders..."
-php artisan db:seed --class=SnapshotSeeder --force
+php artisan db:seed --force
 
 echo "Starting Laravel (production)..."
 exec php -S 0.0.0.0:$PORT -t public
