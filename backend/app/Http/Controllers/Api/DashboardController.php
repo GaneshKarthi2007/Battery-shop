@@ -46,7 +46,7 @@ class DashboardController extends Controller
         )
         ->where('created_at', '>=', now()->subDays(7))
         ->groupBy('day')
-        ->orderBy('created_at')
+        ->orderByRaw('MIN(created_at) ASC')
         ->get();
 
         // Convert SQLite numeric days (0-6) to Names if necessary, or just return as is
