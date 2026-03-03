@@ -505,12 +505,12 @@ export function Checkout() {
                             </div>
                         </div>
 
-                        {/* GST note */}
+                        {/* GST note
                         <div className="px-6 py-3 bg-amber-50 border-t border-amber-100">
                             <p className="text-[11px] text-amber-700 font-medium">
                                 ⚡ GST (18%) applies only to product items. Installation and delivery charges are GST-exempt.
                             </p>
-                        </div>
+                        </div> */}
 
                         {/* Summary breakdown */}
                         <div className="p-6 space-y-2 border-t border-gray-100">

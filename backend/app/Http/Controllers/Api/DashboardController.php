@@ -60,6 +60,16 @@ class DashboardController extends Controller
 
         $lowStockItems = Product::where('stock', '<', DB::raw('min_stock'))->get();
 
+        // Service Flow Stats
+        $unassignedTasks = Service::whereNull('assigned_to')->where('status', 'pending')->count();
+        $pendingPayments = Service::where('status', 'Completed')->where('payment_status', 'pending')->count();
+        
+        // Escalated: Assigned but not updated for more than 30 mins
+        $escalatedTasks = Service::whereNotNull('assigned_to')
+            ->where('status', 'In Progress')
+            ->where('updated_at', '<', now()->subMinutes(30))
+            ->count();
+
         return response()->json([
             'todaySales' => $totalSalesToday,
             'totalStock' => $totalStock,
@@ -68,6 +78,11 @@ class DashboardController extends Controller
             'monthlyProfit' => $monthlyProfit,
             'weeklySales' => $weeklySales,
             'lowStockItems' => $lowStockItems,
+            'serviceStats' => [
+                'unassigned' => $unassignedTasks,
+                'pendingPayments' => $pendingPayments,
+                'escalated' => $escalatedTasks,
+            ]
         ]);
     }
 }

@@ -100,22 +100,8 @@ export function Login() {
             </Button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <div className="text-xs text-gray-600 space-y-2">
-              <p className="font-semibold text-center mb-1">Demo Credentials:</p>
-              <div className="flex justify-between items-center px-2">
-                <span>Admin Access:</span>
-                <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200 text-blue-600">admin@powershell.com</code>
-              </div>
-              <div className="flex justify-between items-center px-2">
-                <span>Staff Access:</span>
-                <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200 text-green-600">staff@powershell.com</code>
-              </div>
-              <p className="text-center text-[10px] text-gray-400 font-bold uppercase mt-1">Password: password</p>
-            </div>
-          </div>
         </div>
+
 
         {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-6">

@@ -16,7 +16,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     const token = localStorage.getItem('auth_token');
     const headers = new Headers(init.headers || {});
     headers.set('Accept', 'application/json');
-    headers.set('Content-Type', 'application/json');
+    if (!headers.has('Content-Type') && !(init.body instanceof FormData)) {
+        headers.set('Content-Type', 'application/json');
+    }
     if (token) {
         headers.set('Authorization', `Bearer ${token}`);
     }
@@ -43,10 +45,10 @@ export const apiClient = {
         request<T>(endpoint, { ...options, method: 'GET' }),
 
     post: <T>(endpoint: string, body?: any, options?: RequestOptions) =>
-        request<T>(endpoint, { ...options, method: 'POST', body: JSON.stringify(body) }),
+        request<T>(endpoint, { ...options, method: 'POST', body: body instanceof FormData ? body : JSON.stringify(body) }),
 
     put: <T>(endpoint: string, body?: any, options?: RequestOptions) =>
-        request<T>(endpoint, { ...options, method: 'PUT', body: JSON.stringify(body) }),
+        request<T>(endpoint, { ...options, method: 'PUT', body: body instanceof FormData ? body : JSON.stringify(body) }),
 
     delete: <T>(endpoint: string, options?: RequestOptions) =>
         request<T>(endpoint, { ...options, method: 'DELETE' }),

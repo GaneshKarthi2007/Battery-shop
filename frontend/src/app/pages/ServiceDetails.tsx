@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, ShieldCheck, AlertCircle, AlertTriangle, Zap } from "lucide-react";
+import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, ShieldCheck, AlertCircle, AlertTriangle, Zap, MapPin, Mic, Play, CreditCard, ShoppingCart, ShoppingBag } from "lucide-react";
 import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { Button } from "../components/Button";
+import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
 import { useAuth } from "../contexts/AuthContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { apiClient } from "../api/client";
@@ -15,13 +16,22 @@ interface ServiceRequest {
     status: 'Pending' | 'In Progress' | 'Completed';
     service_charge: number;
     issue?: string;
+    complaint_type?: string;
+    complaint_details?: string;
     battery_brand?: string;
     battery_model?: string;
+    battery_capacity?: string;
+    address?: string;
     assigned_to?: number;
+    assigned_at?: string;
+    resolved_at?: string;
+    voice_note?: string;
+    payment_status?: 'pending' | 'verified';
     assigned_staff?: {
         id: number;
         name: string;
     };
+    sale?: any;
     created_at: string;
 }
 
@@ -42,6 +52,7 @@ export function ServiceDetails() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [updating, setUpdating] = useState(false);
+    const [showAudioRecorder, setShowAudioRecorder] = useState(false);
 
     useEffect(() => {
         fetchService();
@@ -79,6 +90,15 @@ export function ServiceDetails() {
             setService(updated);
 
             if (newStatus === "Completed") {
+                if (!service.service_charge || Number(service.service_charge) <= 0) {
+                    const charge = prompt("Service charge is required to complete the service. Please enter the amount (₹):", service.service_charge?.toString() || "");
+                    if (!charge || isNaN(Number(charge)) || Number(charge) <= 0) {
+                        alert("A valid service charge is required to complete the service.");
+                        return;
+                    }
+                    await apiClient.put(`/services/${id}`, { service_charge: Number(charge) });
+                }
+
                 addNotification({
                     type: "SERVICE",
                     title: "Service Completed",
@@ -113,6 +133,70 @@ export function ServiceDetails() {
         }
     };
 
+    const handlePickUp = async () => {
+        if (!id) return;
+        setUpdating(true);
+        try {
+            const updated = await apiClient.post<ServiceRequest>(`/services/${id}/pickup`);
+            setService(updated);
+            addNotification({
+                type: "SERVICE",
+                title: "Task Picked Up",
+                message: `You have successfully picked up service #${id}.`,
+                role: "staff"
+            });
+        } catch (err: any) {
+            alert(err.message || "Failed to pick up task");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleUploadVoiceNote = async (file: File) => {
+        if (!id) return;
+        setUpdating(true);
+        const formData = new FormData();
+        formData.append('voice_note', file);
+        try {
+            const updated = await apiClient.post<ServiceRequest>(`/services/${id}/voice-note`, formData);
+            setService(updated);
+            alert("Voice note uploaded successfully");
+        } catch (err: any) {
+            alert(err.message || "Failed to upload voice note");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleVerifyPayment = async () => {
+        if (!id) return;
+        setUpdating(true);
+        try {
+            const updated = await apiClient.post<ServiceRequest>(`/services/${id}/verify-payment`);
+            setService(updated);
+            alert("Payment verified and service completed");
+        } catch (err: any) {
+            alert(err.message || "Failed to verify payment");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleConvertToOrder = () => {
+        if (!service) return;
+        navigate("/checkout", {
+            state: {
+                prefill: {
+                    customer_name: service.customer_name,
+                    contact_number: service.contact_number,
+                    address: service.address,
+                    service_id: service.id,
+                    service_charge: service.service_charge
+                }
+            }
+        });
+    };
+
     if (loading) {
         return <BatteryLoader />;
     }
@@ -134,7 +218,7 @@ export function ServiceDetails() {
         Completed: { color: "bg-green-100 text-green-700 font-bold", icon: CheckCircle },
     };
 
-    const currentStatus = statusConfig[service.status];
+    const currentStatus = statusConfig[service.status as keyof typeof statusConfig] || statusConfig.Pending;
     const StatusIcon = currentStatus.icon;
 
     return (
@@ -159,6 +243,43 @@ export function ServiceDetails() {
                     <StatusIcon className="w-4 h-4" />
                     {service.status}
                 </div>
+                {service.status === "Completed" && (
+                    <Button
+                        onClick={() => navigate("/invoice", {
+                            state: {
+                                items: [{
+                                    id: service.id,
+                                    name: service.battery_brand || "Service",
+                                    model: service.battery_model || "Maintenance",
+                                    price: Number(service.service_charge),
+                                    quantity: 1,
+                                    warranty: "N/A",
+                                    type: "Service"
+                                }],
+                                customerInfo: {
+                                    name: service.customer_name,
+                                    phone: service.contact_number,
+                                    billingAddress: "N/A"
+                                },
+                                vehicleNumber: service.vehicle_details || "N/A",
+                                paymentMethod: "Cash",
+                                productSubtotal: 0,
+                                serviceSubtotal: Number(service.service_charge),
+                                productGst: 0,
+                                exchangeDiscount: 0,
+                                finalTotal: Number(service.service_charge),
+                                warrantyDetails: {
+                                    totalWarranty: "N/A",
+                                    totalWarrantyExpiry: "N/A"
+                                }
+                            }
+                        })}
+                        className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 shadow-lg shadow-green-200 ml-4"
+                    >
+                        <Zap className="w-4 h-4" />
+                        Generate Bill
+                    </Button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -188,6 +309,12 @@ export function ServiceDetails() {
                                             <div>
                                                 <p className="text-sm font-bold text-gray-900">{service.customer_name}</p>
                                                 <p className="text-xs text-gray-500">{service.contact_number}</p>
+                                                {service.address && (
+                                                    <p className="text-xs text-gray-400 mt-2 italic">
+                                                        <MapPin className="w-3 h-3 inline mr-1" />
+                                                        {service.address}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -202,22 +329,31 @@ export function ServiceDetails() {
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold text-gray-900">{service.battery_brand || 'N/A'}</p>
-                                                <p className="text-xs text-gray-500">{service.battery_model || ''}</p>
+                                                <p className="text-xs text-gray-500">
+                                                    {service.battery_model || ''}
+                                                    {service.battery_capacity && ` (${service.battery_capacity})`}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
                                 </section>
                             </div>
 
-                            <section className="bg-orange-50/50 rounded-xl p-4 border border-orange-100">
-                                <div className="flex items-start gap-3">
-                                    <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
-                                    <div>
-                                        <h3 className="text-sm font-bold text-orange-900 mb-1">Issue Reported</h3>
-                                        <p className="text-sm text-orange-800 leading-relaxed">{service.issue || 'No specific issue described.'}</p>
+                            {(service.complaint_type || service.complaint_details || service.issue) && (
+                                <section className="bg-orange-50/50 rounded-xl p-4 border border-orange-100">
+                                    <div className="flex items-start gap-3">
+                                        <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
+                                        <div>
+                                            <h3 className="text-sm font-bold text-orange-900 mb-1">
+                                                {service.complaint_type || "Issue Reported"}
+                                            </h3>
+                                            <p className="text-sm text-orange-800 leading-relaxed">
+                                                {service.complaint_details || service.issue || 'No specific issue described.'}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            </section>
+                                </section>
+                            )}
 
                             <div className="pt-4 border-t border-gray-100">
                                 <div className="flex items-center justify-between">
@@ -239,6 +375,88 @@ export function ServiceDetails() {
                 </div>
 
                 <div className="space-y-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                        <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <Zap className="w-4 h-4 text-blue-600" />
+                            Service Actions
+                        </h3>
+                        <div className="space-y-4">
+                            {!service.assigned_to && !isAdmin && (
+                                <Button
+                                    onClick={handlePickUp}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 rounded-xl shadow-lg shadow-blue-100 flex items-center justify-center gap-3 font-black uppercase tracking-widest text-xs"
+                                >
+                                    <ShoppingBag className="w-5 h-5" />
+                                    Pick Up This Task
+                                </Button>
+                            )}
+
+                            {service.status === "In Progress" && (
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block ml-1">Daily Status Update (Audio)</label>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            onClick={() => setShowAudioRecorder(true)}
+                                            variant="outline"
+                                            className="flex-1 flex items-center justify-center gap-2 py-4 border-dashed border-2"
+                                        >
+                                            <Mic className="w-4 h-4 text-blue-600" />
+                                            Record Update
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {service.voice_note && (
+                                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <Play className="w-4 h-4 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-blue-900">Voice Update</p>
+                                            <p className="text-[10px] text-blue-600 font-medium">Click to play recording</p>
+                                        </div>
+                                    </div>
+                                    <audio
+                                        controls
+                                        className="hidden"
+                                        id="voice-player"
+                                        src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/storage/${service.voice_note}`}
+                                    />
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => (document.getElementById('voice-player') as HTMLAudioElement)?.play()}
+                                        className="text-blue-600"
+                                    >
+                                        <Play className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            )}
+
+                            {service.status !== "Completed" && (
+                                <Button
+                                    onClick={handleConvertToOrder}
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 font-bold"
+                                >
+                                    <ShoppingCart className="w-4 h-4" />
+                                    Convert to New Order
+                                </Button>
+                            )}
+
+                            {service.payment_status === "pending" && isAdmin && service.status === "In Progress" && (
+                                <Button
+                                    onClick={handleVerifyPayment}
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 font-bold"
+                                >
+                                    <CreditCard className="w-4 h-4" />
+                                    Verify Payment & Close
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
                     {isAdmin && (
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                             <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -271,7 +489,7 @@ export function ServiceDetails() {
                             </h3>
                             <div className="space-y-3">
                                 {(["Pending", "In Progress", "Completed"] as const).map((status) => {
-                                    const config = statusConfig[status];
+                                    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.Pending;
                                     const Icon = config.icon;
                                     const isActive = service.status === status;
 
@@ -307,6 +525,12 @@ export function ServiceDetails() {
                     </div>
                 </div>
             </div>
+
+            <AudioRecorder
+                isOpen={showAudioRecorder}
+                onClose={() => setShowAudioRecorder(false)}
+                onCapture={(file) => handleUploadVoiceNote(file)}
+            />
         </div>
     );
 }

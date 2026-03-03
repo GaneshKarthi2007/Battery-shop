@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { RefreshCcw, Calculator, CheckCircle, Info, Zap, Clock, History } from "lucide-react";
+import { RefreshCcw, Calculator, CheckCircle, Zap, Clock, History } from "lucide-react";
 import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
@@ -216,19 +216,7 @@ export function BatteryExchange() {
                 </div>
               </div>
 
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-900 mb-1">Valuation Formula</p>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                      <li>• Base rate: ₹150 per kg</li>
-                      <li>• Condition: Excellent ×1.2 | Good ×1.0 | Fair ×0.7 | Poor ×0.4</li>
-                      <li>• Age depreciation: 10% per year</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
 

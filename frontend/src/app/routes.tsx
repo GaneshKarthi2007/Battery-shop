@@ -16,6 +16,7 @@ import { ServiceDetails } from "./pages/ServiceDetails";
 import { NewService } from "./pages/NewService";
 import { ErrorPage } from "./pages/ErrorPage";
 import { UPIPayment } from "./pages/UPIPayment";
+import { NotFound } from "./pages/NotFound";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
@@ -115,7 +116,12 @@ export const router = createBrowserRouter([
           { path: "checkout", Component: Checkout },
           { path: "invoice", Component: BatteryInvoice },
           { path: "upi-payment", Component: UPIPayment },
+          { path: "*", Component: NotFound },
         ],
+      },
+      {
+        path: "*",
+        Component: NotFound,
       },
     ],
   },

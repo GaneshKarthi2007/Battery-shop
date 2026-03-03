@@ -336,76 +336,93 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Low Stock Alert */}
-          <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-50 bg-gradient-to-r from-orange-50/50 to-white flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center shadow-inner">
-                  <AlertTriangle className="w-6 h-6" />
+          {/* Low Stock Alert & Recent Services */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden h-fit">
+              <div className="p-6 border-b border-gray-50 bg-gradient-to-r from-orange-50/50 to-white flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center shadow-inner">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Inventory Alerts</h2>
+                    <p className="text-sm font-bold text-gray-400 uppercase tracking-tighter italic">Critical stock levels</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Inventory Alerts</h2>
-                  <p className="text-sm font-bold text-gray-400 uppercase tracking-tighter italic">Items requiring urgent attention</p>
-                </div>
+                <button onClick={() => navigate('/inventory')} className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 group">
+                  View All <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
-              <button onClick={() => navigate('/inventory')} className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 group">
-                Full Stock List <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-100">
-                  <tr>
-                    <th className="px-8 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                      Product Detail
-                    </th>
-                    <th className="px-8 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                      Stock Level
-                    </th>
-                    <th className="px-8 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {data?.lowStockItems.map((item) => {
-                    const percentage = (item.stock / item.min_stock) * 100;
-                    const isCritical = percentage < 50;
-
-                    return (
-                      <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-8 py-6 whitespace-nowrap">
-                          <div className="font-black text-gray-900 tracking-tight">{item.brand}</div>
-                          <div className="text-xs font-bold text-gray-400 uppercase tracking-tighter italic">{item.model}</div>
-                        </td>
-                        <td className="px-8 py-6 whitespace-nowrap">
-                          <div className="flex flex-col gap-1">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <tbody className="divide-y divide-gray-50">
+                    {data?.lowStockItems.slice(0, 5).map((item) => {
+                      const isCritical = item.stock < item.min_stock / 2;
+                      return (
+                        <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-black text-gray-900">{item.brand}</div>
+                            <div className="text-[10px] font-bold text-gray-400 uppercase">{item.model}</div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
                             <span className={`text-sm font-black ${isCritical ? 'text-red-600' : 'text-orange-600'}`}>
-                              {item.stock} / {item.min_stock} units
+                              {item.stock} / {item.min_stock}
                             </span>
-                            <div className="w-32 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${isCritical ? 'bg-red-500' : 'bg-orange-500'}`}
-                                style={{ width: `${Math.min(percentage, 100)}%` }}
-                              ></div>
-                            </div>
-                          </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${isCritical ? 'bg-red-50 text-red-700' : 'bg-orange-50 text-orange-700'}`}>
+                              {isCritical ? 'CRITICAL' : 'LOW'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden h-fit">
+              <div className="p-6 border-b border-gray-50 bg-gradient-to-r from-blue-50/50 to-white flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
+                    <Wrench className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Recent Service Logs</h2>
+                    <p className="text-sm font-bold text-gray-400 uppercase tracking-tighter italic">Latest customer complaints</p>
+                  </div>
+                </div>
+                <button onClick={() => navigate('/service')} className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 group">
+                  All Logs <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <tbody className="divide-y divide-gray-50">
+                    {data?.assignedJobs.slice(0, 5).map((job) => (
+                      <tr key={job.id} onClick={() => navigate(`/service/${job.id}`)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
+                        <td className="px-6 py-4">
+                          <div className="font-black text-gray-900 group-hover:text-blue-600 transition-colors">#{job.id} {job.customer_name}</div>
+                          <div className="text-[10px] font-bold text-gray-400 uppercase">{job.vehicle_details}</div>
                         </td>
-                        <td className="px-8 py-6 whitespace-nowrap">
-                          <span
-                            className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${isCritical
-                              ? "bg-red-50 text-red-700 border border-red-100"
-                              : "bg-orange-50 text-orange-700 border border-orange-100"
-                              }`}
-                          >
-                            {isCritical ? "Critical" : "Restock Soon"}
+                        <td className="px-6 py-4 text-center">
+                          <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${job.status === 'Pending' ? 'bg-yellow-50 text-yellow-700' :
+                              job.status === 'In Progress' ? 'bg-blue-50 text-blue-700' :
+                                'bg-green-50 text-green-700'
+                            }`}>
+                            {job.status}
                           </span>
                         </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="text-[10px] font-black text-gray-400 uppercase">{new Date(job.created_at).toLocaleDateString()}</div>
+                          <div className="text-[10px] font-bold text-gray-300 uppercase">{new Date(job.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                        </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

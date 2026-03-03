@@ -30,9 +30,10 @@ export function BottomNav({ onMenuClick }: BottomNavProps) {
     };
 
     return (
-        <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4">
-            <div className="bg-white/80 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] rounded-2xl flex items-center p-1.5 gap-1 min-w-[300px] justify-between">
+        <div className="md:hidden fixed bottom-0 left-0 w-full z-50">
+            <div className="bg-white/80 backdrop-blur-xl border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] flex items-center p-1 gap-1 justify-between">
                 {filteredNavItems.map((item) => {
+                    if (!item) return null;
                     const Icon = item.icon;
                     const active = isActive(item.path);
                     return (

@@ -183,6 +183,7 @@ export function MainLayout() {
 
         <nav className="p-4 space-y-1">
           {filteredNavItems.map((item) => {
+            if (!item) return null;
             const Icon = item.icon;
             const isActive = isActivePath(item.path);
             return (

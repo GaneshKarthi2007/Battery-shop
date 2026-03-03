@@ -18,16 +18,16 @@ class DatabaseSeeder extends Seeder
         // Create Admin User
         User::factory()->create([
             'name' => 'Admin User',
-            'email' => 'admin@powershell.com',
-            'password' => bcrypt('password'),
+            'email' => 'admin@aura.com',
+            'password' => bcrypt('admin123'),
             'role' => 'admin',
         ]);
 
         // Create Staff User
         User::factory()->create([
             'name' => 'Staff User',
-            'email' => 'staff@powershell.com',
-            'password' => bcrypt('password'),
+            'email' => 'staff@aura.com',
+            'password' => bcrypt('staff123'),
             'role' => 'staff',
         ]);
 
@@ -115,11 +115,13 @@ class DatabaseSeeder extends Seeder
         $services = [
             [
                 'customer_name' => 'Rajesh Kumar',
+                'contact_number' => '9876543210',
                 'vehicle_details' => 'Toyota Fortuner',
                 'status' => 'pending',
             ],
             [
                 'customer_name' => 'Priya Sharma',
+                'contact_number' => '8765432109',
                 'vehicle_details' => 'Honda City',
                 'status' => 'pending',
                 'pickup_date' => now()->addDays(2),

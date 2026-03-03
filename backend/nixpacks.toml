@@ -1,0 +1,39 @@
+[providers]
+    # Nixpacks automatically detects Laravel and uses the PHP provider.
+    # Setting the exact PHP version here.
+    php = "8.2"
+
+[phases.setup]
+    # Add any extra system packages needed here.
+    # php82 and common extensions are usually auto-detected by Nixpacks based on composer.json.
+    nixPkgs = [
+        "php82",
+        "php82Packages.composer",
+        "php82Extensions.pdo",
+        "php82Extensions.pdo_mysql",
+        "php82Extensions.mbstring",
+        "php82Extensions.xml",
+        "php82Extensions.zip",
+        "php82Extensions.curl",
+        "php82Extensions.gd",
+        "nodejs_20"
+    ]
+
+[phases.build]
+    # These commands run during the build process to optimize the Laravel application for production.
+    cmds = [
+        "composer install --no-dev --optimize-autoloader",
+        "npm install",
+        "npm run build",
+        "php artisan optimize:clear",
+        "php artisan config:cache",
+        "php artisan route:cache",
+        "php artisan view:cache",
+        "php artisan event:cache",
+        "php artisan storage:link"
+    ]
+
+[start]
+    # This command runs when the container starts.
+    # It automatically runs database migrations before serving the application.
+    cmd = "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
