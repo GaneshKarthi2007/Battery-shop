@@ -15,6 +15,7 @@ interface ServiceRequest {
   service_charge: number;
   battery_brand?: string;
   battery_model?: string;
+  payment_status?: string;
   created_at: string;
 }
 
@@ -42,7 +43,9 @@ export function ServiceManagement() {
   };
 
   const filteredServices = services.filter(
-    (service) => filterStatus === "All" || service.status === filterStatus
+    (service) =>
+      service.payment_status !== "verified" &&
+      (filterStatus === "All" || service.status === filterStatus)
   );
 
   const statusConfig = {
@@ -97,12 +100,12 @@ export function ServiceManagement() {
         </Button>
       </motion.div>
 
-      <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl w-fit overflow-x-auto">
+      <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl w-full overflow-x-auto snap-x scrollbar-hide">
         {(["All", "Pending", "In Progress", "Completed"] as const).map((status) => (
           <button
             key={status}
             onClick={() => setFilterStatus(status)}
-            className={`relative px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap z-0 ${filterStatus === status ? "text-blue-700" : "text-gray-500 hover:text-gray-700"
+            className={`relative px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex justify-center items-center gap-2 whitespace-nowrap shrink-0 snap-center z-0 ${filterStatus === status ? "text-blue-700" : "text-gray-500 hover:text-gray-700"
               }`}
           >
             {filterStatus === status && (

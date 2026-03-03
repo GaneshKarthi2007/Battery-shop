@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { apiClient } from "../api/client";
 
-export type UserRole = "admin" | "staff";
+export type UserRole = "admin" | "staff" | "developer";
 
 interface User {
     id: number;

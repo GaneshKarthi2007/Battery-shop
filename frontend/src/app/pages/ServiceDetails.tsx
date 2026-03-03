@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, ShieldCheck, AlertCircle, AlertTriangle, Zap, MapPin, Mic, Play, CreditCard, ShoppingCart, ShoppingBag } from "lucide-react";
+import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, ShieldCheck, AlertTriangle, Zap, MapPin, Mic, Play, CreditCard, ShoppingCart, ShoppingBag } from "lucide-react";
 import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { Button } from "../components/Button";
 import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
@@ -53,6 +53,20 @@ export function ServiceDetails() {
     const [error, setError] = useState("");
     const [updating, setUpdating] = useState(false);
     const [showAudioRecorder, setShowAudioRecorder] = useState(false);
+    const [isEditingSpecs, setIsEditingSpecs] = useState(false);
+    const [editingSpecs, setEditingSpecs] = useState({
+        battery_brand: "",
+        battery_model: "",
+        battery_capacity: "",
+        service_charge: 0
+    });
+
+    // New states for completing service as Staff
+    const [showChargeInput, setShowChargeInput] = useState(false);
+    const [tempCharge, setTempCharge] = useState("");
+
+    // New state for Admin verifying payment
+    const [paymentType, setPaymentType] = useState("Cash");
 
     useEffect(() => {
         fetchService();
@@ -75,6 +89,12 @@ export function ServiceDetails() {
             setLoading(true);
             const data = await apiClient.get<ServiceRequest>(`/services/${id}`);
             setService(data);
+            setEditingSpecs({
+                battery_brand: data.battery_brand || "",
+                battery_model: data.battery_model || "",
+                battery_capacity: data.battery_capacity || "",
+                service_charge: data.service_charge || 0
+            });
         } catch (err: any) {
             setError(err.message || "Failed to load service details");
         } finally {
@@ -82,27 +102,23 @@ export function ServiceDetails() {
         }
     };
 
-    const handleUpdateStatus = async (newStatus: ServiceRequest["status"]) => {
+    const handleUpdateStatus = async (newStatus: ServiceRequest["status"], specificCharge?: number) => {
         if (!service) return;
         setUpdating(true);
         try {
-            const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, { status: newStatus });
+            const payload: any = { status: newStatus };
+            if (specificCharge !== undefined) {
+                payload.service_charge = specificCharge;
+            }
+
+            const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, payload);
             setService(updated);
 
             if (newStatus === "Completed") {
-                if (!service.service_charge || Number(service.service_charge) <= 0) {
-                    const charge = prompt("Service charge is required to complete the service. Please enter the amount (₹):", service.service_charge?.toString() || "");
-                    if (!charge || isNaN(Number(charge)) || Number(charge) <= 0) {
-                        alert("A valid service charge is required to complete the service.");
-                        return;
-                    }
-                    await apiClient.put(`/services/${id}`, { service_charge: Number(charge) });
-                }
-
                 addNotification({
                     type: "SERVICE",
                     title: "Service Completed",
-                    message: `Service #${service.id} (${service.customer_name}) marked as completed.`,
+                    message: `Service #${service.id} (${service.customer_name}) marked as completed by staff.`,
                     role: "admin"
                 });
             }
@@ -128,6 +144,26 @@ export function ServiceDetails() {
             });
         } catch (err: any) {
             alert(err.message || "Failed to assign staff");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleSaveSpecs = async () => {
+        if (!service) return;
+        setUpdating(true);
+        try {
+            const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, editingSpecs);
+            setService(updated);
+            setIsEditingSpecs(false);
+            addNotification({
+                type: "SERVICE",
+                title: "Specifications Updated",
+                message: `Service details updated for #${service.id}.`,
+                role: "admin"
+            });
+        } catch (err: any) {
+            alert(err.message || "Failed to save specifications");
         } finally {
             setUpdating(false);
         }
@@ -174,9 +210,11 @@ export function ServiceDetails() {
         try {
             const updated = await apiClient.post<ServiceRequest>(`/services/${id}/verify-payment`);
             setService(updated);
-            alert("Payment verified and service completed");
+            alert("Payment verified successfully");
+            return true;
         } catch (err: any) {
             alert(err.message || "Failed to verify payment");
+            return false;
         } finally {
             setUpdating(false);
         }
@@ -243,43 +281,6 @@ export function ServiceDetails() {
                     <StatusIcon className="w-4 h-4" />
                     {service.status}
                 </div>
-                {service.status === "Completed" && (
-                    <Button
-                        onClick={() => navigate("/invoice", {
-                            state: {
-                                items: [{
-                                    id: service.id,
-                                    name: service.battery_brand || "Service",
-                                    model: service.battery_model || "Maintenance",
-                                    price: Number(service.service_charge),
-                                    quantity: 1,
-                                    warranty: "N/A",
-                                    type: "Service"
-                                }],
-                                customerInfo: {
-                                    name: service.customer_name,
-                                    phone: service.contact_number,
-                                    billingAddress: "N/A"
-                                },
-                                vehicleNumber: service.vehicle_details || "N/A",
-                                paymentMethod: "Cash",
-                                productSubtotal: 0,
-                                serviceSubtotal: Number(service.service_charge),
-                                productGst: 0,
-                                exchangeDiscount: 0,
-                                finalTotal: Number(service.service_charge),
-                                warrantyDetails: {
-                                    totalWarranty: "N/A",
-                                    totalWarrantyExpiry: "N/A"
-                                }
-                            }
-                        })}
-                        className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 shadow-lg shadow-green-200 ml-4"
-                    >
-                        <Zap className="w-4 h-4" />
-                        Generate Bill
-                    </Button>
-                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -320,55 +321,159 @@ export function ServiceDetails() {
                                     </div>
                                 </section>
 
-                                <section>
-                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Battery Details</h3>
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                                                <ShieldCheck className="w-4 h-4 text-gray-500" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-gray-900">{service.battery_brand || 'N/A'}</p>
-                                                <p className="text-xs text-gray-500">
-                                                    {service.battery_model || ''}
-                                                    {service.battery_capacity && ` (${service.battery_capacity})`}
-                                                </p>
+                                <section className="pt-4 border-t border-gray-100">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Battery & Financials</h3>
+                                        {(service.status === 'In Progress' && (isAdmin || service.assigned_to === user?.id)) && (
+                                            <Button
+                                                size="sm"
+                                                variant={isEditingSpecs ? "primary" : "outline"}
+                                                onClick={() => {
+                                                    if (isEditingSpecs) {
+                                                        handleSaveSpecs();
+                                                    } else {
+                                                        setIsEditingSpecs(true);
+                                                    }
+                                                }}
+                                            >
+                                                {isEditingSpecs ? "Save Specs" : "Edit Specs"}
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {isEditingSpecs ? (
+                                        <div className="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-bold text-gray-500 uppercase">Brand</label>
+                                                    <input
+                                                        className="w-full px-3 py-2 rounded-lg border border-gray-200"
+                                                        value={editingSpecs.battery_brand}
+                                                        onChange={(e) => setEditingSpecs({ ...editingSpecs, battery_brand: e.target.value })}
+                                                        placeholder="e.g. Exide"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-bold text-gray-500 uppercase">Model</label>
+                                                    <input
+                                                        className="w-full px-3 py-2 rounded-lg border border-gray-200"
+                                                        value={editingSpecs.battery_model}
+                                                        onChange={(e) => setEditingSpecs({ ...editingSpecs, battery_model: e.target.value })}
+                                                        placeholder="e.g. Matrix X7"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-bold text-gray-500 uppercase">Capacity</label>
+                                                    <input
+                                                        className="w-full px-3 py-2 rounded-lg border border-gray-200"
+                                                        value={editingSpecs.battery_capacity}
+                                                        onChange={(e) => setEditingSpecs({ ...editingSpecs, battery_capacity: e.target.value })}
+                                                        placeholder="e.g. 50Ah"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </section>
-                            </div>
-
-                            {(service.complaint_type || service.complaint_details || service.issue) && (
-                                <section className="bg-orange-50/50 rounded-xl p-4 border border-orange-100">
-                                    <div className="flex items-start gap-3">
-                                        <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
-                                        <div>
-                                            <h3 className="text-sm font-bold text-orange-900 mb-1">
-                                                {service.complaint_type || "Issue Reported"}
-                                            </h3>
-                                            <p className="text-sm text-orange-800 leading-relaxed">
-                                                {service.complaint_details || service.issue || 'No specific issue described.'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </section>
-                            )}
-
-                            <div className="pt-4 border-t border-gray-100">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="w-4 h-4 text-gray-400" />
-                                        <span className="text-sm text-gray-500">Service Charge:</span>
-                                        <span className="text-sm font-bold text-gray-900">₹{Number(service.service_charge).toLocaleString()}</span>
-                                    </div>
-                                    {service.assigned_staff && (
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-100">
-                                            <User className="w-3 h-3" />
-                                            Assigned to: {service.assigned_staff.name}
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
+                                                <div className="flex items-center gap-3">
+                                                    <ShieldCheck className="w-5 h-5 text-gray-400" />
+                                                    <div>
+                                                        <p className="text-xs font-medium text-gray-500">Battery Specs</p>
+                                                        <p className="text-sm font-bold text-gray-900">
+                                                            {service.battery_brand || 'Not Specified'} {service.battery_model || ''}
+                                                            {service.battery_capacity && ` (${service.battery_capacity})`}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xs font-medium text-gray-500">Final Service Charge</p>
+                                                    <p className="text-sm font-black text-blue-600">₹{Number(service.service_charge).toLocaleString()}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
-                                </div>
+
+                                    {/* Admin Verification Input */}
+                                    {isAdmin && service.status === "Completed" && service.payment_status === "pending" && (
+                                        <div className="mt-4 p-4 border-2 border-emerald-100 bg-emerald-50 rounded-xl space-y-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <CreditCard className="w-5 h-5 text-emerald-600" />
+                                                <h4 className="font-bold text-emerald-900">Payment Verification</h4>
+                                            </div>
+                                            <p className="text-sm text-emerald-800 font-medium">Verify that the final service charge of <strong>₹{Number(service.service_charge).toLocaleString()}</strong> was received.</p>
+
+                                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                                <button
+                                                    onClick={() => setPaymentType('Cash')}
+                                                    className={`p-3 rounded-xl border-2 font-bold transition-colors ${paymentType === 'Cash' ? 'border-emerald-600 bg-emerald-100 text-emerald-800' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-100/50 bg-white'}`}
+                                                >
+                                                    Cash
+                                                </button>
+                                                <button
+                                                    onClick={() => setPaymentType('UPI')}
+                                                    className={`p-3 rounded-xl border-2 font-bold transition-colors ${paymentType === 'UPI' ? 'border-emerald-600 bg-emerald-100 text-emerald-800' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-100/50 bg-white'}`}
+                                                >
+                                                    UPI
+                                                </button>
+                                            </div>
+
+                                            <Button
+                                                onClick={async () => {
+                                                    const success = await handleVerifyPayment();
+                                                    if (success) {
+                                                        navigate("/invoice", {
+                                                            state: {
+                                                                items: [{
+                                                                    id: service.id,
+                                                                    name: service.battery_brand || "Service",
+                                                                    model: service.battery_model || "Maintenance",
+                                                                    price: Number(service.service_charge),
+                                                                    quantity: 1,
+                                                                    warranty: "N/A",
+                                                                    type: "Service"
+                                                                }],
+                                                                customerInfo: {
+                                                                    name: service.customer_name,
+                                                                    phone: service.contact_number,
+                                                                    billingAddress: "N/A"
+                                                                },
+                                                                vehicleNumber: service.vehicle_details || "N/A",
+                                                                paymentMethod: paymentType,
+                                                                productSubtotal: 0,
+                                                                serviceSubtotal: Number(service.service_charge),
+                                                                productGst: 0,
+                                                                exchangeDiscount: 0,
+                                                                finalTotal: Number(service.service_charge),
+                                                                warrantyDetails: {
+                                                                    totalWarranty: "N/A",
+                                                                    totalWarrantyExpiry: "N/A"
+                                                                }
+                                                            }
+                                                        });
+                                                    }
+                                                }}
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 font-bold"
+                                            >
+                                                <Zap className="w-4 h-4" />
+                                                Verify Payment & Generate Bill
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between mt-4">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar className="w-4 h-4 text-gray-400" />
+                                            <span className="text-sm text-gray-500">Last updated</span>
+                                        </div>
+                                        {service.assigned_staff && (
+                                            <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-100">
+                                                <User className="w-3 h-3" />
+                                                Assigned to: {service.assigned_staff.name}
+                                            </div>
+                                        )}
+                                    </div>
+                                </section>
                             </div>
                         </div>
                     </div>
@@ -445,10 +550,11 @@ export function ServiceDetails() {
                                 </Button>
                             )}
 
-                            {service.payment_status === "pending" && isAdmin && service.status === "In Progress" && (
+                            {service.payment_status === "pending" && isAdmin && service.status === "Completed" && (
                                 <Button
                                     onClick={handleVerifyPayment}
-                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 font-bold"
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 font-bold opacity-50 cursor-not-allowed"
+                                    disabled
                                 >
                                     <CreditCard className="w-4 h-4" />
                                     Verify Payment & Close
@@ -494,27 +600,76 @@ export function ServiceDetails() {
                                     const isActive = service.status === status;
 
                                     return (
-                                        <button
-                                            key={status}
-                                            onClick={() => handleUpdateStatus(status)}
-                                            className={`w-full p-4 rounded-xl border-2 transition-all group flex items-center gap-3 ${isActive
-                                                ? "border-blue-600 bg-blue-50 text-blue-800"
-                                                : "border-gray-100 hover:border-gray-200 text-gray-600"
-                                                }`}
-                                        >
-                                            <div className={`p-2 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200 transition-colors"}`}>
-                                                <Icon className="w-5 h-5" />
-                                            </div>
-                                            <span className="font-bold">{status}</span>
-                                            {isActive && <CheckCircle className="ml-auto w-5 h-5 text-blue-600" />}
-                                        </button>
+                                        <div key={status} className="space-y-2">
+                                            <button
+                                                onClick={() => {
+                                                    if (status === "Completed" && service.status !== "Completed") {
+                                                        setShowChargeInput(true);
+                                                    } else {
+                                                        handleUpdateStatus(status);
+                                                        setShowChargeInput(false);
+                                                    }
+                                                }}
+                                                className={`w-full p-4 rounded-xl border-2 transition-all group flex items-center gap-3 ${isActive
+                                                    ? "border-blue-600 bg-blue-50 text-blue-800"
+                                                    : "border-gray-100 hover:border-gray-200 text-gray-600"
+                                                    }`}
+                                            >
+                                                <div className={`p-2 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200 transition-colors"}`}>
+                                                    <Icon className="w-5 h-5" />
+                                                </div>
+                                                <span className="font-bold">{status}</span>
+                                                {isActive && <CheckCircle className="ml-auto w-5 h-5 text-blue-600" />}
+                                            </button>
+
+                                            {/* Show Input Field if they select Completed */}
+                                            {status === "Completed" && showChargeInput && !isActive && (
+                                                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3 mt-2 animate-in slide-in-from-top-2">
+                                                    <label className="text-xs font-bold text-gray-500 uppercase">Enter Final Service Charge (₹)</label>
+                                                    <input
+                                                        type="number"
+                                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-bold text-gray-900"
+                                                        value={tempCharge}
+                                                        onChange={(e) => setTempCharge(e.target.value)}
+                                                        placeholder="e.g. 500"
+                                                    />
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            className="flex-1"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setShowChargeInput(false);
+                                                                setTempCharge("");
+                                                            }}
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                        <Button
+                                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (!tempCharge || isNaN(Number(tempCharge))) {
+                                                                    alert("Please enter a valid service charge.");
+                                                                    return;
+                                                                }
+                                                                handleUpdateStatus("Completed", Number(tempCharge));
+                                                                setShowChargeInput(false);
+                                                            }}
+                                                        >
+                                                            Confirm Completion
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     );
                                 })}
                             </div>
                         </div>
                     )}
 
-                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-lg shadow-blue-200">
+                    {/* <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-lg shadow-blue-200">
                         <h3 className="font-bold mb-2">Service Policy</h3>
                         <p className="text-xs text-blue-50 leading-relaxed mb-4">
                             All services should be updated within 24 hours of registration. Please ensure charging levels are checked before completion.
@@ -522,7 +677,7 @@ export function ServiceDetails() {
                         <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
                             View Guidelines
                         </Button>
-                    </div>
+                    </div> */}
                 </div>
             </div>
 

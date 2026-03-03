@@ -1,19 +1,21 @@
 import { createBrowserRouter, Outlet, useNavigation, useLocation } from "react-router";
 import { useState, useEffect } from "react";
 import { Login } from "./pages/Login";
-import { MainLayout } from "./layouts/MainLayout";
-import { Dashboard } from "./pages/Dashboard";
+import { RoleBasedLayout } from "./layouts/RoleBasedLayout";
+import { IndexRedirect } from "./pages/IndexRedirect";
 import { BatterySales } from "./pages/BatterySales";
 import { BatteryExchange } from "./pages/BatteryExchange";
 import { ServiceManagement } from "./pages/ServiceManagement";
 import { Inventory } from "./pages/Inventory";
 import { Reports } from "./pages/Reports";
+import { Settings } from "./pages/Settings";
 import { Profile } from "./pages/Profile";
 import { BatteryLoader } from "./components/ui/BatteryLoader";
 import { Checkout } from "./pages/Checkout";
 import BatteryInvoice from "./pages/BatteryInvoice";
 import { ServiceDetails } from "./pages/ServiceDetails";
 import { NewService } from "./pages/NewService";
+import { DeveloperSettings } from "./pages/DeveloperSettings";
 import { ErrorPage } from "./pages/ErrorPage";
 import { UPIPayment } from "./pages/UPIPayment";
 import { NotFound } from "./pages/NotFound";
@@ -79,11 +81,11 @@ export const router = createBrowserRouter([
         path: "/",
         element: (
           <ProtectedRoute>
-            <MainLayout />
+            <RoleBasedLayout />
           </ProtectedRoute>
         ),
         children: [
-          { index: true, Component: Dashboard },
+          { index: true, Component: IndexRedirect },
           { path: "sales", Component: BatterySales },
           {
             path: "exchange",
@@ -109,6 +111,15 @@ export const router = createBrowserRouter([
             element: (
               <ProtectedRoute allowedRoles={["admin"]}>
                 <Reports />
+              </ProtectedRoute>
+            ),
+          },
+          { path: "settings", Component: Settings },
+          {
+            path: "developer",
+            element: (
+              <ProtectedRoute allowedRoles={["developer"]}>
+                <DeveloperSettings />
               </ProtectedRoute>
             ),
           },

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { User, Mail, Phone, MapPin, Camera, Edit2, Check, X, Store, ShieldCheck } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useDeveloper } from "../contexts/DeveloperContext";
 
 interface UserProfile {
     name: string;
@@ -14,6 +15,7 @@ interface UserProfile {
 
 export function Profile() {
     const { user } = useAuth();
+    const { features } = useDeveloper();
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [profile, setProfile] = useState<UserProfile>({
         name: user?.name || "User",
@@ -53,57 +55,61 @@ export function Profile() {
         setTempValue("");
     };
 
-    const EditInput = ({ field, label, icon: Icon, readonly = false }: { field: keyof UserProfile, label: string, icon: any, readonly?: boolean }) => (
-        <div className="py-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors px-4 -mx-4">
-            <div className="flex items-start gap-4">
-                <div className="mt-1 text-gray-400">
-                    <Icon className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                    <p className="text-xs text-gray-500 font-medium mb-1 uppercase tracking-wide">{label}</p>
+    const EditInput = ({ field, label, icon: Icon, readonly = false }: { field: keyof UserProfile, label: string, icon: any, readonly?: boolean }) => {
+        const isEditable = !readonly && features.editProfile;
 
-                    {isEditing === field && !readonly ? (
-                        <div className="flex items-center gap-2 mt-1">
-                            <input
-                                type="text"
-                                value={tempValue}
-                                onChange={(e) => setTempValue(e.target.value)}
-                                className="flex-1 p-2 border border-blue-500 rounded-lg outline-none text-gray-900 bg-white"
-                                autoFocus
-                                disabled={saving}
-                            />
-                            <button
-                                onClick={() => saveEdit(field)}
-                                disabled={saving}
-                                className="p-2 bg-green-100 text-green-600 rounded-full hover:bg-green-200 disabled:opacity-50"
-                            >
-                                <Check className="w-4 h-4" />
-                            </button>
-                            <button onClick={cancelEdit} className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-                    ) : (
-                        <div
-                            className={`flex items-center justify-between group ${!readonly ? 'cursor-pointer' : ''}`}
-                            onClick={() => !readonly && startEditing(field)}
-                        >
-                            <p className="text-gray-900 text-base font-semibold">{profile[field]}</p>
-                            {!readonly && (
-                                <button className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-all">
-                                    <Edit2 className="w-4 h-4" />
+        return (
+            <div className="py-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors px-4 -mx-4">
+                <div className="flex items-start gap-4">
+                    <div className="mt-1 text-gray-400">
+                        <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-xs text-gray-500 font-medium mb-1 uppercase tracking-wide">{label}</p>
+
+                        {isEditing === field && isEditable ? (
+                            <div className="flex items-center gap-2 mt-1">
+                                <input
+                                    type="text"
+                                    value={tempValue}
+                                    onChange={(e) => setTempValue(e.target.value)}
+                                    className="flex-1 p-2 border border-blue-500 rounded-lg outline-none text-gray-900 bg-white"
+                                    autoFocus
+                                    disabled={saving}
+                                />
+                                <button
+                                    onClick={() => saveEdit(field)}
+                                    disabled={saving}
+                                    className="p-2 bg-green-100 text-green-600 rounded-full hover:bg-green-200 disabled:opacity-50"
+                                >
+                                    <Check className="w-4 h-4" />
                                 </button>
-                            )}
-                        </div>
-                    )}
+                                <button onClick={cancelEdit} className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <div
+                                className={`flex items-center justify-between group ${isEditable ? 'cursor-pointer' : ''}`}
+                                onClick={() => isEditable && startEditing(field)}
+                            >
+                                <p className="text-gray-900 text-base font-semibold">{profile[field]}</p>
+                                {isEditable && (
+                                    <button className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-all">
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                        )}
 
-                    {field === 'about' && !isEditing && (
-                        <p className="text-xs text-gray-500 mt-1 italic">This name will be visible to your team and on documents.</p>
-                    )}
+                        {field === 'about' && !isEditing && (
+                            <p className="text-xs text-gray-500 mt-1 italic">This name will be visible to your team and on documents.</p>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    }
 
     return (
         <div className="max-w-2xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">

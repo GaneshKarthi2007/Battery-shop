@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
-import { Wrench, User, Phone, ArrowLeft, Save, AlertTriangle, Zap, MapPin, ChevronDown, Check } from "lucide-react";
+import { User, Phone, ArrowLeft, Save, AlertTriangle, Zap, MapPin, ChevronDown, Check } from "lucide-react";
 import { apiClient } from "../api/client";
 import { Input } from "../components/Input";
 
@@ -14,12 +14,8 @@ export function NewService() {
         contact_number: "",
         address: "",
         vehicle_details: "N/A", // Defaulting as it was removed from UI but might be required by backend
-        battery_brand: "",
-        battery_model: "",
-        battery_capacity: "",
         complaint_type: "",
         complaint_details: "",
-        service_charge: "",
     });
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -44,11 +40,7 @@ export function NewService() {
                     const lastService = services[0];
                     setFormData(prev => ({
                         ...prev,
-                        customer_name: lastService.customer_name,
-                        address: lastService.address || prev.address,
-                        battery_brand: lastService.battery_brand || prev.battery_brand,
-                        battery_model: lastService.battery_model || prev.battery_model,
-                        battery_capacity: lastService.battery_capacity || prev.battery_capacity,
+                        customer_name: prev.customer_name || lastService.customer_name,
                     }));
                 }
             } catch (err) {
@@ -70,7 +62,6 @@ export function NewService() {
 
             const response = await apiClient.post<any>("/services", {
                 ...formData,
-                service_charge: Number(formData.service_charge) || 0,
                 status: "Pending"
             });
 
@@ -168,49 +159,6 @@ export function NewService() {
                     </div>
                 </div>
 
-                {/* Battery Section */}
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/40 divide-y divide-gray-50">
-                    <div className="p-6 flex items-center gap-4">
-                        <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center border border-emerald-100/50">
-                            <Wrench className="w-6 h-6 text-emerald-600" />
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-gray-900 leading-tight">Battery Specifications</h2>
-                            <p className="text-gray-400 text-xs font-medium uppercase tracking-widest">Model & Technical Data</p>
-                        </div>
-                    </div>
-
-                    <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Brand</label>
-                            <Input
-                                className="h-12 bg-gray-50/50 hover:bg-white focus:bg-white transition-all border-gray-100 rounded-xl px-4"
-                                placeholder="e.g. Exide, Amaron"
-                                value={formData.battery_brand}
-                                onChange={(e) => setFormData({ ...formData, battery_brand: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Model Name/No.</label>
-                            <Input
-                                className="h-12 bg-gray-50/50 hover:bg-white focus:bg-white transition-all border-gray-100 rounded-xl px-4"
-                                placeholder="e.g. Matrix X7"
-                                value={formData.battery_model}
-                                onChange={(e) => setFormData({ ...formData, battery_model: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Capacity (Ah)</label>
-                            <Input
-                                className="h-12 bg-gray-50/50 hover:bg-white focus:bg-white transition-all border-gray-100 rounded-xl px-4"
-                                placeholder="e.g. 35Ah, 80Ah"
-                                value={formData.battery_capacity}
-                                onChange={(e) => setFormData({ ...formData, battery_capacity: e.target.value })}
-                            />
-                        </div>
-                    </div>
-                </div>
-
                 {/* Complaint Section */}
                 <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/40 divide-y divide-gray-50">
                     <div className="p-6 flex items-center gap-4">
@@ -281,56 +229,27 @@ export function NewService() {
                     </div>
                 </div>
 
-                {/* Financial Section */}
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/40 divide-y divide-gray-50">
-                    <div className="p-6 flex items-center gap-4">
-                        <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center border border-purple-100/50">
-                            <Zap className="w-6 h-6 text-purple-600" />
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-gray-900 leading-tight">Financials</h2>
-                            <p className="text-gray-400 text-xs font-medium uppercase tracking-widest">Charges & Billing</p>
-                        </div>
-                    </div>
-
-                    <div className="p-8">
-                        <div className="space-y-3 max-w-sm">
-                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Initial Service Charge (₹)</label>
-                            <div className="relative group">
-                                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-xl font-bold text-gray-400 group-focus-within:text-blue-600 transition-colors">₹</span>
-                                <Input
-                                    type="number"
-                                    className="h-16 pl-12 bg-gray-50/50 hover:bg-white focus:bg-white transition-all border-gray-100 rounded-2xl text-2xl font-black text-blue-600 focus:ring-4 focus:ring-blue-50"
-                                    placeholder="0.00"
-                                    value={formData.service_charge}
-                                    onChange={(e) => setFormData({ ...formData, service_charge: e.target.value })}
-                                />
-                            </div>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider ml-1">Leave 0 if to be calculated later</p>
-                        </div>
-                        {/* Action Buttons */}
-                        <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                            <button
-                                type="button"
-                                onClick={() => navigate(-1)}
-                                className="flex-1 py-5 rounded-2xl border-2 border-gray-100 text-gray-400 font-black uppercase tracking-widest text-xs hover:bg-gray-50 hover:text-gray-600 hover:border-gray-200 transition-all active:scale-[0.98]"
-                            >
-                                Discard Changes
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="flex-[2] py-5 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 uppercase font-black tracking-widest text-xs transition-all hover:-translate-y-1 active:scale-[0.98] disabled:opacity-70 rounded-2xl"
-                            >
-                                {loading ? (
-                                    <Zap className="w-5 h-5 animate-spin" />
-                                ) : (
-                                    <Save className="w-5 h-5" />
-                                )}
-                                Initialize Service Entry
-                            </button>
-                        </div>
-                    </div>
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                    <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        className="flex-1 py-5 rounded-2xl border-2 border-gray-100 text-gray-400 font-black uppercase tracking-widest text-xs hover:bg-gray-50 hover:text-gray-600 hover:border-gray-200 transition-all active:scale-[0.98]"
+                    >
+                        Discard Changes
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="flex-[2] py-5 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 uppercase font-black tracking-widest text-xs transition-all hover:-translate-y-1 active:scale-[0.98] disabled:opacity-70 rounded-2xl"
+                    >
+                        {loading ? (
+                            <Zap className="w-5 h-5 animate-spin" />
+                        ) : (
+                            <Save className="w-5 h-5" />
+                        )}
+                        Initialize Service Entry
+                    </button>
                 </div>
             </form>
 
@@ -340,45 +259,40 @@ export function NewService() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
                     >
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            initial={{ scale: 0.95, opacity: 0, y: 10 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="bg-white rounded-[2.5rem] p-10 max-w-lg w-full shadow-2xl text-center space-y-6 overflow-hidden relative"
+                            exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                            className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-5 overflow-hidden relative"
                         >
-                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
 
-                            <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center mx-auto shadow-inner relative">
-                                <Check className="w-12 h-12" />
-                                <motion.div
-                                    animate={{ scale: [1, 1.2, 1] }}
-                                    transition={{ repeat: Infinity, duration: 2 }}
-                                    className="absolute inset-0 bg-blue-100/50 rounded-[2rem] -z-10"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <h3 className="text-3xl font-black text-gray-900 tracking-tight">Log Created!</h3>
-                                <p className="text-gray-500 font-medium">Service request successfully registered</p>
-                            </div>
-
-                            <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex flex-col items-center gap-4">
-                                <div className="text-center">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Unique Log ID</span>
-                                    <div className="text-4xl font-black text-blue-600 mt-1">#{showSuccess.id}</div>
+                            <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+                                    <Check className="w-7 h-7" />
                                 </div>
-                                <div className="w-full h-px bg-gray-200/50"></div>
-                                <div className="text-center">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Customer</span>
-                                    <div className="text-lg font-bold text-gray-800">{showSuccess.name}</div>
+                                <div>
+                                    <h3 className="text-xl font-black text-gray-900 tracking-tight">Log Created</h3>
+                                    <p className="text-sm text-gray-500 font-medium">Service registered successfully</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 grid grid-cols-2 gap-4">
+                                <div>
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Log ID</span>
+                                    <div className="text-xl font-black text-blue-600">#{showSuccess.id}</div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Customer</span>
+                                    <div className="text-sm font-bold text-gray-800 truncate" title={showSuccess.name}>{showSuccess.name}</div>
                                 </div>
                             </div>
 
                             <button
                                 onClick={() => navigate("/service")}
-                                className="w-full py-5 bg-gray-900 hover:bg-black text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all hover:shadow-xl active:scale-[0.98]"
+                                className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold text-sm transition-all hover:shadow-lg active:scale-[0.98]"
                             >
                                 Continue to Dashboard
                             </button>

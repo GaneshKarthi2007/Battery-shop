@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, Download } from "lucide-react";
 import React from "react";
 
 const BatteryInvoice: React.FC = () => {
@@ -70,13 +70,22 @@ const BatteryInvoice: React.FC = () => {
           <ArrowLeft className="w-5 h-5" />
           Back to Dashboard
         </button>
-        <button
-          onClick={() => window.print()}
-          className="bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-800 transition-all shadow-lg active:scale-95"
-        >
-          <Printer className="w-5 h-5" />
-          Print Invoice
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => window.print()}
+            className="text-blue-700 bg-blue-50 px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-100 transition-all shadow-sm active:scale-95"
+          >
+            <Printer className="w-5 h-5" />
+            Print
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-800 transition-all shadow-lg active:scale-95"
+          >
+            <Download className="w-5 h-5" />
+            Download as PDF
+          </button>
+        </div>
       </div>
 
       <style>{`

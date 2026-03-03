@@ -31,6 +31,14 @@ class DatabaseSeeder extends Seeder
             'role' => 'staff',
         ]);
 
+        // Create Developer User
+        User::factory()->create([
+            'name' => 'Developer',
+            'email' => 'dev@aura.com',
+            'password' => bcrypt('dev123'),
+            'role' => 'developer',
+        ]);
+
         // Seed Products
         $products = [
             [
@@ -121,7 +129,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'customer_name' => 'Priya Sharma',
-                'contact_number' => '8765432109',
+                'contact_number' => '9123456780',
                 'vehicle_details' => 'Honda City',
                 'status' => 'pending',
                 'pickup_date' => now()->addDays(2),

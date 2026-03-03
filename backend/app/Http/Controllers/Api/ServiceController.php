@@ -137,13 +137,35 @@ class ServiceController extends Controller
 
     public function verifyPayment(Request $request, Service $service)
     {
-        $service->update([
-            'payment_status' => 'verified',
-            'payment_confirmed_at' => now(),
-            'status' => 'Completed'
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($service) {
+            $service->update([
+                'payment_status' => 'verified',
+                'payment_confirmed_at' => now(),
+                'status' => 'Completed'
+            ]);
 
-        return response()->json($service);
+            // Auto-generate a sale record for the reports
+            $sale = \App\Models\Sale::create([
+                'customer_name' => $service->customer_name,
+                'customer_phone' => $service->contact_number,
+                'vehicle_details' => $service->vehicle_details,
+                'installation_address' => $service->address,
+                'product_category' => 'Service',
+                'total_amount' => $service->service_charge,
+                'type' => 'Service',
+                'extra_charges' => 0,
+                'discount_amount' => 0,
+                'payment_method' => 'Cash', // Defaulting to Cash as per UI flow
+            ]);
+
+            $sale->items()->create([
+                'service_id' => $service->id,
+                'quantity' => 1,
+                'price' => $service->service_charge,
+            ]);
+
+            return response()->json($service->load('sale'));
+        });
     }
 
     public function destroy(Service $service)
