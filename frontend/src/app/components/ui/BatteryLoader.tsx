@@ -12,7 +12,7 @@ export function BatteryLoader() {
     }, []);
 
     return (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/60 backdrop-blur-md">
+        <div className="fixed inset-0 z-10 flex flex-col items-center justify-center bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-md">
             <div className="relative w-24 h-32 flex items-center justify-center">
                 {/* Background/Empty Bolt */}
                 <Zap

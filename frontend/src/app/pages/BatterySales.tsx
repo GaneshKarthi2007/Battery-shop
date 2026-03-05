@@ -5,6 +5,7 @@ import { Button } from "../components/Button";
 import { apiClient } from "../api/client";
 import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Battery {
   id: number;
@@ -40,6 +41,8 @@ interface BillItem {
 
 export function BatterySales() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [batteries, setBatteries] = useState<Battery[]>([]);
   const [completedServices, setCompletedServices] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,7 +197,7 @@ export function BatterySales() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 order-2 lg:order-1 space-y-4">
+        <div className={`lg:col-span-${isAdmin ? '2' : '3'} order-2 lg:order-1 space-y-4`}>
           <AnimatePresence mode="wait">
             {activeTab === "Product" ? (
               <motion.div
@@ -266,18 +269,20 @@ export function BatterySales() {
                             <p className="text-xs text-gray-500">Price</p>
                             <p className="text-xl font-bold text-gray-900">₹{Number(battery.price).toLocaleString()}</p>
                           </div>
-                          <Button
-                            onClick={() => addToBill(battery, "Product")}
-                            disabled={battery.stock === 0 || isAdded}
-                            size="sm"
-                            className={`flex items-center gap-2 transition-all ${isAdded ? "bg-green-600 hover:bg-green-600 cursor-default opacity-80" : ""}`}
-                          >
-                            {isAdded ? (
-                              <><CheckCheck className="w-4 h-4" /> Added</>
-                            ) : (
-                              <><Plus className="w-4 h-4" /> Add</>
-                            )}
-                          </Button>
+                          {isAdmin && (
+                            <Button
+                              onClick={() => addToBill(battery, "Product")}
+                              disabled={battery.stock === 0 || isAdded}
+                              size="sm"
+                              className={`flex items-center gap-2 transition-all ${isAdded ? "bg-green-600 hover:bg-green-600 cursor-default opacity-80" : ""}`}
+                            >
+                              {isAdded ? (
+                                <><CheckCheck className="w-4 h-4" /> Added</>
+                              ) : (
+                                <><Plus className="w-4 h-4" /> Add</>
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );
@@ -314,19 +319,21 @@ export function BatterySales() {
                           <p className="text-[10px] text-gray-400 font-bold uppercase">Service Charge</p>
                           <p className="text-lg font-bold text-gray-900">₹{Number(service.service_charge).toLocaleString()}</p>
                         </div>
-                        <Button
-                          onClick={() => addToBill(service, "Service")}
-                          variant={isAdded ? "primary" : "outline"}
-                          size="sm"
-                          disabled={isAdded}
-                          className={`flex items-center gap-2 transition-all ${isAdded ? "bg-green-600 border-green-600 text-white cursor-default opacity-80" : "border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"}`}
-                        >
-                          {isAdded ? (
-                            <><CheckCheck className="w-4 h-4" /> Added</>
-                          ) : (
-                            <><Plus className="w-4 h-4" /> Add to Bill</>
-                          )}
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            onClick={() => addToBill(service, "Service")}
+                            variant={isAdded ? "primary" : "outline"}
+                            size="sm"
+                            disabled={isAdded}
+                            className={`flex items-center gap-2 transition-all ${isAdded ? "bg-green-600 border-green-600 text-white cursor-default opacity-80" : "border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"}`}
+                          >
+                            {isAdded ? (
+                              <><CheckCheck className="w-4 h-4" /> Added</>
+                            ) : (
+                              <><Plus className="w-4 h-4" /> Add to Bill</>
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -342,102 +349,104 @@ export function BatterySales() {
           </AnimatePresence>
         </div>
 
-        <div ref={billModuleRef} className="lg:col-span-1 order-1 lg:order-2">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm lg:sticky lg:top-24 overflow-hidden">
-            <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <ShoppingCart className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-gray-900">Current Bill</h2>
-                  <p className="text-sm text-gray-600">{billItems.length} items</p>
+        {isAdmin && (
+          <div ref={billModuleRef} className="lg:col-span-1 order-1 lg:order-2">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm lg:sticky lg:top-24 overflow-hidden">
+              <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <ShoppingCart className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-gray-900">Current Bill</h2>
+                    <p className="text-sm text-gray-600">{billItems.length} items</p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex border-b border-gray-100 bg-gray-50/50">
-              <button
-                onClick={() => setActiveTab("Product")}
-                className={`flex-1 py-2.5 font-bold text-[10px] uppercase tracking-wider transition-all border-b-2 ${activeTab === "Product" ? "border-blue-600 text-blue-600 bg-white" : "border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"}`}
-              >
-                Product Billing
-              </button>
-              <button
-                onClick={() => setActiveTab("Service")}
-                className={`flex-1 py-2.5 font-bold text-[10px] uppercase tracking-wider transition-all border-b-2 ${activeTab === "Service" ? "border-blue-600 text-blue-600 bg-white" : "border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"}`}
-              >
-                Service Billing
-              </button>
-            </div>
+              <div className="flex border-b border-gray-100 bg-gray-50/50">
+                <button
+                  onClick={() => setActiveTab("Product")}
+                  className={`flex-1 py-2.5 font-bold text-[10px] uppercase tracking-wider transition-all border-b-2 ${activeTab === "Product" ? "border-blue-600 text-blue-600 bg-white" : "border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"}`}
+                >
+                  Product Billing
+                </button>
+                <button
+                  onClick={() => setActiveTab("Service")}
+                  className={`flex-1 py-2.5 font-bold text-[10px] uppercase tracking-wider transition-all border-b-2 ${activeTab === "Service" ? "border-blue-600 text-blue-600 bg-white" : "border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"}`}
+                >
+                  Service Billing
+                </button>
+              </div>
 
-            <div className="p-5">
-              {billItems.length === 0 ? (
-                <div className="text-center py-12">
-                  <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No items added yet</p>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-                    {billItems.map((item) => (
-                      <div key={item.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-wider ${item.type === "Product" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
-                                {item.type}
-                              </span>
-                              <p className="font-bold text-gray-900 text-xs">{item.name}</p>
+              <div className="p-5">
+                {billItems.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">No items added yet</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                      {billItems.map((item) => (
+                        <div key={item.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-wider ${item.type === "Product" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
+                                  {item.type}
+                                </span>
+                                <p className="font-bold text-gray-900 text-xs">{item.name}</p>
+                              </div>
+                              <p className="text-[10px] text-gray-600">{item.model}</p>
                             </div>
-                            <p className="text-[10px] text-gray-600">{item.model}</p>
-                          </div>
-                          <button onClick={() => removeFromBill(item.id)} className="text-red-600 hover:bg-red-50 p-1 rounded transition-colors">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 bg-white border border-gray-300 rounded-md flex items-center justify-center hover:bg-gray-100 transition-colors">
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-8 text-center font-medium">{item.quantity}</span>
-                            <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 bg-white border border-gray-300 rounded-md flex items-center justify-center hover:bg-gray-100 transition-colors">
-                              <Plus className="w-3 h-3" />
+                            <button onClick={() => removeFromBill(item.id)} className="text-red-600 hover:bg-red-50 p-1 rounded transition-colors">
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                          <p className="font-medium text-gray-900">₹{(item.price * item.quantity).toLocaleString()}</p>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 bg-white border border-gray-300 rounded-md flex items-center justify-center hover:bg-gray-100 transition-colors">
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-8 text-center font-medium">{item.quantity}</span>
+                              <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 bg-white border border-gray-300 rounded-md flex items-center justify-center hover:bg-gray-100 transition-colors">
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <p className="font-medium text-gray-900">₹{(item.price * item.quantity).toLocaleString()}</p>
+                          </div>
                         </div>
+                      ))}
+                    </div>
+
+                    <div className="space-y-2 py-4 border-t border-gray-200">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Subtotal</span>
+                        <span className="font-medium text-gray-900">₹{subtotal.toLocaleString()}</span>
                       </div>
-                    ))}
-                  </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">GST (18%)</span>
+                        <span className="font-medium text-gray-900">₹{gst.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t border-gray-200">
+                        <span className="font-bold text-gray-900">Total</span>
+                        <span className="font-bold text-xl text-blue-600">₹{total.toLocaleString()}</span>
+                      </div>
+                    </div>
 
-                  <div className="space-y-2 py-4 border-t border-gray-200">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span className="font-medium text-gray-900">₹{subtotal.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">GST (18%)</span>
-                      <span className="font-medium text-gray-900">₹{gst.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-gray-200">
-                      <span className="font-bold text-gray-900">Total</span>
-                      <span className="font-bold text-xl text-blue-600">₹{total.toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  <Button onClick={handleProceedToCheckout} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white flex items-center justify-center gap-2 mt-4">
-                    <CreditCard className="w-5 h-5" /> Proceed to Checkout
-                  </Button>
-                </>
-              )}
+                    <Button onClick={handleProceedToCheckout} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white flex items-center justify-center gap-2 mt-4">
+                      <CreditCard className="w-5 h-5" /> Proceed to Checkout
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {billItems.length > 0 && showFloatingBar && (
+      {isAdmin && billItems.length > 0 && showFloatingBar && (
         <div className="lg:hidden fixed bottom-[72px] left-4 right-4 p-4 bg-white/95 backdrop-blur-md border border-gray-200 rounded-2xl shadow-xl z-30">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -462,12 +471,14 @@ export function BatterySales() {
         </div>
       )}
 
-      <button
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className={`lg:hidden fixed bottom-[160px] right-4 w-12 h-12 bg-white border border-gray-200 rounded-full shadow-xl flex items-center justify-center z-30 transition-all duration-300 ${billItems.length > 0 && showFloatingBar ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0 pointer-events-none"}`}
-      >
-        <ChevronUp className="w-6 h-6 text-blue-600" />
-      </button>
+      {isAdmin && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className={`lg:hidden fixed bottom-[160px] right-4 w-12 h-12 bg-white border border-gray-200 rounded-full shadow-xl flex items-center justify-center z-30 transition-all duration-300 ${billItems.length > 0 && showFloatingBar ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0 pointer-events-none"}`}
+        >
+          <ChevronUp className="w-6 h-6 text-blue-600" />
+        </button>
+      )}
     </div>
   );
 }

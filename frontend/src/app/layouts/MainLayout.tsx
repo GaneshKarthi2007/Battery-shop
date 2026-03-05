@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router";
 import {
   LayoutDashboard,
@@ -28,10 +28,10 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  { name: "Battery Sales", path: "/sales", icon: ShoppingCart },
+  { name: "Battery Sales", path: "/sales", icon: ShoppingCart, roles: ["admin"] },
   { name: "Battery Exchange", path: "/exchange", icon: RefreshCcw, roles: ["admin"] },
   { name: "Service Management", path: "/service", icon: Wrench },
-  { name: "Inventory", path: "/inventory", icon: Package, roles: ["admin"] },
+  { name: "Inventory", path: "/inventory", icon: Package },
   { name: "Reports & Billing", path: "/reports", icon: FileText, roles: ["admin"] },
   { name: "Settings", path: "/settings", icon: SettingsIcon },
 ];
@@ -43,6 +43,49 @@ export function MainLayout() {
   const { notifications } = useNotifications();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Swipe gesture handling for bottom nav
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+
+  // Swipe paths dynamically configured based on role visibility
+  const swipePaths = user?.role === "admin"
+    ? ["/", "/sales", "/service"]
+    : ["/", "/inventory", "/service"];
+
+  // We only enable swipe navigation if the current path is one of the main tabs.
+  const isSwipeablePath = swipePaths.includes(location.pathname);
+
+  // Minimum swipe distance (in pixels) to trigger a navigation
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchEndX.current = null; // Reset on new touch
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+
+    // Disable swiping if sidebar is open or we are not on a primary tab route
+    if (isSidebarOpen || !isSwipeablePath || isCheckoutPage) return;
+
+    const distance = touchStartX.current - touchEndX.current;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    const currentIndex = swipePaths.indexOf(location.pathname);
+
+    if (isLeftSwipe && currentIndex < swipePaths.length - 1) {
+      navigate(swipePaths[currentIndex + 1]);
+    } else if (isRightSwipe && currentIndex > 0) {
+      navigate(swipePaths[currentIndex - 1]);
+    }
+  };
 
   const filteredNavItems = navItems.filter(item =>
     !item.roles || (user && item.roles.includes(user.role))
@@ -61,7 +104,12 @@ export function MainLayout() {
   const isCheckoutPage = location.pathname === "/checkout" || location.pathname === "/upi-payment";
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 md:pb-0">
+    <div
+      className="min-h-screen bg-gray-50 pb-24 md:pb-0"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       {/* Mobile/Tablet Header with Hamburger – hidden on checkout */}
       {!isCheckoutPage && (
         <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-20 px-4 flex items-center justify-between print:hidden">
@@ -105,14 +153,14 @@ export function MainLayout() {
       {/* Sidebar Overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 transition-opacity"
+          className="fixed inset-0 bg-black/50 z-40 transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar Drawer */}
       <aside
-        className={`fixed left-0 top-0 h-full w-72 bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out print:hidden ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed left-0 top-0 h-full w-72 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out print:hidden ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
       >
         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">

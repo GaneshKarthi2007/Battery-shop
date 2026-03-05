@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useAuth } from "../contexts/AuthContext";
 import { Wrench, Clock, CheckCircle, AlertTriangle, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { BatteryLoader } from "../components/ui/BatteryLoader";
@@ -21,6 +22,7 @@ interface ServiceRequest {
 
 export function ServiceManagement() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [services, setServices] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -91,13 +93,15 @@ export function ServiceManagement() {
           <h1 className="text-2xl font-bold text-gray-900">Service Management</h1>
           <p className="text-gray-600 mt-1">Track and manage battery service requests</p>
         </div>
-        <Button
-          onClick={() => navigate('/services/new')}
-          className="flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          New Service Request
-        </Button>
+        {user?.role === "admin" && (
+          <Button
+            onClick={() => navigate('/services/new')}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            New Service Request
+          </Button>
+        )}
       </motion.div>
 
       <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl w-full overflow-x-auto snap-x scrollbar-hide">

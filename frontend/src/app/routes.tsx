@@ -86,7 +86,14 @@ export const router = createBrowserRouter([
         ),
         children: [
           { index: true, Component: IndexRedirect },
-          { path: "sales", Component: BatterySales },
+          {
+            path: "sales",
+            element: (
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <BatterySales />
+              </ProtectedRoute>
+            ),
+          },
           {
             path: "exchange",
             element: (
@@ -96,16 +103,16 @@ export const router = createBrowserRouter([
             ),
           },
           { path: "service", Component: ServiceManagement },
-          { path: "services/new", Component: NewService },
-          { path: "service/:id", Component: ServiceDetails },
           {
-            path: "inventory",
+            path: "services/new",
             element: (
               <ProtectedRoute allowedRoles={["admin"]}>
-                <Inventory />
+                <NewService />
               </ProtectedRoute>
             ),
           },
+          { path: "service/:id", Component: ServiceDetails },
+          { path: "inventory", Component: Inventory },
           {
             path: "reports",
             element: (
