@@ -7,6 +7,7 @@ import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
 import { useAuth } from "../contexts/AuthContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { apiClient } from "../api/client";
+import { ServiceGpsCamera } from "../components/ServiceGpsCamera";
 
 interface ServiceRequest {
     id: number;
@@ -537,6 +538,14 @@ export function ServiceDetails() {
                                     >
                                         <Play className="w-4 h-4" />
                                     </Button>
+                                </div>
+                            )}
+
+                            {/* GPS Camera – capture service photos */}
+                            {service.status === "In Progress" && (
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block ml-1">Service Photo (GPS Tagged)</label>
+                                    <ServiceGpsCamera serviceId={service.id} />
                                 </div>
                             )}
 

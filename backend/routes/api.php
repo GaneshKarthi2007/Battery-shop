@@ -66,4 +66,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/upi-payments/{upiPayment}/status', [\App\Http\Controllers\Api\UpiPaymentController::class, 'status']);
     Route::post('/upi-payments/{upiPayment}/confirm', [\App\Http\Controllers\Api\UpiPaymentController::class, 'confirm']);
     Route::post('/upi-payments/{upiPayment}/finalise', [\App\Http\Controllers\Api\UpiPaymentController::class, 'finalise']);
+
+    // GPS Photos
+    Route::apiResource('gps-photos', \App\Http\Controllers\Api\GpsPhotoController::class)
+        ->only(['index', 'store', 'show', 'destroy']);
 });

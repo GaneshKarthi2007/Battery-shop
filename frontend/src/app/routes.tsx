@@ -18,6 +18,8 @@ import { NewService } from "./pages/NewService";
 import { DeveloperSettings } from "./pages/DeveloperSettings";
 import { ErrorPage } from "./pages/ErrorPage";
 import { UPIPayment } from "./pages/UPIPayment";
+import { GpsCamera } from "./pages/GpsCamera";
+import { GpsPhotoDashboard } from "./pages/GpsPhotoDashboard";
 import { NotFound } from "./pages/NotFound";
 
 import { AuthProvider } from "./contexts/AuthContext";
@@ -134,6 +136,8 @@ export const router = createBrowserRouter([
           { path: "checkout", Component: Checkout },
           { path: "invoice", Component: BatteryInvoice },
           { path: "upi-payment", Component: UPIPayment },
+          { path: "gps-camera", Component: GpsCamera },
+          { path: "gps-photos", Component: GpsPhotoDashboard },
           { path: "*", Component: NotFound },
         ],
       },
