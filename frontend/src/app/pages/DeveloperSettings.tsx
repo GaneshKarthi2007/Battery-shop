@@ -50,6 +50,29 @@ export function DeveloperSettings() {
                         </button>
                     </div>
 
+                    {/* Toggle: Sales History Module */}
+                    <div className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl border border-gray-200">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-green-600">
+                                <ShieldCheck className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Sales History Module</h3>
+                                <p className="text-xs text-gray-500">Allow Admin to view Battery Sales History</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => toggleFeature('salesHistory')}
+                            className="text-gray-400 hover:text-purple-600 transition-colors"
+                        >
+                            {features.salesHistory ? (
+                                <ToggleRight className="w-10 h-10 text-purple-600" />
+                            ) : (
+                                <ToggleLeft className="w-10 h-10" />
+                            )}
+                        </button>
+                    </div>
+
                     {/* Toggle: Dark Mode Module */}
                     <div className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl border border-gray-200">
                         <div className="flex items-center gap-4">
@@ -102,7 +125,7 @@ export function DeveloperSettings() {
                 </div>
             </div>
 
-            
+
         </div>
     );
 }

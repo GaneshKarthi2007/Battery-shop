@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 interface DeveloperFeatures {
     editProfile: boolean;
     darkMode: boolean;
+    salesHistory: boolean;
     // We can add more feature toggles here in the future
 }
 
@@ -14,6 +15,7 @@ interface DeveloperContextType {
 const defaultFeatures: DeveloperFeatures = {
     editProfile: true, // Enabled by default
     darkMode: true,
+    salesHistory: true,
 };
 
 const DeveloperContext = createContext<DeveloperContextType | undefined>(undefined);

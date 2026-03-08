@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { User, Mail, Phone, MapPin, Camera, Edit2, Check, X, Store, ShieldCheck } from "lucide-react";
+import { User, Mail, Phone, MapPin, Camera, Edit2, Check, X, Store, ShieldCheck, LogOut } from "lucide-react";
+import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { useDeveloper } from "../contexts/DeveloperContext";
 
@@ -14,7 +15,8 @@ interface UserProfile {
 }
 
 export function Profile() {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const { features } = useDeveloper();
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [profile, setProfile] = useState<UserProfile>({
@@ -48,6 +50,11 @@ export function Profile() {
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleLogout = () => {
+        logout();
+        navigate("/login");
     };
 
     const cancelEdit = () => {
@@ -113,8 +120,15 @@ export function Profile() {
 
     return (
         <div className="max-w-2xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="mb-6">
+            <div className="mb-6 flex justify-between items-center">
                 <h1 className="text-2xl font-black text-gray-900 uppercase">My Profile</h1>
+                <button
+                    onClick={handleLogout}
+                    className="bg-red-50 text-red-600 hover:bg-red-100 font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-red-100 shadow-sm text-sm"
+                >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                </button>
             </div>
 
             <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden">
@@ -169,5 +183,6 @@ export function Profile() {
                 </p>
             </div>
         </div>
+
     );
 }

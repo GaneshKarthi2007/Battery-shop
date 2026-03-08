@@ -12,7 +12,7 @@ class SalesController extends Controller
 {
     public function index()
     {
-        return response()->json(Sale::with('items.product')->latest()->get());
+        return response()->json(Sale::with(['items.product', 'items.service'])->latest()->get());
     }
 
     public function store(Request $request)

@@ -1,19 +1,12 @@
 import { useTheme } from "../contexts/ThemeContext";
 import { useDeveloper } from "../contexts/DeveloperContext";
 import { useAuth } from "../contexts/AuthContext";
-import { Settings as SettingsIcon, Moon, Sun, LogOut } from "lucide-react";
-import { useNavigate } from "react-router";
+import { Settings as SettingsIcon, Moon, Sun } from "lucide-react";
 
 export function Settings() {
     const { isDarkMode, toggleDarkMode } = useTheme();
     const { features } = useDeveloper();
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
-
-    const handleLogout = () => {
-        logout();
-        navigate("/login");
-    };
+    const { user } = useAuth();
 
     return (
         <div className="max-w-2xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -59,13 +52,7 @@ export function Settings() {
             </div>
 
             <div className="mt-8 space-y-4">
-                <button
-                    onClick={handleLogout}
-                    className="w-full bg-red-50 text-red-600 hover:bg-red-100 font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-colors border border-red-100 shadow-sm"
-                >
-                    <LogOut className="w-5 h-5" />
-                    Logout
-                </button>
+
 
                 <div className="text-center text-xs font-bold text-gray-400 capitalize tracking-widest">
                     Account Role: {user?.role}
