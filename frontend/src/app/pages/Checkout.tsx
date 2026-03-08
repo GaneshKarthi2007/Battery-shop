@@ -11,6 +11,7 @@ import { apiClient } from "../api/client";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { BatteryLoader } from "../components/ui/BatteryLoader";
+import { ContactActions } from "../components/ui/ContactActions";
 interface SalesItem {
     id: number | string;
     name: string;
@@ -308,17 +309,22 @@ export function Checkout() {
                                 />
                             </Field>
                             <Field label="Mobile Number">
-                                <Input
-                                    type="tel"
-                                    value={customerInfo.phone}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (!val.startsWith("+91 ")) setCustomerInfo({ ...customerInfo, phone: "+91 " + val.replace(/^\+91\s?/, "") });
-                                        else setCustomerInfo({ ...customerInfo, phone: val });
-                                    }}
-                                    className={inputClass}
-                                    placeholder="+91 98765 43210"
-                                />
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        type="tel"
+                                        value={customerInfo.phone}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (!val.startsWith("+91 ")) setCustomerInfo({ ...customerInfo, phone: "+91 " + val.replace(/^\+91\s?/, "") });
+                                            else setCustomerInfo({ ...customerInfo, phone: val });
+                                        }}
+                                        className={`flex-1 ${inputClass}`}
+                                        placeholder="+91 98765 43210"
+                                    />
+                                    {customerInfo.phone && customerInfo.phone.replace(/\D/g, "").length > 2 && (
+                                        <ContactActions phoneNumber={customerInfo.phone} iconSize={18} className="p-1" />
+                                    )}
+                                </div>
                             </Field>
                             <Field label="Billing Address">
                                 <textarea

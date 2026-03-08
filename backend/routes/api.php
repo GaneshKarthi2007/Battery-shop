@@ -46,6 +46,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/services/{service}/pickup', [ServiceController::class, 'pickUp']);
     Route::post('/services/{service}/voice-note', [ServiceController::class, 'uploadVoiceNote']);
     Route::post('/services/{service}/verify-payment', [ServiceController::class, 'verifyPayment']);
+    Route::post('/services/{service}/revisit', [ServiceController::class, 'revisit']);
+    Route::post('/services/{service}/generate-receipt', [ServiceController::class, 'generateReceipt']);
+    Route::post('/services/{service}/mark-converted', [ServiceController::class, 'markAsConverted']);
+    Route::post('/services/{service}/process-converted-order', [ServiceController::class, 'processConvertedOrder']);
 
     Route::get('/reports', [\App\Http\Controllers\Api\ReportController::class, 'index']);
     Route::get('/reports/download', [\App\Http\Controllers\Api\ReportController::class, 'download']);

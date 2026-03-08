@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { apiClient } from "../api/client";
-import { UserRole } from "./AuthContext";
+import { UserRole, useAuth } from "./AuthContext";
 
 export type NotificationType = "SALES" | "STOCK" | "SERVICE" | "SUMMARY";
 
@@ -28,6 +28,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const { isAuthenticated } = useAuth();
 
     const fetchNotifications = async () => {
         try {
@@ -39,11 +40,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     };
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            setNotifications([]);
+            return;
+        }
+
         fetchNotifications();
-        // Set up a polling interval for notifications (every 30 seconds)
-        const interval = setInterval(fetchNotifications, 30000);
+        // Set up a polling interval for notifications (every 60 seconds instead of 30s)
+        const interval = setInterval(fetchNotifications, 60000);
         return () => clearInterval(interval);
-    }, []);
+    }, [isAuthenticated]);
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 

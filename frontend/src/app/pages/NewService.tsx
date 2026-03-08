@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
-import { User, Phone, ArrowLeft, Save, AlertTriangle, Zap, MapPin, ChevronDown, Check } from "lucide-react";
+import { User, Phone, ArrowLeft, Save, AlertTriangle, Zap, MapPin, ChevronDown, Check, Mic, Trash2, Activity } from "lucide-react";
 import { apiClient } from "../api/client";
 import { Input } from "../components/Input";
+import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
 
 export function NewService() {
     const navigate = useNavigate();
@@ -19,6 +20,9 @@ export function NewService() {
     });
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [showAudioRecorder, setShowAudioRecorder] = useState(false);
+    const [voiceNote, setVoiceNote] = useState<File | null>(null);
+
     const complaintTypes = [
         "Charging Issue",
         "Dead Battery",
@@ -64,6 +68,12 @@ export function NewService() {
                 ...formData,
                 status: "Pending"
             });
+
+            if (voiceNote) {
+                const fd = new FormData();
+                fd.append('voice_note', voiceNote);
+                await apiClient.post(`/services/${response.id}/voice-note`, fd);
+            }
 
             setShowSuccess({ id: response.id, name: response.customer_name });
             // Don't navigate immediately, show success first
@@ -226,8 +236,56 @@ export function NewService() {
                                 onChange={(e) => setFormData({ ...formData, complaint_details: e.target.value })}
                             />
                         </div>
+
+                        <div className="space-y-3 pt-6 border-t border-gray-100">
+                            <div>
+                                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Voice Note Explainer (Optional)</label>
+                                <p className="text-xs text-gray-500 font-medium ml-1 mt-1 mb-3">Record a quick audio message describing the battery issue</p>
+                            </div>
+
+                            {voiceNote ? (
+                                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-blue-50/50 border border-indigo-100 rounded-2xl shadow-sm">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-indigo-600">
+                                            <Activity className="w-6 h-6 animate-pulse" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">Audio Recorded</p>
+                                            <p className="text-xs text-indigo-600 font-medium tracking-tight">Ready to enclose with log</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setVoiceNote(null)}
+                                        className="w-10 h-10 flex items-center justify-center text-red-500 bg-white hover:bg-red-50 hover:text-red-600 rounded-full shadow-sm transition-colors active:scale-95"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAudioRecorder(true)}
+                                    className="w-full group relative overflow-hidden rounded-2xl p-[1px] transition-all"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500 opacity-40 group-hover:opacity-100 transition-opacity blur-sm"></div>
+                                    <div className="relative w-full py-5 bg-white rounded-2xl flex items-center justify-center gap-3 text-gray-600 group-hover:text-indigo-600 transition-colors shadow-sm">
+                                        <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-100 transition-transform">
+                                            <Mic className="w-5 h-5 text-indigo-600" />
+                                        </div>
+                                        <span className="font-bold text-sm">Tap to Record Voice Note</span>
+                                    </div>
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
+
+                <AudioRecorder
+                    isOpen={showAudioRecorder}
+                    onClose={() => setShowAudioRecorder(false)}
+                    onCapture={(file) => setVoiceNote(file)}
+                />
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">

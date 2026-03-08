@@ -142,7 +142,7 @@ export function Dashboard() {
           <div className="space-y-2">
             <div className="flex items-center gap-2 px-3 py-1 bg-white/10 w-fit rounded-full text-blue-100 text-xs font-bold uppercase tracking-widest backdrop-blur-md border border-white/10">
               <Sparkles className="w-3 h-3" />
-              PowerCell Management
+              Battery Shop
             </div>
             <h1 className="text-4xl md:text-5xl font-black tracking-tight">
               Hello, <span className="text-blue-200">{firstName}!</span>
@@ -171,6 +171,7 @@ export function Dashboard() {
             change={0} // Can be calculated if backend provides previous week/day data
             icon={IndianRupee}
             color="bg-gradient-to-br from-blue-500 to-blue-700"
+            onClick={() => navigate('/sales')}
           />
         )}
         <StatCard
@@ -213,6 +214,7 @@ export function Dashboard() {
             change={0}
             icon={TrendingUp}
             color="bg-gradient-to-br from-indigo-500 to-indigo-700"
+            onClick={() => navigate('/reports')}
           />
         )}
       </div>

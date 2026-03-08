@@ -52,7 +52,7 @@ export function NotificationDropdown({ isOpen, onClose }: { isOpen: boolean; onC
                         animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
                         exit={{ opacity: 0, y: 10, scale: 0.95, filter: "blur(10px)" }}
                         transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                        className="absolute right-0 mt-3 w-[22rem] sm:w-[26rem] bg-white/80 backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/20 z-20 overflow-hidden ring-1 ring-black/5"
+                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-32px)] sm:w-[26rem] max-w-[26rem] bg-white/80 backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/20 z-20 overflow-hidden ring-1 ring-black/5"
                     >
                         {/* Header */}
                         <div className="px-5 py-4 border-b border-gray-200/50 flex items-center justify-between bg-white/40">
@@ -72,7 +72,7 @@ export function NotificationDropdown({ isOpen, onClose }: { isOpen: boolean; onC
                                     onClick={markAllAsRead}
                                     className="text-[11px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest transition-colors duration-200"
                                 >
-                                    Catch up
+                                    Read All
                                 </button>
                                 <button
                                     onClick={clearAll}

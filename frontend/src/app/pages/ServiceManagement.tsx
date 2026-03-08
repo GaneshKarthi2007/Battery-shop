@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { apiClient } from "../api/client";
 import { Button } from "../components/Button";
+import { ContactActions } from "../components/ui/ContactActions";
 
 interface ServiceRequest {
   id: number;
@@ -183,10 +184,13 @@ export function ServiceManagement() {
                       <h3 className="text-lg font-black text-gray-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight leading-tight">
                         {service.customer_name}
                       </h3>
-                      <p className="text-sm text-gray-400 font-medium flex items-center gap-2 mt-1">
-                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                        {service.contact_number}
-                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-sm text-gray-400 font-medium flex items-center gap-2">
+                          <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                          {service.contact_number}
+                        </p>
+                        <ContactActions phoneNumber={service.contact_number} />
+                      </div>
                     </div>
 
                     <div className="py-4 px-5 bg-gray-50/50 group-hover:bg-blue-50/30 rounded-2xl space-y-3 transition-colors duration-500">

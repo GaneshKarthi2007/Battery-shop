@@ -60,9 +60,9 @@ const BatteryInvoice: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen py-4 print:bg-white print:py-0">
+    <div className="bg-gray-50 min-h-screen py-4 print:bg-white print:py-0">
       {/* Action Bar */}
-      <div className="max-w-[850px] mx-auto mb-4 px-4 no-print flex justify-between items-center">
+      <div className="max-w-4xl mx-auto mb-4 px-4 no-print flex justify-between items-center">
         <button
           onClick={() => navigate("/")}
           className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors font-semibold"
@@ -89,197 +89,165 @@ const BatteryInvoice: React.FC = () => {
       </div>
 
       <style>{`
-                @media print {
-                    @page {
-                        size: A4;
-                        margin: 5mm;
-                    }
-                    body {
-                        background: white !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    .no-print {
-                        display: none !important;
-                    }
-                    .invoice-container {
-                        width: 100% !important;
-                        max-width: none !important;
-                        margin: 0 !important;
-                        padding: 10mm !important;
-                        border: 1px solid #eee !important;
-                        box-shadow: none !important;
-                        border-radius: 0 !important;
-                        background-color: white !important;
-                    }
-                    .min-h-screen {
-                        min-height: auto !important;
-                        height: auto !important;
-                    }
-                }
-            `}</style>
+        @media print {
+            @page {
+                size: A4;
+                margin: 0;
+            }
+            body {
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .invoice-container {
+                box-shadow: none !important;
+                margin: 0 !important;
+            }
+        }
+      `}</style>
 
-      <div className="invoice-container" style={styles.container}>
-        <h1 style={styles.header}>🔋 {invoiceData.shopName}</h1>
-        <div style={styles.shopInfo}>
-          <p>{invoiceData.address}</p>
-          <p>Phone: {invoiceData.phone}</p>
-          <p>GST No: {invoiceData.gst}</p>
-        </div>
-
-        <hr style={{ margin: '5px 0' }} />
-
-        <h3 style={styles.sectionTitle}>Invoice Details</h3>
-        <div style={styles.infoGrid}>
-          <div>
-            <p><strong>Invoice No:</strong> {invoiceData.invoiceNo}</p>
-            <p><strong>Date:</strong> {invoiceData.date}</p>
-            <p><strong>Transaction:</strong> <span style={{ color: invoiceData.paymentMethod === 'UPI' ? '#0d47a1' : '#2e7d32', fontWeight: 'bold' }}>{invoiceData.paymentMethod}</span></p>
-          </div>
-          <div>
-            <p><strong>Customer:</strong> {invoiceData.customerName}</p>
-            <p><strong>Phone:</strong> {invoiceData.customerPhone}</p>
-            <p><strong>Vehicle No:</strong> {invoiceData.vehicleNumber}</p>
+      <div className="max-w-4xl mx-auto bg-white shadow-lg invoice-container">
+        {/* Header */}
+        <div className="border-b-4 border-blue-600 p-8">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-4xl mb-2 font-bold text-gray-900">{invoiceData.shopName}</h1>
+              <div className="text-gray-500 space-y-1">
+                <p>{invoiceData.address}</p>
+                <p>Phone: {invoiceData.phone}</p>
+                <p>GST No: {invoiceData.gst}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <h2 className="text-3xl mb-4 font-bold text-gray-800">INVOICE</h2>
+              <div className="space-y-1 text-gray-600">
+                <div className="flex justify-end gap-4">
+                  <span className="font-medium text-gray-900">Invoice #:</span>
+                  <span>{invoiceData.invoiceNo}</span>
+                </div>
+                <div className="flex justify-end gap-4">
+                  <span className="font-medium text-gray-900">Date:</span>
+                  <span>{invoiceData.date}</span>
+                </div>
+                <div className="flex justify-end gap-4">
+                  <span className="font-medium text-gray-900">Payment Mode:</span>
+                  <span className="font-semibold text-blue-600">{invoiceData.paymentMethod}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>S.No</th>
-              <th style={styles.th}>Brand</th>
-              <th style={styles.th}>Model</th>
-              <th style={styles.th}>Warranty</th>
-              <th style={styles.th}>Qty</th>
-              <th style={styles.th}>Price</th>
-              <th style={styles.th}>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoiceData.items.map((item, index) => (
-              <tr key={item.id}>
-                <td style={styles.td}>{index + 1}</td>
-                <td style={styles.td}>{item.brand}</td>
-                <td style={styles.td}>{item.model}</td>
-                <td style={styles.td}>{item.warranty}</td>
-                <td style={styles.td}>{item.qty}</td>
-                <td style={styles.td}>₹ {item.price.toLocaleString()}</td>
-                <td style={styles.td}>₹ {(item.qty * item.price).toLocaleString()}</td>
+        {/* Bill To Section */}
+        <div className="p-8 border-b border-gray-200">
+          <h3 className="mb-3 text-lg font-bold text-gray-800">Bill To:</h3>
+          <div className="space-y-1 text-gray-600">
+            <p className="font-bold text-gray-900 text-xl">{invoiceData.customerName}</p>
+            <p>Phone: {invoiceData.customerPhone}</p>
+            <p>Vehicle No: {invoiceData.vehicleNumber}</p>
+          </div>
+        </div>
+
+        {/* Items Table */}
+        <div className="p-8">
+          <table className="w-full text-sm sm:text-base">
+            <thead>
+              <tr className="border-b-2 border-blue-600">
+                <th className="text-left py-3 font-semibold text-gray-800">S.No</th>
+                <th className="text-left py-3 font-semibold text-gray-800">Brand</th>
+                <th className="text-left py-3 font-semibold text-gray-800">Model</th>
+                <th className="text-left py-3 font-semibold text-gray-800 hidden sm:table-cell">Warranty</th>
+                <th className="text-right py-3 font-semibold text-gray-800 w-16">Qty</th>
+                <th className="text-right py-3 font-semibold text-gray-800 w-28">Price</th>
+                <th className="text-right py-3 font-semibold text-gray-800 w-32">Total</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {invoiceData.items.map((item, index) => (
+                <tr key={item.id} className="border-b border-gray-200">
+                  <td className="py-4 text-gray-700">{index + 1}</td>
+                  <td className="py-4 text-gray-900 font-medium">{item.brand}</td>
+                  <td className="py-4 text-gray-700">{item.model}</td>
+                  <td className="py-4 text-gray-700 hidden sm:table-cell">{item.warranty}</td>
+                  <td className="text-right py-4 text-gray-700">{item.qty}</td>
+                  <td className="text-right py-4 text-gray-700">₹ {item.price.toLocaleString()}</td>
+                  <td className="text-right py-4 text-gray-900 font-medium">₹ {(item.qty * item.price).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-        <div style={styles.summary}>
-          <p>Subtotal: ₹ {invoiceData.subtotal.toLocaleString()}</p>
-          <p>GST ({invoiceData.gstPercent}% on Products): ₹ {invoiceData.gstAmount.toLocaleString()}</p>
-          {invoiceData.exchange > 0 && (
-            <p style={{ color: '#d32f2f' }}>Old Battery Exchange: - ₹ {invoiceData.exchange.toLocaleString()}</p>
-          )}
-          <h3 style={styles.totalAmount}>Grand Total: ₹ {invoiceData.grandTotal.toLocaleString()}</h3>
+          {/* Totals */}
+          <div className="mt-8 flex justify-end">
+            <div className="w-80">
+              <div className="flex justify-between py-2 border-b border-gray-200 text-gray-600">
+                <span className="font-medium">Subtotal:</span>
+                <span>₹ {invoiceData.subtotal.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-gray-200 text-gray-600">
+                <span className="font-medium">GST ({invoiceData.gstPercent}%):</span>
+                <span>₹ {invoiceData.gstAmount.toLocaleString()}</span>
+              </div>
+              {invoiceData.exchange > 0 && (
+                <div className="flex justify-between py-2 border-b border-gray-200 text-red-600">
+                  <span className="font-medium">Old Battery Exchange:</span>
+                  <span>- ₹ {invoiceData.exchange.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between py-4 border-t-2 border-blue-600 mt-2">
+                <span className="font-bold text-xl text-gray-900">Total:</span>
+                <span className="font-bold text-xl text-blue-600">₹ {invoiceData.grandTotal.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <hr style={{ margin: '5px 0' }} />
+        {/* Notes and Warranty Info */}
+        <div className="p-8 bg-gray-50 border-t border-gray-200">
+          <div className="grid grid-cols-2 gap-8">
+            <div>
+              <h4 className="mb-2 font-bold text-gray-800">Terms & Conditions:</h4>
+              <ul className="text-gray-500 text-sm space-y-1 list-disc list-inside">
+                <li>Goods once sold cannot be taken back or exchanged.</li>
+                <li>Warranty is subject to manufacturer's terms and conditions.</li>
+                <li>Original invoice is mandatory for warranty claims.</li>
+              </ul>
+            </div>
 
-        <p style={{ marginTop: '10px', fontSize: '13px' }}><strong>Warranty Period:</strong> {invoiceData.warrantyPeriod}</p>
+            <div>
+              <h4 className="mb-2 font-bold text-gray-800">Warranty Information:</h4>
+              <div className="text-gray-600 space-y-1 bg-white p-4 rounded-lg border border-gray-200">
+                <p><span className="font-medium">Total Warranty Period:</span> {invoiceData.warrantyPeriod}</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <div style={styles.signatureSection}>
-          <div style={{ textAlign: 'center' }}>
-            <p>__________________</p>
-            <p>Customer Signature</p>
+        {/* Signature Section */}
+        <div className="px-8 pb-8 pt-4 flex justify-between items-end bg-gray-50 border-t border-gray-200">
+          <div className="text-center pt-8">
+            <div className="w-48 border-b-2 border-gray-400 mb-2"></div>
+            <p className="text-gray-600 font-medium">Customer Signature</p>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <p>__________________</p>
-            <p>Authorized Signature</p>
+          <div className="text-center pt-8">
+            <div className="w-48 border-b-2 border-gray-400 mb-2"></div>
+            <p className="text-gray-600 font-medium">Authorized Signatory</p>
+            <p className="text-gray-500 text-sm mt-1">{invoiceData.shopName}</p>
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 bg-blue-700 text-white text-center">
+          <p>Thank you for your business! For queries, contact us at {invoiceData.phone}</p>
         </div>
       </div>
     </div>
   );
-};
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    maxWidth: "800px",
-    width: "100%",
-    margin: "0 auto",
-    padding: "10mm",
-    border: "1px solid #ddd",
-    borderRadius: "8px",
-    fontFamily: "'Inter', system-ui, sans-serif",
-    backgroundColor: "#fff",
-  },
-  header: {
-    textAlign: "center",
-    color: "#0d47a1",
-    marginBottom: "0px",
-    fontSize: "20px",
-  },
-  shopInfo: {
-    textAlign: "center",
-    marginBottom: "5px",
-    fontSize: "12px",
-  },
-  sectionTitle: {
-    marginTop: "5px",
-    marginBottom: "5px",
-    borderBottom: "2px solid #0d47a1",
-    paddingBottom: "2px",
-    color: "#0d47a1",
-    fontSize: "15px",
-  },
-  infoGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "5px",
-    marginBottom: "5px",
-    fontSize: "12px",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    marginTop: "5px",
-    backgroundColor: "#fff",
-  },
-  th: {
-    border: "1px solid #ddd",
-    padding: "4px",
-    backgroundColor: "#0d47a1",
-    color: "#fff",
-    textAlign: "center",
-    fontSize: "11px",
-  },
-  td: {
-    border: "1px solid #ddd",
-    padding: "4px",
-    textAlign: "center",
-    fontSize: "11px",
-  },
-  summary: {
-    marginTop: "5px",
-    padding: "8px",
-    backgroundColor: "#ffffff",
-    border: "1px solid #ddd",
-    borderRadius: "5px",
-    textAlign: "right",
-    fontSize: "12px",
-  },
-  totalAmount: {
-    fontSize: "16px",
-    fontWeight: "bold",
-    color: "#d32f2f",
-    marginTop: "2px",
-  },
-  signatureSection: {
-    marginTop: "20px",
-    display: "flex",
-    justifyContent: "space-between",
-    fontWeight: "bold",
-    fontSize: "12px",
-    breakInside: "avoid",
-  },
 };
 
 export default BatteryInvoice;
