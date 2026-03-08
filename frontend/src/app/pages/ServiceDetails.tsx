@@ -584,6 +584,11 @@ export function ServiceDetails() {
                                 </section>
 
                                 <section className="pt-4 border-t border-gray-100">
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Site Photos</h3>
+                                    <ServiceGpsCamera serviceId={service.id} />
+                                </section>
+
+                                <section className="pt-4 border-t border-gray-100">
                                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Issue Details</h3>
                                     <div className="space-y-4">
                                         <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
@@ -769,29 +774,9 @@ export function ServiceDetails() {
                                     </Button>
                                 )}
 
-<<<<<<< HEAD
-                            {/* GPS Camera – capture service photos */}
-                            {service.status === "In Progress" && (
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block ml-1">Service Photo (GPS Tagged)</label>
-                                    <ServiceGpsCamera serviceId={service.id} />
-                                </div>
-                            )}
-
-                            {service.status !== "Completed" && (
-                                <Button
-                                    onClick={handleConvertToOrder}
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 font-bold"
-                                >
-                                    <ShoppingCart className="w-4 h-4" />
-                                    Convert to New Order
-                                </Button>
-                            )}
-=======
                                 {service.assigned_to === user?.id && !isAdmin && (
                                     <>
                                         {/* Sub-status module was moved to the Status Update section */}
->>>>>>> 3d92cc0f574fbb4d369ea40de5f9e2aa0a54b06e
 
                                         {service.status !== "Completed" && service.status !== "Converted to Order" && service.sub_status === "Battery Dead/Needs Replace" && (
                                             <Button
