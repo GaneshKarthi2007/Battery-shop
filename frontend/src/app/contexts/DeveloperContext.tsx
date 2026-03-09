@@ -4,7 +4,7 @@ interface DeveloperFeatures {
     editProfile: boolean;
     darkMode: boolean;
     salesHistory: boolean;
-    // We can add more feature toggles here in the future
+    enableContactActions: boolean;
 }
 
 interface DeveloperContextType {
@@ -16,6 +16,7 @@ const defaultFeatures: DeveloperFeatures = {
     editProfile: true, // Enabled by default
     darkMode: true,
     salesHistory: true,
+    enableContactActions: false, // Default to Copy behavior
 };
 
 const DeveloperContext = createContext<DeveloperContextType | undefined>(undefined);

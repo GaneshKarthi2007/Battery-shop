@@ -8,7 +8,6 @@ import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
 import { useAuth } from "../contexts/AuthContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { apiClient } from "../api/client";
-import { ServiceGpsCamera } from "../components/ServiceGpsCamera";
 
 interface ServiceRequest {
     id: number;
@@ -769,29 +768,9 @@ export function ServiceDetails() {
                                     </Button>
                                 )}
 
-<<<<<<< HEAD
-                            {/* GPS Camera – capture service photos */}
-                            {service.status === "In Progress" && (
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block ml-1">Service Photo (GPS Tagged)</label>
-                                    <ServiceGpsCamera serviceId={service.id} />
-                                </div>
-                            )}
-
-                            {service.status !== "Completed" && (
-                                <Button
-                                    onClick={handleConvertToOrder}
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 font-bold"
-                                >
-                                    <ShoppingCart className="w-4 h-4" />
-                                    Convert to New Order
-                                </Button>
-                            )}
-=======
                                 {service.assigned_to === user?.id && !isAdmin && (
                                     <>
                                         {/* Sub-status module was moved to the Status Update section */}
->>>>>>> 3d92cc0f574fbb4d369ea40de5f9e2aa0a54b06e
 
                                         {service.status !== "Completed" && service.status !== "Converted to Order" && service.sub_status === "Battery Dead/Needs Replace" && (
                                             <Button

@@ -95,6 +95,29 @@ export function DeveloperSettings() {
                             )}
                         </button>
                     </div>
+
+                    {/* Toggle: Contact Actions Module */}
+                    <div className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl border border-gray-200">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600">
+                                <ShieldCheck className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Contact Actions Module</h3>
+                                <p className="text-xs text-gray-500">Enable WhatsApp & Call buttons on inputs</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => toggleFeature('enableContactActions')}
+                            className="text-gray-400 hover:text-purple-600 transition-colors"
+                        >
+                            {features.enableContactActions ? (
+                                <ToggleRight className="w-10 h-10 text-purple-600" />
+                            ) : (
+                                <ToggleLeft className="w-10 h-10" />
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
 
