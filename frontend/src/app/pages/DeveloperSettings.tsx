@@ -1,10 +1,12 @@
 import { useDeveloper } from "../contexts/DeveloperContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { Settings, Edit2, ShieldCheck, ToggleLeft, ToggleRight, Moon, Sun } from "lucide-react";
+import { Settings, Edit2, ShieldCheck, ToggleLeft, ToggleRight, Moon, Sun, Users, ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router";
 
 export function DeveloperSettings() {
-    const { features, toggleFeature } = useDeveloper();
+    const { features, toggleFeature, shopConfig, updateShopConfig } = useDeveloper();
     const { isDarkMode, toggleDarkMode } = useTheme();
+    const navigate = useNavigate();
 
     return (
         <div className="max-w-2xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -121,6 +123,60 @@ export function DeveloperSettings() {
                 </div>
             </div>
 
+            {/* Shop Details Management */}
+            <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden mt-6">
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                    <div className="flex items-center gap-3">
+                        <Edit2 className="w-5 h-5 text-purple-600" />
+                        <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Shop Details Configuration</h2>
+                    </div>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Shop Name</label>
+                            <input
+                                type="text"
+                                value={shopConfig.name}
+                                onChange={(e) => updateShopConfig({ name: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                                placeholder="E.g., PowerCell Pro"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                            <input
+                                type="text"
+                                value={shopConfig.phone}
+                                onChange={(e) => updateShopConfig({ phone: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                                placeholder="E.g., +91 98765 43210"
+                            />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                            <textarea
+                                value={shopConfig.address}
+                                onChange={(e) => updateShopConfig({ address: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all resize-none"
+                                placeholder="Full Shop Address"
+                                rows={2}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
+                            <input
+                                type="text"
+                                value={shopConfig.gst}
+                                onChange={(e) => updateShopConfig({ gst: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                                placeholder="E.g., 33XXXXX1234X1Z5"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Developer's Personal Preferences */}
             <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden mt-6">
                 <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
@@ -144,6 +200,35 @@ export function DeveloperSettings() {
                         >
                             <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${isDarkMode ? 'translate-x-8' : 'translate-x-1'}`} />
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* User Management Section Link */}
+            <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden mt-6">
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                    <div className="flex items-center gap-3">
+                        <Users className="w-5 h-5 text-purple-600" />
+                        <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">User Management</h2>
+                    </div>
+                </div>
+                <div className="p-6">
+                    <p className="text-sm text-gray-600 mb-6 font-medium">Create or manage users in the system.</p>
+
+                    <div
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => navigate('/developer/users')}
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600">
+                                <Users className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Manage Users</h3>
+                                <p className="text-xs text-gray-500">Add, edit, or view existing users</p>
+                            </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
                     </div>
                 </div>
             </div>

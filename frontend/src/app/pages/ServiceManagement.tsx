@@ -3,7 +3,6 @@ import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { Wrench, Clock, CheckCircle, AlertTriangle, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { apiClient } from "../api/client";
 import { Button } from "../components/Button";
 import { ContactActions } from "../components/ui/ContactActions";
@@ -65,7 +64,7 @@ export function ServiceManagement() {
   };
 
   if (loading) {
-    return <BatteryLoader />;
+    // Page loader removed for smoother page transitions
   }
 
   if (error) {

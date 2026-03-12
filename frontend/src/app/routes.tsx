@@ -1,5 +1,4 @@
-import { createBrowserRouter, Outlet, useNavigation, useLocation } from "react-router";
-import { useState, useEffect } from "react";
+import { createBrowserRouter, Outlet } from "react-router";
 import { Login } from "./pages/Login";
 import { RoleBasedLayout } from "./layouts/RoleBasedLayout";
 import { IndexRedirect } from "./pages/IndexRedirect";
@@ -10,12 +9,12 @@ import { Inventory } from "./pages/Inventory";
 import { Reports } from "./pages/Reports";
 import { Settings } from "./pages/Settings";
 import { Profile } from "./pages/Profile";
-import { BatteryLoader } from "./components/ui/BatteryLoader";
 import { Checkout } from "./pages/Checkout";
 import BatteryInvoice from "./pages/BatteryInvoice";
 import { ServiceDetails } from "./pages/ServiceDetails";
 import { NewService } from "./pages/NewService";
 import { DeveloperSettings } from "./pages/DeveloperSettings";
+import { UserManagement } from "./pages/UserManagement";
 import { ErrorPage } from "./pages/ErrorPage";
 import { UPIPayment } from "./pages/UPIPayment";
 import { GpsCamera } from "./pages/GpsCamera";
@@ -26,42 +25,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 
 function RootLayout() {
-  const navigation = useNavigation();
-  const location = useLocation();
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Initial load sync
-    const handleLoad = () => setIsLoading(false);
-
-    if (document.readyState === "complete") {
-      setIsLoading(false);
-    } else {
-      window.addEventListener("load", handleLoad);
-      return () => window.removeEventListener("load", handleLoad);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Route change sync
-    setIsLoading(true);
-    // We keep a small delay to ensure the "zap" animation is at least partially seen
-    // but we can reduce it if the content loads faster. 
-    // For React Router, this is mostly a visual feedback for the user.
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [location.pathname]);
-
-  const isRouterLoading = navigation.state === "loading" || navigation.state === "submitting";
-  const showLoader = isLoading || isRouterLoading;
-
   return (
     <AuthProvider>
       <NotificationProvider>
-        {showLoader && <BatteryLoader />}
         <Outlet />
       </NotificationProvider>
     </AuthProvider>
@@ -129,6 +95,14 @@ export const router = createBrowserRouter([
             element: (
               <ProtectedRoute allowedRoles={["developer"]}>
                 <DeveloperSettings />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "developer/users",
+            element: (
+              <ProtectedRoute allowedRoles={["developer"]}>
+                <UserManagement />
               </ProtectedRoute>
             ),
           },

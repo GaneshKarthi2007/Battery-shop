@@ -46,7 +46,9 @@ export function MainLayout() {
 
   // Swipe gesture handling for bottom nav
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
+  const touchEndY = useRef<number | null>(null);
 
   // Swipe paths dynamically configured based on role visibility
   const swipePaths = user?.role === "admin"
@@ -61,29 +63,37 @@ export function MainLayout() {
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
     touchEndX.current = null; // Reset on new touch
+    touchEndY.current = null;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
     touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
   };
 
   const onTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
+    if (!touchStartX.current || !touchEndX.current || !touchStartY.current || !touchEndY.current) return;
 
     // Disable swiping if sidebar is open or we are not on a primary tab route
     if (isSidebarOpen || !isSwipeablePath || isCheckoutPage) return;
 
-    const distance = touchStartX.current - touchEndX.current;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
+    const distanceX = touchStartX.current - touchEndX.current;
+    const distanceY = touchStartY.current - touchEndY.current;
 
-    const currentIndex = swipePaths.indexOf(location.pathname);
+    // Only trigger horizontal swipe if the swipe is mostly horizontal
+    if (Math.abs(distanceX) > Math.abs(distanceY)) {
+      const isLeftSwipe = distanceX > minSwipeDistance;
+      const isRightSwipe = distanceX < -minSwipeDistance;
 
-    if (isLeftSwipe && currentIndex < swipePaths.length - 1) {
-      navigate(swipePaths[currentIndex + 1]);
-    } else if (isRightSwipe && currentIndex > 0) {
-      navigate(swipePaths[currentIndex - 1]);
+      const currentIndex = swipePaths.indexOf(location.pathname);
+
+      if (isLeftSwipe && currentIndex < swipePaths.length - 1) {
+        navigate(swipePaths[currentIndex + 1]);
+      } else if (isRightSwipe && currentIndex > 0) {
+        navigate(swipePaths[currentIndex - 1]);
+      }
     }
   };
 

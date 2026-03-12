@@ -113,7 +113,8 @@ export function Checkout() {
     const [freeReplacementUnit, setFreeReplacementUnit] = useState("Months");
 
     /** ── Payment ── */
-    const [paymentMethod, setPaymentMethod] = useState<"Cash" | "UPI">("Cash");
+    const [paymentMethod, setPaymentMethod] = useState<"Cash" | "UPI" | "Split">("Cash");
+    const [cashPart, setCashPart] = useState<number>(0);
 
     /** ── UI state ── */
     const [loading, setLoading] = useState(false);
@@ -217,6 +218,8 @@ export function Checkout() {
             productSubtotal,
             serviceSubtotal,
             paymentMethod,
+            cashAmount: paymentMethod === "Split" ? cashPart : (paymentMethod === "Cash" ? grandTotal : 0),
+            upiAmount: paymentMethod === "Split" ? (grandTotal - cashPart) : (paymentMethod === "UPI" ? grandTotal : 0),
         };
     };
 
@@ -252,9 +255,12 @@ export function Checkout() {
                 discount_amount: exchangeDiscount,
                 exchange_record_id: selectedExchange?.id ?? null,
                 payment_method: paymentMethod,
+                cash_amount: paymentMethod === "Split" ? cashPart : (paymentMethod === "Cash" ? grandTotal : 0),
+                upi_amount: paymentMethod === "Split" ? (grandTotal - cashPart) : (paymentMethod === "UPI" ? grandTotal : 0),
             };
 
             await apiClient.post('/sales', saleData);
+            localStorage.removeItem("pending_bill_items");
 
             addNotification({
                 type: "SALES",
@@ -597,13 +603,54 @@ export function Checkout() {
                         <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider block">Transaction Method</label>
                         <select
                             value={paymentMethod}
-                            onChange={(e) => setPaymentMethod(e.target.value as "Cash" | "UPI")}
+                            onChange={(e) => {
+                                const val = e.target.value as "Cash" | "UPI" | "Split";
+                                setPaymentMethod(val);
+                                if (val === "Split") setCashPart(0);
+                            }}
                             className="w-full bg-[#F8FAFF] border border-gray-100 rounded-2xl px-5 h-16 text-slate-900 font-bold focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none appearance-none cursor-pointer"
                         >
                             <option value="Cash">Cash Transaction</option>
                             <option value="UPI">UPI / QR Payment</option>
+                            <option value="Split">Split Payment (Cash + UPI)</option>
                         </select>
                     </div>
+
+                    {/* Split Payment Inputs */}
+                    {paymentMethod === "Split" && (
+                        <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="space-y-2">
+                                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Cash Amount</label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                                    <input
+                                        type="number"
+                                        value={cashPart || ""}
+                                        onChange={(e) => {
+                                            const val = Math.min(grandTotal, Math.max(0, Number(e.target.value)));
+                                            setCashPart(val);
+                                        }}
+                                        className="w-full bg-[#F8FAFF] border border-gray-100 rounded-2xl pl-8 pr-4 h-14 text-slate-900 font-bold focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none"
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">UPI Amount</label>
+                                <div className="relative">
+                                    <div className="w-full bg-blue-50/50 border border-blue-100/50 rounded-2xl flex items-center px-4 h-14">
+                                        <span className="text-slate-400 font-bold mr-1.5">₹</span>
+                                        <span className="text-[#2E6DFF] font-black text-lg">
+                                            {(grandTotal - cashPart).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                    <div className="absolute -top-1 -right-1 bg-[#2E6DFF] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
+                                        AUTO
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Action button */}
                     <Button
@@ -611,14 +658,16 @@ export function Checkout() {
                         disabled={loading}
                         className={`w-full text-white h-16 rounded-[20px] text-xl font-black shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 ${paymentMethod === "Cash"
                             ? "bg-green-500 hover:bg-green-600 shadow-green-400/25"
-                            : "bg-[#2E6DFF] hover:bg-[#1E5AFF] shadow-[#2E6DFF]/25"
+                            : paymentMethod === "Split"
+                                ? "bg-gradient-to-r from-green-500 to-[#2E6DFF] hover:opacity-90 shadow-blue-400/25"
+                                : "bg-[#2E6DFF] hover:bg-[#1E5AFF] shadow-[#2E6DFF]/25"
                             }`}
                     >
                         {loading ? (
                             <Zap className="w-6 h-6 animate-pulse text-yellow-300 fill-current" />
                         ) : (
                             <>
-                                {paymentMethod === "Cash" ? <Banknote className="w-6 h-6" /> : <QrCode className="w-6 h-6" />}
+                                {paymentMethod === "Cash" ? <Banknote className="w-6 h-6" /> : paymentMethod === "Split" ? <RefreshCcw className="w-6 h-6" /> : <QrCode className="w-6 h-6" />}
                                 Complete Transaction & Invoice
                             </>
                         )}

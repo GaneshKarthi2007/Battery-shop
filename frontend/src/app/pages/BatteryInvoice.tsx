@@ -1,10 +1,12 @@
 import { useLocation, useNavigate } from "react-router";
 import { ArrowLeft, Printer, Download } from "lucide-react";
 import React from "react";
+import { useDeveloper } from "../contexts/DeveloperContext";
 
 const BatteryInvoice: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { shopConfig } = useDeveloper();
 
   const state = location.state as {
     items: { id: string | number; name: string; model: string; price: number; quantity: number; warranty: string; type: "Product" | "Service" }[];
@@ -16,6 +18,8 @@ const BatteryInvoice: React.FC = () => {
     productGst: number;
     exchangeDiscount: number;
     finalTotal: number;
+    cashAmount?: number;
+    upiAmount?: number;
     warrantyDetails: {
       totalWarranty: string;
       totalWarrantyExpiry: string;
@@ -32,10 +36,10 @@ const BatteryInvoice: React.FC = () => {
   }
 
   const invoiceData = {
-    shopName: "SMR Battery Shop",
-    address: "Thoothukudi, Tamilnadu",
-    phone: "7092706484",
-    gst: "33XXXXX1234X1Z5",
+    shopName: shopConfig.name,
+    address: shopConfig.address,
+    phone: shopConfig.phone,
+    gst: shopConfig.gst,
     invoiceNo: `INV-${Date.now().toString().slice(-6)}`,
     date: new Date().toLocaleDateString('en-IN'),
     customerName: state.customerInfo.name,
@@ -56,6 +60,8 @@ const BatteryInvoice: React.FC = () => {
     exchange: state.exchangeDiscount,
     grandTotal: state.finalTotal,
     paymentMethod: state.paymentMethod,
+    cashAmount: state.cashAmount,
+    upiAmount: state.upiAmount,
     warrantyPeriod: state.warrantyDetails.totalWarranty || "48 Months",
   };
 
@@ -73,17 +79,17 @@ const BatteryInvoice: React.FC = () => {
         <div className="flex gap-3">
           <button
             onClick={() => window.print()}
-            className="text-blue-700 bg-blue-50 px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-100 transition-all shadow-sm active:scale-95"
+            title="Print Invoice"
+            className="text-blue-700 bg-blue-50 p-2.5 rounded-xl font-bold flex items-center justify-center hover:bg-blue-100 transition-all shadow-sm active:scale-95"
           >
             <Printer className="w-5 h-5" />
-            Print
           </button>
           <button
             onClick={() => window.print()}
-            className="bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-800 transition-all shadow-lg active:scale-95"
+            title="Download as PDF"
+            className="bg-blue-700 text-white p-2.5 rounded-xl font-bold flex items-center justify-center hover:bg-blue-800 transition-all shadow-lg active:scale-95"
           >
             <Download className="w-5 h-5" />
-            Download as PDF
           </button>
         </div>
       </div>
@@ -136,7 +142,16 @@ const BatteryInvoice: React.FC = () => {
                 </div>
                 <div className="flex justify-end gap-4">
                   <span className="font-medium text-gray-900">Payment Mode:</span>
-                  <span className="font-semibold text-blue-600">{invoiceData.paymentMethod}</span>
+                  <div className="text-right">
+                    <span className="font-semibold text-blue-600">
+                      {invoiceData.paymentMethod === "Split" ? "Split (Cash + UPI)" : invoiceData.paymentMethod}
+                    </span>
+                    {invoiceData.paymentMethod === "Split" && (
+                      <div className="text-[11px] text-gray-500 mt-0.5">
+                        Cash: ₹{invoiceData.cashAmount?.toLocaleString()} | UPI: ₹{invoiceData.upiAmount?.toLocaleString()}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

@@ -5,9 +5,9 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { apiClient } from "../api/client";
+import { useDeveloper } from "../contexts/DeveloperContext";
 
 const UPI_ID = "errorkiller001@oksbi";
-const SHOP_NAME = "PowerCell Pro";
 const POLL_MS = 3000;
 
 type PaymentStatus =
@@ -21,6 +21,7 @@ type PaymentStatus =
 export function UPIPayment() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { shopConfig } = useDeveloper();
 
     const state = location.state as {
         amount: number;
@@ -32,7 +33,7 @@ export function UPIPayment() {
 
     const amount = state?.amount ?? 0;
 
-    const upiUrl = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(SHOP_NAME)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent("Battery Shop Payment")}`;
+    const upiUrl = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(shopConfig.name)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent("Battery Shop Payment")}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&ecc=M&data=${encodeURIComponent(upiUrl)}`;
 
     const [copied, setCopied] = useState(false);
@@ -164,9 +165,9 @@ export function UPIPayment() {
                 <h1 className="text-lg font-bold text-gray-900">UPI Payment</h1>
                 {/* Live indicator dot */}
                 <div className={`w-3 h-3 rounded-full mr-2 transition-colors ${status === "done" ? "bg-green-500" :
-                        status === "received" ? "bg-green-400 animate-pulse" :
-                            status === "finalising" ? "bg-amber-400 animate-pulse" :
-                                status === "waiting" ? "bg-blue-400 animate-pulse" : "bg-gray-300"
+                    status === "received" ? "bg-green-400 animate-pulse" :
+                        status === "finalising" ? "bg-amber-400 animate-pulse" :
+                            status === "waiting" ? "bg-blue-400 animate-pulse" : "bg-gray-300"
                     }`} />
             </header>
 

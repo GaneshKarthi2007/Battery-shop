@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Package, Plus, Edit, AlertTriangle, TrendingUp, Trash2 } from "lucide-react";
-import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { apiClient } from "../api/client";
@@ -118,7 +117,7 @@ export function Inventory() {
   };
 
   if (loading) {
-    return <BatteryLoader />;
+    // Page loader removed for smoother page transitions
   }
 
   if (error) {

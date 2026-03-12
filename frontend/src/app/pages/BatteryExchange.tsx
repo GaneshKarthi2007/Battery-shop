@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { RefreshCcw, Calculator, CheckCircle, Zap, Clock, History } from "lucide-react";
-import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { apiClient } from "../api/client";
@@ -121,7 +120,9 @@ export function BatteryExchange() {
     }
   };
 
-  if (loading) return <BatteryLoader />;
+  if (loading) {
+    // Page loader removed for smoother page transitions
+  }
 
   const pendingCount = exchangeRecords.filter(r => r.status === "pending").length;
   const consumedCount = exchangeRecords.filter(r => r.status === "consumed").length;

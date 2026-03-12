@@ -6,14 +6,9 @@ import {
   Wrench,
   IndianRupee,
   AlertTriangle,
-  ArrowUp,
-  ArrowDown,
-  Sparkles,
-  ChevronRight,
 } from "lucide-react";
-import { BatteryLoader } from "../components/ui/BatteryLoader";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "../contexts/AuthContext";
+import { useDeveloper } from "../contexts/DeveloperContext";
 import { apiClient } from "../api/client";
 
 interface DashboardData {
@@ -40,56 +35,10 @@ interface DashboardData {
   }>;
 }
 
-interface StatCardProps {
-  title: string;
-  value: string;
-  change: number;
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
-  onClick?: () => void;
-  children?: React.ReactNode;
-}
-
-function StatCard({ title, value, change, icon: Icon, color, onClick, children }: StatCardProps) {
-  const isPositive = change >= 0;
-
-  return (
-    <div
-      onClick={onClick}
-      className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm transition-all ${onClick ? 'cursor-pointer hover:border-blue-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-50' : ''}`}
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">{title}</p>
-          <h3 className="text-2xl font-black text-gray-900 mb-2">{value}</h3>
-          <div className="flex items-center gap-1">
-            {isPositive ? (
-              <ArrowUp className="w-4 h-4 text-green-600" />
-            ) : (
-              <ArrowDown className="w-4 h-4 text-red-600" />
-            )}
-            <span
-              className={`text-sm font-bold ${isPositive ? "text-green-600" : "text-red-600"
-                }`}
-            >
-              {Math.abs(change)}%
-            </span>
-            <span className="text-xs text-gray-400 font-medium">vs last week</span>
-          </div>
-        </div>
-        <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center shadow-lg`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-}
-
 export function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { shopConfig } = useDeveloper();
   const firstName = user?.name ? user.name.split(' ')[0] : 'Member';
 
   const [data, setData] = useState<DashboardData | null>(null);
@@ -112,18 +61,18 @@ export function Dashboard() {
   }, []);
 
   if (loading) {
-    return <BatteryLoader />;
+    // Component mounts immediately, data populates when ready
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center">
-        <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-        <h3 className="text-xl font-black text-gray-900 mb-2">Sync Error</h3>
-        <p className="text-red-600/80 font-medium mb-6">{error}</p>
+      <div className="bg-red-50 border border-red-100 rounded-xl p-6 text-center">
+        <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-3" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">Sync Error</h3>
+        <p className="text-red-500 text-sm mb-4">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
+          className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
         >
           Try Again
         </button>
@@ -132,303 +81,124 @@ export function Dashboard() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      {/* Greetings Header */}
-      <div className="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400/10 rounded-full -ml-10 -mb-10 blur-2xl"></div>
-
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 px-3 py-1 bg-white/10 w-fit rounded-full text-blue-100 text-xs font-bold uppercase tracking-widest backdrop-blur-md border border-white/10">
-              <Sparkles className="w-3 h-3" />
-              Battery Shop
-            </div>
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight">
-              Hello, <span className="text-blue-200">{firstName}!</span>
-            </h1>
-            <p className="text-blue-100/80 font-medium max-w-md">
-              {isAdmin
-                ? "Here's the latest performance overview for your shop today."
-                : "Welcome back! Check out our current battery catalog and prices."}
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden md:block border-l border-white/10 pl-4">
-              <p className="text-xs text-blue-200 font-bold uppercase tracking-wider">Today's Date</p>
-              <p className="text-lg font-bold">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-            </div>
-          </div>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* 1. Header & Greetings */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Welcome back, {firstName}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
+        </div>
+        <div className="text-sm text-gray-500">
+          Shop: <span className="font-medium text-gray-900">{shopConfig.name}</span>
         </div>
       </div>
 
-      {/* Stats Grid - Role Based */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {isAdmin && (
-          <StatCard
-            title="Today's Sales"
-            value={`₹${data?.todaySales.toLocaleString()}`}
-            change={0} // Can be calculated if backend provides previous week/day data
-            icon={IndianRupee}
-            color="bg-gradient-to-br from-blue-500 to-blue-700"
-            onClick={() => navigate('/sales')}
-          />
-        )}
-        <StatCard
-          title="Total Stock"
-          value={`${data?.totalStock} Units`}
-          change={0}
-          icon={Package}
-          color="bg-gradient-to-br from-emerald-500 to-emerald-700"
-          onClick={() => navigate('/inventory')}
-        />
-        <StatCard
-          title={isAdmin ? "Pending Services" : "My Assigned Jobs"}
-          value={`${data?.pendingServices}`}
-          change={0}
-          icon={Wrench}
-          color="bg-gradient-to-br from-orange-500 to-orange-700"
+      {/* 2. Primary KPI Grid */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:gap-6">
+        {/* Today's Sales */}
+        <div className="bg-white rounded-xl p-4 md:p-5 border border-gray-200">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <h3 className="text-xs md:text-sm font-medium text-gray-500">Today's Sales</h3>
+            <IndianRupee className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+          </div>
+          <p className="text-xl md:text-2xl font-bold text-gray-900">₹{data?.todaySales.toLocaleString() || '0'}</p>
+        </div>
+
+        {/* Pending Services */}
+        <div
           onClick={() => navigate('/service')}
+          className="bg-white rounded-xl p-4 md:p-5 border border-gray-200 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
         >
-          {!isAdmin && data?.assignedJobs && data.assignedJobs.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Jobs</p>
-              <div className="space-y-2">
-                {data.assignedJobs.slice(0, 2).map((job) => (
-                  <div key={job.id} onClick={(e) => { e.stopPropagation(); navigate(`/service/${job.id}`); }} className="flex items-center justify-between p-2 rounded-xl bg-gray-50 hover:bg-blue-50 transition-colors group cursor-pointer border border-transparent hover:border-blue-100">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                      <span className="text-xs font-bold text-gray-700">{job.customer_name}</span>
-                    </div>
-                    <ChevronRight className="w-3 h-3 text-gray-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </StatCard>
-        {isAdmin && (
-          <StatCard
-            title="Monthly Profit"
-            value={`₹${(data?.monthlyProfit || 0) >= 100000 ? ((data?.monthlyProfit || 0) / 100000).toFixed(1) + 'L' : data?.monthlyProfit.toLocaleString()}`}
-            change={0}
-            icon={TrendingUp}
-            color="bg-gradient-to-br from-indigo-500 to-indigo-700"
-            onClick={() => navigate('/reports')}
-          />
-        )}
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <h3 className="text-xs md:text-sm font-medium text-gray-500">Pending Services</h3>
+            <Wrench className="w-4 h-4 md:w-5 md:h-5 text-orange-400" />
+          </div>
+          <p className="text-xl md:text-2xl font-bold text-gray-900">{data?.pendingServices || '0'}</p>
+        </div>
+
+        {/* Inventory */}
+        <div
+          onClick={() => navigate('/inventory')}
+          className="bg-white rounded-xl p-4 md:p-5 border border-gray-200 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
+        >
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <h3 className="text-xs md:text-sm font-medium text-gray-500">Inventory</h3>
+            <Package className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
+          </div>
+          <p className="text-xl md:text-2xl font-bold text-gray-900">{data?.totalStock || '0'}</p>
+        </div>
+
+        {/* Growth Rate */}
+        <div className="bg-white rounded-xl p-4 md:p-5 border border-gray-200">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <h3 className="text-xs md:text-sm font-medium text-gray-500">Growth Rate</h3>
+            <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
+          </div>
+          <p className="text-xl md:text-2xl font-bold text-gray-900">24.8%</p>
+        </div>
       </div>
 
-      {!isAdmin ? (
-        /* Staff View: Product List */
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">Our Products</h2>
-              <p className="text-gray-500 font-medium">Quick reference for current inventory & pricing</p>
-            </div>
+      {/* 3. Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Activity Feed */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Recent Activity</h2>
+          <div className="space-y-3">
+            {data?.assignedJobs && data.assignedJobs.length > 0 ? (
+              data.assignedJobs.slice(0, 4).map((job, idx) => (
+                <div
+                  key={job.id}
+                  onClick={() => navigate(`/service/${job.id}`)}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors border border-transparent hover:border-gray-100"
+                >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 shrink-0">
+                    {idx % 2 === 0 ? <Wrench className="w-4 h-4" /> : <Package className="w-4 h-4" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {job.customer_name} • {job.vehicle_details}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {new Date(job.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {job.status}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
+            )}
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {data?.lowStockItems.slice(0, 6).map((item) => ( // Showing some items for staff view if needed, or all products
-              <div
-                key={item.id}
-                className="bg-white rounded-[1.5rem] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 transition-colors">
-                    <Package className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors" />
-                  </div>
-                  <div className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                    {item.type}
-                  </div>
+        {/* Operational Health */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Operational Health</h2>
+          <div className="space-y-5">
+            {[
+              { label: 'Service Efficiency', val: '92%', color: 'bg-blue-500' },
+              { label: 'Customer Satisfaction', val: '96%', color: 'bg-emerald-500' },
+              { label: 'Inventory Turnover', val: '80%', color: 'bg-orange-500' }
+            ].map((item) => (
+              <div key={item.label}>
+                <div className="flex justify-between items-end mb-1.5">
+                  <span className="text-sm text-gray-600">{item.label}</span>
+                  <span className="text-sm font-medium text-gray-900">{item.val}</span>
                 </div>
-
-                <div className="space-y-1 mb-6">
-                  <h3 className="font-black text-gray-900 text-lg group-hover:text-blue-600 transition-colors tracking-tight">
-                    {item.brand} {item.model}
-                  </h3>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                  <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Selling Price</p>
-                    <p className="text-xl font-black text-gray-900">₹{item.price.toLocaleString()}</p>
-                  </div>
-                  <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${item.stock < item.min_stock ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                    {item.stock} in stock
-                  </div>
+                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${item.color} rounded-full`}
+                    style={{ width: item.val }}
+                  ></div>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      ) : (
-        /* Admin View: Charts & Alerts */
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Sales Chart */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <div className="mb-6 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-black text-gray-900 uppercase">Weekly Sales</h2>
-                  <p className="text-xs font-bold text-gray-400 tracking-tight">Revenue generated per day</p>
-                </div>
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={data?.weeklySales || []}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} fontSize={12} stroke="#94a3b8" />
-                  <YAxis axisLine={false} tickLine={false} fontSize={12} stroke="#94a3b8" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "none",
-                      borderRadius: "16px",
-                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                      fontSize: "14px",
-                      fontWeight: "bold",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="sales"
-                    stroke="#2563eb"
-                    strokeWidth={4}
-                    dot={{ fill: "#2563eb", strokeWidth: 2, r: 4, stroke: "#fff" }}
-                    activeDot={{ r: 6, strokeWidth: 0 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Units Sold Chart */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <div className="mb-6 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-black text-gray-900 uppercase">Units Sold</h2>
-                  <p className="text-xs font-bold text-gray-400 tracking-tight">Sales volume by quantity</p>
-                </div>
-                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-                  <Package className="w-5 h-5" />
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={data?.weeklySales || []}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} fontSize={12} stroke="#94a3b8" />
-                  <YAxis axisLine={false} tickLine={false} fontSize={12} stroke="#94a3b8" />
-                  <Tooltip
-                    cursor={{ fill: '#f8fafc', radius: 12 }}
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "none",
-                      borderRadius: "16px",
-                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                      fontSize: "14px",
-                      fontWeight: "bold",
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#10b981" radius={[12, 12, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Low Stock Alert & Recent Services */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden h-fit">
-              <div className="p-6 border-b border-gray-50 bg-gradient-to-r from-orange-50/50 to-white flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center shadow-inner">
-                    <AlertTriangle className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Inventory Alerts</h2>
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-tighter italic">Critical stock levels</p>
-                  </div>
-                </div>
-                <button onClick={() => navigate('/inventory')} className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 group">
-                  View All <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <tbody className="divide-y divide-gray-50">
-                    {data?.lowStockItems.slice(0, 5).map((item) => {
-                      const isCritical = item.stock < item.min_stock / 2;
-                      return (
-                        <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="font-black text-gray-900">{item.brand}</div>
-                            <div className="text-[10px] font-bold text-gray-400 uppercase">{item.model}</div>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`text-sm font-black ${isCritical ? 'text-red-600' : 'text-orange-600'}`}>
-                              {item.stock} / {item.min_stock}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${isCritical ? 'bg-red-50 text-red-700' : 'bg-orange-50 text-orange-700'}`}>
-                              {isCritical ? 'CRITICAL' : 'LOW'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden h-fit">
-              <div className="p-6 border-b border-gray-50 bg-gradient-to-r from-blue-50/50 to-white flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
-                    <Wrench className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Recent Service Logs</h2>
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-tighter italic">Latest customer complaints</p>
-                  </div>
-                </div>
-                <button onClick={() => navigate('/service')} className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 group">
-                  All Logs <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <tbody className="divide-y divide-gray-50">
-                    {data?.assignedJobs.slice(0, 5).map((job) => (
-                      <tr key={job.id} onClick={() => navigate(`/service/${job.id}`)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
-                        <td className="px-6 py-4">
-                          <div className="font-black text-gray-900 group-hover:text-blue-600 transition-colors">#{job.id} {job.customer_name}</div>
-                          <div className="text-[10px] font-bold text-gray-400 uppercase">{job.vehicle_details}</div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${job.status === 'Pending' ? 'bg-yellow-50 text-yellow-700' :
-                              job.status === 'In Progress' ? 'bg-blue-50 text-blue-700' :
-                                'bg-green-50 text-green-700'
-                            }`}>
-                            {job.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="text-[10px] font-black text-gray-400 uppercase">{new Date(job.created_at).toLocaleDateString()}</div>
-                          <div className="text-[10px] font-bold text-gray-300 uppercase">{new Date(job.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

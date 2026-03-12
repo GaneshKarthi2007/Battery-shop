@@ -3,7 +3,6 @@ import { useNavigate } from "react-router";
 import { Plus, Minus, Trash2, ShoppingCart, Search, CreditCard, ChevronUp, CheckCheck, AlertTriangle } from "lucide-react";
 import { Button } from "../components/Button";
 import { apiClient } from "../api/client";
-import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { useDeveloper } from "../contexts/DeveloperContext";
@@ -88,7 +87,26 @@ export function BatterySales() {
     };
 
     fetchData();
+
+    // Load persisted bill items
+    const savedItems = localStorage.getItem("pending_bill_items");
+    if (savedItems) {
+      try {
+        setBillItems(JSON.parse(savedItems));
+      } catch (e) {
+        console.error("Failed to parse saved bill items", e);
+      }
+    }
   }, []);
+
+  // Persist bill items on change
+  useEffect(() => {
+    if (billItems.length > 0) {
+      localStorage.setItem("pending_bill_items", JSON.stringify(billItems));
+    } else {
+      localStorage.removeItem("pending_bill_items");
+    }
+  }, [billItems]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -201,7 +219,10 @@ export function BatterySales() {
 
   return (
     <div className="space-y-6">
-      {loading && <BatteryLoader />}
+      {loading && (
+        // Page loader removed for smoother page transitions
+        null
+      )}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Billing</h1>

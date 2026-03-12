@@ -34,6 +34,8 @@ class SalesController extends Controller
             'discount_amount' => 'nullable|numeric',
             'exchange_record_id' => 'nullable|exists:exchange_records,id',
             'payment_method' => 'sometimes|string',
+            'cash_amount' => 'nullable|numeric',
+            'upi_amount' => 'nullable|numeric',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -48,6 +50,8 @@ class SalesController extends Controller
                 'extra_charges' => $validated['extra_charges'] ?? 0,
                 'discount_amount' => $validated['discount_amount'] ?? 0,
                 'payment_method' => $validated['payment_method'] ?? 'Cash',
+                'cash_amount' => $validated['cash_amount'] ?? null,
+                'upi_amount' => $validated['upi_amount'] ?? null,
             ]);
 
             // Handle exchange record consumption

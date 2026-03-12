@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, AlertTriangle, Zap, MapPin, Mic, Play, CreditCard, ShoppingCart, ShoppingBag, RefreshCw, Activity } from "lucide-react";
-import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { Button } from "../components/Button";
 import { ContactActions } from "../components/ui/ContactActions";
 import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
 import { useAuth } from "../contexts/AuthContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { apiClient } from "../api/client";
+import { ServiceGpsCamera } from "../components/ServiceGpsCamera";
 
 interface ServiceRequest {
     id: number;
@@ -402,7 +402,7 @@ export function ServiceDetails() {
     };
 
     if (loading) {
-        return <BatteryLoader />;
+        // Page loader removed for smoother page transitions
     }
 
     if (error || !service) {
@@ -580,6 +580,11 @@ export function ServiceDetails() {
                                             </div>
                                         )}
                                     </div>
+                                </section>
+
+                                <section className="pt-4 border-t border-gray-100">
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Site Photos</h3>
+                                    <ServiceGpsCamera serviceId={service.id} />
                                 </section>
 
                                 <section className="pt-4 border-t border-gray-100">
