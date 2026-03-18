@@ -84,15 +84,6 @@ interface Staff {
 }
 
 
-const SUB_STATUS_OPTIONS: Record<string, string[]> = {
-    "Charging Issue": ["Battery on charging", "Checking Gravity", "Cell Failed", "Charged Successfully"],
-    "Dead Battery": ["Checking Battery", "Battery Dead/Needs Replace", "Battery Revived"],
-    "Self Start Issue": ["Checking Wiring", "Relay Issue", "Starter Motor Issue", "Resolved"],
-    "Warranty Claim": ["Sent to Company", "Company Rejected", "Company Approved", "Replacement Given"],
-    "Periodic Maintenance": ["Cleaning Terminals", "Topping up Water", "Checking Voltage", "Done"],
-    "Other": ["Checking", "Waiting for Parts", "Work in Progress"]
-};
-
 export function ServiceDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -181,25 +172,6 @@ export function ServiceDetails() {
         }
     };
 
-    const handleUpdateSubStatus = async (newSubStatus: string) => {
-        if (!service) return;
-        setUpdating(true);
-        try {
-            const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, { sub_status: newSubStatus });
-            setService(updated);
-            addNotification({
-                type: "SERVICE",
-                title: "Sub Status Updated",
-                message: `Service #${service.id} sub status changed to ${newSubStatus}.`,
-                role: "staff"
-            });
-        } catch (err: any) {
-            alert(err.message || "Failed to update sub status");
-        } finally {
-            setUpdating(false);
-        }
-    };
-
     const handleAssignStaff = async (staffId: number) => {
         if (!service) return;
         setUpdating(true);
@@ -266,26 +238,7 @@ export function ServiceDetails() {
         }
     };
 
-    const handleDeleteProcessFlow = async (flowId: number) => {
-        if (!confirm("Are you sure you want to delete this update? This will also delete any associated voice recording.")) return;
-        setUpdating(true);
-        try {
-            await apiClient.delete(`/service-flows/${flowId}`);
-            addNotification({
-                type: "SERVICE",
-                title: "Update Deleted",
-                message: "The service update has been removed.",
-                role: "staff"
-            });
-            fetchService(); // Refresh data
-        } catch (err: any) {
-            alert(err.message || "Failed to delete update");
-        } finally {
-            setUpdating(false);
-        }
-    };
-
-    const handleVerifyPayment = async () => {
+    const handleVerifyPayment = async ( ) => {
         if (!id) return;
         setUpdating(true);
         try {
