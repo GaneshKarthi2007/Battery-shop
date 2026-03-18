@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 import {
     ArrowLeft, User, FileText, Zap, ShieldCheck, Wrench,
-    Car, Home, Truck, RefreshCcw, CheckCircle,
-    Banknote, QrCode
+    Truck, RefreshCcw, Banknote, QrCode
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
@@ -12,6 +11,7 @@ import { useNotifications } from "../contexts/NotificationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { ContactActions } from "../components/ui/ContactActions";
+
 interface SalesItem {
     id: number | string;
     name: string;
@@ -35,36 +35,24 @@ interface ExchangeRecord {
 function WarrantyInput({
     label,
     value,
-    unit,
     onValueChange,
-    onUnitChange,
 }: {
     label: string;
     value: string;
-    unit: string;
     onValueChange: (v: string) => void;
-    onUnitChange: (u: string) => void;
 }) {
     return (
-        <div className="space-y-2">
-            <label className="text-[13px] font-semibold text-slate-500 ml-1">{label}</label>
-            <div className="flex gap-2">
+        <div className="flex items-center justify-between group">
+            <label className="text-[14px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">{label}</label>
+            <div className="relative w-32">
                 <input
                     type="number"
                     min="0"
                     value={value}
                     onChange={(e) => onValueChange(e.target.value)}
-                    className="flex-1 bg-[#F8FAFF] border border-transparent rounded-xl px-4 h-14 text-slate-900 font-bold focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none"
+                    className="w-full bg-slate-900 border-2 border-slate-600 rounded-xl px-4 h-12 !text-[#FFFFFF] font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none transition-all placeholder:!text-[#CBD5E1] text-right"
                     placeholder="0"
                 />
-                <select
-                    value={unit}
-                    onChange={(e) => onUnitChange(e.target.value)}
-                    className="h-14 bg-[#F8FAFF] border border-transparent rounded-xl px-3 text-slate-700 font-semibold focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none min-w-[110px]"
-                >
-                    <option value="Months">Months</option>
-                    <option value="Years">Years</option>
-                </select>
             </div>
         </div>
     );
@@ -81,6 +69,13 @@ export function Checkout() {
         subtotal: number;
         gst: number;
         total: number;
+        fromService?: boolean;
+        serviceId?: number;
+        customerInfo?: {
+            name: string;
+            phone: string;
+            address: string;
+        };
     } | undefined;
 
     /** ── Customer ── */
@@ -93,6 +88,7 @@ export function Checkout() {
 
     /** ── Product / Type ── */
     const [productType, setProductType] = useState<"Vehicle" | "Inverter">("Vehicle");
+    const [vehicleModel, setVehicleModel] = useState(""); // UI-only for now or shared with vehicleNumber
     const [vehicleNumber, setVehicleNumber] = useState("");
     const [installAddress, setInstallAddress] = useState("");
     const [sameAsBilling, setSameAsBilling] = useState(false);
@@ -108,9 +104,8 @@ export function Checkout() {
 
     /** ── Warranty ── */
     const [totalWarrantyVal, setTotalWarrantyVal] = useState("36");
-    const [totalWarrantyUnit, setTotalWarrantyUnit] = useState("Months");
     const [freeReplacementVal, setFreeReplacementVal] = useState("18");
-    const [freeReplacementUnit, setFreeReplacementUnit] = useState("Months");
+    const [warrantyUnit, setWarrantyUnit] = useState<"Months" | "Years">("Months");
 
     /** ── Payment ── */
     const [paymentMethod, setPaymentMethod] = useState<"Cash" | "UPI" | "Split">("Cash");
@@ -127,17 +122,27 @@ export function Checkout() {
         if (user) setBilledBy(user.name);
     }, [user]);
 
-    /* Auto-fill customer from service data */
+    /* Auto-fill customer from service data or conversion state */
     useEffect(() => {
-        if (serviceItem?.originalData) {
+        if (state?.fromService && state.customerInfo) {
+            setCustomerInfo({
+                name: state.customerInfo.name || "",
+                phone: state.customerInfo.phone || "+91 ",
+                billingAddress: state.customerInfo.address || "",
+            });
+            if (state.customerInfo.address) {
+                setSameAsBilling(true);
+            }
+        } else if (serviceItem?.originalData) {
             const svc = serviceItem.originalData;
             setCustomerInfo(prev => ({
                 ...prev,
                 name: svc.customer_name || "",
                 phone: svc.contact_number || "+91 ",
+                billingAddress: svc.address || ""
             }));
         }
-    }, [hasService, serviceItem]);
+    }, [hasService, serviceItem, state?.fromService, state?.customerInfo]);
 
     /* Same-as-billing checkbox logic */
     useEffect(() => {
@@ -163,14 +168,13 @@ export function Checkout() {
     if (!state) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <p className="text-gray-500">No items selected for checkout.</p>
+                <p className="!text-[#FFFFFF]">No items selected for checkout.</p>
                 <Button onClick={() => navigate("/sales")}>Go to Sales</Button>
             </div>
         );
     }
 
     /* ── Calculations ── */
-    // GST applies only to product subtotal
     const productSubtotal = state.items
         .filter(i => i.type === "Product")
         .reduce((s, i) => s + i.price * i.quantity, 0);
@@ -190,8 +194,8 @@ export function Checkout() {
         else d.setMonth(d.getMonth() + n);
         return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
     };
-    const totalWarrantyExpiry = calcExpiry(totalWarrantyVal, totalWarrantyUnit);
-    const freeReplacementExpiry = calcExpiry(freeReplacementVal, freeReplacementUnit);
+    const totalWarrantyExpiry = calcExpiry(totalWarrantyVal, warrantyUnit);
+    const freeReplacementExpiry = calcExpiry(freeReplacementVal, warrantyUnit);
 
     /* ── Build invoice state helper ── */
     const buildInvoiceState = () => {
@@ -207,9 +211,9 @@ export function Checkout() {
             vehicleNumber,
             installAddress: installationAddress,
             warrantyDetails: {
-                totalWarranty: `${totalWarrantyVal} ${totalWarrantyUnit}`,
+                totalWarranty: `${totalWarrantyVal} ${warrantyUnit}`,
                 totalWarrantyExpiry,
-                freeReplacement: `${freeReplacementVal} ${freeReplacementUnit}`,
+                freeReplacement: `${freeReplacementVal} ${warrantyUnit}`,
                 freeReplacementExpiry,
             },
             billedBy,
@@ -232,7 +236,7 @@ export function Checkout() {
 
         try {
             const vehicleDetails = productType === "Vehicle"
-                ? `Vehicle: ${vehicleNumber}`
+                ? `Vehicle: ${vehicleNumber} ${vehicleModel ? `(${vehicleModel})` : ""}`
                 : `Inverter Installation`;
 
             const installationAddress = productType === "Inverter" ? installAddress : "";
@@ -242,11 +246,11 @@ export function Checkout() {
                 customer_phone: customerInfo.phone,
                 vehicle_details: vehicleDetails,
                 installation_address: installationAddress,
-                product_category: productType,
-                type: "Sale", // Explicitly added the 'type' field
+                product_category: state?.fromService ? "Converted to New Order" : productType,
+                type: "Sale",
                 items: state.items.map(item => ({
                     product_id: item.type === "Product" ? Number(item.id) : null,
-                    service_id: item.type === "Service" ? Number(item.id.toString().replace("service-", "")) : null,
+                    service_id: item.type === "Service" ? Number(item.id.toString().replace("service-", "")) : (state?.fromService ? state.serviceId : null),
                     quantity: item.quantity,
                     price: item.price,
                 })),
@@ -272,38 +276,58 @@ export function Checkout() {
             navigate("/invoice", { state: { ...buildInvoiceState() } });
         } catch (err: any) {
             const msg = err.message || "Failed to process sale. Please try again.";
-            alert(msg); // standard browser warning popup
+            alert(msg);
         } finally {
             setLoading(false);
         }
     };
 
-    const inputClass = "bg-[#F8FAFF] border border-transparent h-14 text-slate-900 font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 rounded-xl";
-    const chargeInput = "bg-transparent border-none w-24 text-right font-black text-slate-900 focus:ring-0 outline-none p-0 text-[16px]";
+    const handleUnitChange = (newUnit: "Months" | "Years") => {
+        if (newUnit === warrantyUnit) return;
+
+        const convert = (val: string) => {
+            const num = parseFloat(val) || 0;
+            if (newUnit === "Years") {
+                // Months to Years
+                const result = num / 12;
+                return Number.isInteger(result) ? result.toString() : result.toFixed(1);
+            } else {
+                // Years to Months
+                return Math.round(num * 12).toString();
+            }
+        };
+
+        setTotalWarrantyVal(convert(totalWarrantyVal));
+        setFreeReplacementVal(convert(freeReplacementVal));
+        setWarrantyUnit(newUnit);
+    };
+
+    const inputClass = "bg-slate-900 border border-slate-600 h-14 !text-[#FFFFFF] font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 rounded-xl transition-all placeholder:!text-[#CBD5E1]";
+    const chargeInput = "bg-transparent border-none w-24 text-right font-black !text-[#FFFFFF] focus:ring-0 outline-none p-0 text-[16px] placeholder:!text-[#CBD5E1]";
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-slate-900">
+        <div className="min-h-screen bg-slate-950 flex flex-col font-sans !text-[#FFFFFF] transition-colors duration-500">
             {loading && <BatteryLoader />}
 
             {/* ── Fixed Checkout Header ── */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
                 <button
                     onClick={() => navigate(-1)}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    className="p-2 hover:bg-slate-800 rounded-full transition-colors"
                 >
-                    <ArrowLeft className="w-5 h-5 text-gray-800" />
+                    <ArrowLeft className="w-5 h-5 !text-[#FFFFFF]" />
                 </button>
-                <h1 className="text-lg font-bold text-gray-900 tracking-tight">Final Checkout</h1>
+                <h1 className="text-lg font-black !text-[#FFFFFF] tracking-tight uppercase">Final Checkout</h1>
                 <div className="w-9" />
             </header>
 
-            <main className="flex-1 px-4 pt-20 pb-10 space-y-8 max-w-2xl mx-auto w-full">
+            <main className="flex-1 px-4 pt-24 pb-12 space-y-10 max-w-2xl mx-auto w-full">
 
                 {/* ── Section: Customer Details ── */}
                 <section className="space-y-4">
                     <SectionHead icon={<User className="w-5 h-5 text-[#2E6DFF]" />} title="Customer Details" />
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
-                        <div className="grid grid-cols-1 gap-5">
+                    <div className="bg-slate-900 rounded-3xl p-8 border border-slate-800 space-y-6">
+                        <div className="grid grid-cols-1 gap-6">
                             <Field label="Full Name">
                                 <Input
                                     type="text"
@@ -340,7 +364,7 @@ export function Checkout() {
                                         if (sameAsBilling) setInstallAddress(e.target.value);
                                     }}
                                     rows={3}
-                                    className="w-full bg-[#F8FAFF] border border-transparent rounded-xl px-4 py-3 text-slate-900 font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none"
+                                    className="w-full bg-slate-900 border border-slate-600 rounded-2xl px-4 py-4 !text-[#FFFFFF] font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:!text-[#CBD5E1]"
                                     placeholder="Door No, Street, City, Pincode"
                                 />
                             </Field>
@@ -348,105 +372,106 @@ export function Checkout() {
                     </div>
                 </section>
 
-                {/* ── Section: Product Information ── */}
+                {/* ── Section: Installation Info ── */}
                 <section className="space-y-4">
-                    <SectionHead icon={<Zap className="w-5 h-5 text-[#2E6DFF]" />} title="Product Information" />
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
-                        {/* Toggle: Vehicle vs Inverter */}
-                        <div className="bg-[#E4E9F2] p-1.5 rounded-2xl flex gap-1">
-                            {([
-                                { value: "Vehicle", icon: <Car className="w-4 h-4" />, label: "Vehicle" },
-                                { value: "Inverter", icon: <Home className="w-4 h-4" />, label: "Inverter" },
-                            ] as const).map(({ value, icon, label }) => (
-                                <button
-                                    key={value}
-                                    onClick={() => setProductType(value)}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all ${productType === value
-                                        ? "bg-white text-[#2E6DFF] shadow-md"
-                                        : "text-slate-500 hover:bg-white/50"
-                                        }`}
-                                >
-                                    {icon} {label}
-                                </button>
-                            ))}
+                    <SectionHead icon={<Zap className="w-5 h-5 text-[#2E6DFF]" />} title="Installation Info" />
+                    <div className="bg-slate-900 rounded-3xl p-8 border border-slate-800 space-y-6">
+                        <div className="flex p-1.5 bg-slate-800 rounded-2xl">
+                            <button
+                                onClick={() => setProductType("Vehicle")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black transition-all ${productType === "Vehicle" ? "bg-slate-700 !text-[#FFFFFF]" : "!text-[#FFFFFF] hover:!text-[#FFFFFF]"}`}
+                            >
+                                <Zap className="w-4 h-4" /> BATTERY / VEHICLE
+                            </button>
+                            <button
+                                onClick={() => setProductType("Inverter")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black transition-all ${productType === "Inverter" ? "bg-slate-700 !text-[#FFFFFF]" : "!text-[#FFFFFF] hover:!text-[#FFFFFF]"}`}
+                            >
+                                <Zap className="w-4 h-4" /> UPS / INVERTER
+                            </button>
                         </div>
 
-                        {/* Conditional fields */}
-                        {productType === "Vehicle" ? (
-                            <Field label="Vehicle Number">
+                        <div className="space-y-6 pt-2">
+                            <Field label={productType === "Vehicle" ? "Vehicle Model" : "Inverter Model"}>
                                 <Input
-                                    type="text"
-                                    value={vehicleNumber}
-                                    onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
-                                    className={inputClass}
-                                    placeholder="e.g. TN 09 AB 1234"
+                                    type="text" value={vehicleModel}
+                                    onChange={(e) => setVehicleModel(e.target.value)}
+                                    className={inputClass} placeholder={productType === "Vehicle" ? "e.g. Swift VDi" : "e.g. Luminous 1.5kVA"}
                                 />
                             </Field>
-                        ) : (
-                            <div className="space-y-3">
-                                {/* Same-as-billing checkbox */}
-                                <label className="flex items-center gap-3 cursor-pointer select-none">
-                                    <div
-                                        onClick={() => {
-                                            const next = !sameAsBilling;
-                                            setSameAsBilling(next);
-                                            if (next) setInstallAddress(customerInfo.billingAddress);
-                                        }}
-                                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${sameAsBilling ? "bg-[#2E6DFF] border-[#2E6DFF]" : "border-gray-300"}`}
-                                    >
-                                        {sameAsBilling && <CheckCircle className="w-3.5 h-3.5 text-white" />}
+                            <Field label={productType === "Vehicle" ? "Vehicle Number" : "Installation ID / Note"}>
+                                <Input
+                                    type="text" value={vehicleNumber}
+                                    onChange={(e) => setVehicleNumber(e.target.value)}
+                                    className={inputClass} placeholder={productType === "Vehicle" ? "e.g. TN 38 BU 1234" : "e.g. Floor 2 / Unit A"}
+                                />
+                            </Field>
+                            <div className="pt-2">
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox" checked={sameAsBilling}
+                                            onChange={(e) => {
+                                                const checked = e.target.checked;
+                                                setSameAsBilling(checked);
+                                                if (checked) setInstallAddress(customerInfo.billingAddress);
+                                            }}
+                                            className="sr-only"
+                                        />
+                                        <div className={`w-12 h-6 rounded-full transition-colors ${sameAsBilling ? "bg-[#2E6DFF]" : "bg-slate-700"}`}></div>
+                                        <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${sameAsBilling ? "translate-x-6" : ""}`}></div>
                                     </div>
-                                    <span className="text-[13px] font-semibold text-slate-600">
-                                        Installation address same as billing address
-                                    </span>
+                                    <span className="text-[14px] font-bold !text-[#FFFFFF] transition-colors">Same as Billing Address</span>
                                 </label>
-                                <Field label="Installation Address">
-                                    <textarea
-                                        value={installAddress}
-                                        onChange={(e) => {
-                                            setInstallAddress(e.target.value);
-                                            if (sameAsBilling) setSameAsBilling(false);
-                                        }}
-                                        rows={3}
-                                        className="w-full bg-[#F8FAFF] border border-transparent rounded-xl px-4 py-3 text-slate-900 font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none"
-                                        placeholder="Installation address…"
-                                    />
-                                </Field>
                             </div>
-                        )}
+
+                            {!sameAsBilling && (
+                                <div className="space-y-4 mt-4 animate-in slide-in-from-top-2 duration-300">
+                                    <Field label="Installation Address">
+                                        <textarea
+                                            value={installAddress}
+                                            onChange={(e) => setInstallAddress(e.target.value)}
+                                            rows={2}
+                                            className="w-full bg-slate-900 border border-slate-600 rounded-2xl px-4 py-4 !text-[#FFFFFF] font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:!text-[#CBD5E1]"
+                                            placeholder="Specific installation location..."
+                                        />
+                                    </Field>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </section>
 
                 {/* ── Section: Order Items & Charges ── */}
                 <section className="space-y-4">
                     <SectionHead icon={<FileText className="w-5 h-5 text-[#2E6DFF]" />} title="Order Items & Charges" />
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="bg-slate-900 rounded-[32px] border border-slate-800 overflow-hidden">
                         {/* Items list */}
-                        <div className="divide-y divide-gray-50">
+                        <div className="divide-y divide-slate-800">
                             {state.items.map((item) => (
                                 <div key={item.id} className="p-5 flex justify-between items-center">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === "Product" ? "bg-blue-50 text-[#2E6DFF]" : "bg-emerald-50 text-emerald-600"}`}>
-                                            {item.type === "Product" ? <Zap className="w-5 h-5" /> : <Wrench className="w-5 h-5" />}
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${item.type === "Product" ? "bg-blue-900/30 text-blue-400" : "bg-emerald-900/30 text-emerald-400"}`}>
+                                            {item.type === "Product" ? <Zap className="w-6 h-6" /> : <Wrench className="w-6 h-6" />}
                                         </div>
                                         <div>
-                                            <h3 className="text-[15px] font-bold text-slate-900">{item.name} {item.model}</h3>
-                                            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-tight">
+                                            <h3 className="text-[15px] font-black !text-[#FFFFFF] tracking-tight">{item.name} {item.model}</h3>
+                                            <p className="text-[11px] !text-[#FFFFFF] font-black uppercase tracking-widest">
                                                 {item.quantity} unit(s) · ₹{item.price.toLocaleString()}
-                                                {item.type === "Product" && <span className="text-slate-300"> · GST included</span>}
+                                                {item.type === "Product" && <span className="!text-[#FFFFFF]"> · GST included</span>}
                                             </p>
                                         </div>
                                     </div>
-                                    <p className="text-[16px] font-black text-slate-900">₹{(item.price * item.quantity).toLocaleString()}</p>
+                                    <p className="text-lg font-black !text-[#FFFFFF] tracking-tighter">₹{(item.price * item.quantity).toLocaleString()}</p>
                                 </div>
                             ))}
                         </div>
 
                         {/* Charges */}
-                        <div className="p-6 bg-[#F8FAFF]/50 space-y-5 border-t border-gray-100">
+                        <div className="p-8 bg-slate-800/30 space-y-6 border-t border-slate-800">
                             <ChargeRow label="Installation Charges" sublabel="No GST applied">
-                                <div className="flex items-center bg-white rounded-xl px-4 py-2.5 border border-blue-100 shadow-sm">
-                                    <span className="text-slate-400 font-bold mr-1">₹</span>
+                                <div className="flex items-center bg-slate-900 rounded-2xl px-4 py-3 border border-slate-700 transition-all focus-within:ring-2 focus-within:ring-blue-500/20">
+                                    <span className="!text-[#FFFFFF] font-bold mr-1">₹</span>
                                     <input
                                         type="number" min="0"
                                         value={installCharges || ""}
@@ -457,8 +482,8 @@ export function Checkout() {
                             </ChargeRow>
 
                             <ChargeRow label="Delivery Charges" sublabel="No GST applied">
-                                <div className="flex items-center bg-white rounded-xl px-4 py-2.5 border border-blue-100 shadow-sm">
-                                    <Truck className="w-4 h-4 text-slate-300 mr-2" />
+                                <div className="flex items-center bg-slate-900 rounded-2xl px-4 py-3 border border-slate-700 transition-all focus-within:ring-2 focus-within:ring-blue-500/20">
+                                    <Truck className="w-4 h-4 !text-[#FFFFFF] mr-2" />
                                     <input
                                         type="number" min="0"
                                         value={deliveryCharges || ""}
@@ -472,21 +497,21 @@ export function Checkout() {
                             <div className="space-y-2 pt-1">
                                 <div className="flex items-center gap-2">
                                     <RefreshCcw className="w-4 h-4 text-red-400" />
-                                    <span className="text-[14px] font-bold text-red-500">Old Battery Exchange</span>
+                                    <span className="text-[14px] font-black text-rose-500 uppercase tracking-widest">Old Battery Exchange</span>
                                 </div>
                                 {loadingExchanges ? (
-                                    <p className="text-xs text-slate-400 py-2">Loading exchange records…</p>
+                                    <p className="text-xs !text-[#FFFFFF] py-2">Loading exchange records…</p>
                                 ) : exchangeRecords.length === 0 ? (
-                                    <div className="bg-white rounded-xl p-4 border border-dashed border-gray-200 text-center">
-                                        <p className="text-[12px] text-slate-400 font-medium">No pending exchange records found</p>
-                                    </div>
+                    <div className="bg-slate-900 rounded-2xl p-6 border border-dashed border-slate-700 text-center transition-all">
+                        <p className="text-[12px] !text-[#FFFFFF] font-bold uppercase tracking-widest">No pending exchange records found</p>
+                    </div>
                                 ) : (
                                     <div className="space-y-2">
                                         {/* Deselect option */}
                                         {selectedExchange && (
                                             <button
                                                 onClick={() => setSelectedExchange(null)}
-                                                className="text-xs text-slate-400 hover:text-slate-600 underline transition-colors"
+                                                className="text-xs !text-[#FFFFFF] hover:!text-[#FFFFFF] underline transition-colors"
                                             >
                                                 Remove exchange selection
                                             </button>
@@ -495,19 +520,19 @@ export function Checkout() {
                                             <div
                                                 key={rec.id}
                                                 onClick={() => setSelectedExchange(selectedExchange?.id === rec.id ? null : rec)}
-                                                className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedExchange?.id === rec.id
-                                                    ? "border-red-400 bg-red-50"
-                                                    : "border-gray-100 bg-white hover:border-gray-200"
+                                                className={`flex items-center justify-between p-5 rounded-[22px] border-2 cursor-pointer transition-all duration-300 group ${selectedExchange?.id === rec.id
+                                                    ? "border-rose-400 bg-rose-50 dark:bg-rose-900/10 dark:border-rose-500"
+                                                    : "border-slate-800 bg-slate-900 hover:border-rose-900"
                                                     }`}
                                             >
                                                 <div>
-                                                    <p className="text-[13px] font-bold text-slate-900">{rec.battery_brand} {rec.battery_model}</p>
-                                                    <p className="text-[11px] text-slate-500">{rec.customer_name}</p>
+                                                    <p className="text-[14px] font-black !text-[#FFFFFF] transition-colors group-hover:text-rose-600">{rec.battery_brand} {rec.battery_model}</p>
+                                                    <p className="text-[11px] !text-[#FFFFFF] font-medium tracking-tight mt-0.5">{rec.customer_name}</p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-[14px] font-black text-red-500">- ₹{Number(rec.valuation_amount).toLocaleString()}</p>
+                                                    <p className="text-lg font-black text-rose-500 tracking-tighter">- ₹{Number(rec.valuation_amount).toLocaleString()}</p>
                                                     {selectedExchange?.id === rec.id && (
-                                                        <p className="text-[10px] text-red-400 font-bold">Selected</p>
+                                                        <p className="text-[10px] text-rose-400 font-black uppercase tracking-widest mt-0.5">Selected</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -517,15 +542,8 @@ export function Checkout() {
                             </div>
                         </div>
 
-                        {/* GST note
-                        <div className="px-6 py-3 bg-amber-50 border-t border-amber-100">
-                            <p className="text-[11px] text-amber-700 font-medium">
-                                ⚡ GST (18%) applies only to product items. Installation and delivery charges are GST-exempt.
-                            </p>
-                        </div> */}
-
                         {/* Summary breakdown */}
-                        <div className="p-6 space-y-2 border-t border-gray-100">
+                        <div className="p-8 space-y-3 bg-slate-900/50 border-t border-slate-800">
                             {serviceSubtotal > 0 && (
                                 <SummaryRow label="Service Charges" value={`₹${serviceSubtotal.toLocaleString()}`} />
                             )}
@@ -534,7 +552,7 @@ export function Checkout() {
                             {installCharges > 0 && <SummaryRow label="Installation Charges" value={`₹${installCharges.toLocaleString()}`} />}
                             {deliveryCharges > 0 && <SummaryRow label="Delivery Charges" value={`₹${deliveryCharges.toLocaleString()}`} />}
                             {exchangeDiscount > 0 && (
-                                <SummaryRow label="Exchange Discount" value={`- ₹${exchangeDiscount.toLocaleString()}`} accent="text-red-500" />
+                                <SummaryRow label="Exchange Discount" value={`- ₹${exchangeDiscount.toLocaleString()}`} accent="text-rose-500" />
                             )}
                         </div>
                     </div>
@@ -542,35 +560,48 @@ export function Checkout() {
 
                 {/* ── Section: Warranty Registration ── */}
                 <section className="space-y-4">
-                    <SectionHead icon={<ShieldCheck className="w-5 h-5 text-[#2E6DFF]" />} title="Warranty Registration" />
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
-                        <div className="grid grid-cols-1 gap-5">
+                    <div className="flex items-center justify-between px-2">
+                        <SectionHead icon={<ShieldCheck className="w-5 h-5 text-[#2E6DFF]" />} title="Warranty Registration" />
+                        <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+                            <button
+                                onClick={() => handleUnitChange("Months")}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Months" ? "bg-blue-600 !text-[#FFFFFF]" : "text-white/40 hover:text-white/70"}`}
+                            >
+                                MONTHS
+                            </button>
+                            <button
+                                onClick={() => handleUnitChange("Years")}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Years" ? "bg-blue-600 !text-[#FFFFFF]" : "text-white/40 hover:text-white/70"}`}
+                            >
+                                YEARS
+                            </button>
+                        </div>
+                    </div>
+                    <div className="bg-slate-900 rounded-3xl p-8 border border-slate-800 space-y-8">
+                        <div className="space-y-6">
                             <WarrantyInput
                                 label="Total Warranty"
                                 value={totalWarrantyVal}
-                                unit={totalWarrantyUnit}
                                 onValueChange={setTotalWarrantyVal}
-                                onUnitChange={setTotalWarrantyUnit}
                             />
+                            <div className="h-px bg-slate-800/50 w-full" />
                             <WarrantyInput
-                                label="Free Replacement Period"
+                                label="Free Replacement"
                                 value={freeReplacementVal}
-                                unit={freeReplacementUnit}
                                 onValueChange={setFreeReplacementVal}
-                                onUnitChange={setFreeReplacementUnit}
                             />
                         </div>
                         {(parseInt(totalWarrantyVal) > 0 || parseInt(freeReplacementVal) > 0) && (
-                            <div className="bg-blue-50 rounded-xl p-4 space-y-1.5 border border-blue-100">
-                                <p className="text-[11px] font-black text-blue-500 uppercase tracking-wider">Calculated Expiry Dates</p>
+                            <div className="bg-[#2E6DFF]/5 rounded-2xl p-6 space-y-2 border border-blue-900/30">
+                                <p className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-[0.2em]">Calculated Expiry Dates</p>
                                 {parseInt(totalWarrantyVal) > 0 && (
-                                    <p className="text-[13px] text-slate-700 font-semibold">
-                                        Total Warranty expires: <span className="text-[#2E6DFF] font-black">{totalWarrantyExpiry}</span>
+                                    <p className="text-[14px] !text-[#FFFFFF] font-bold">
+                                        Total Warranty: <span className="text-blue-400 font-black">{totalWarrantyExpiry}</span>
                                     </p>
                                 )}
                                 {parseInt(freeReplacementVal) > 0 && (
-                                    <p className="text-[13px] text-slate-700 font-semibold">
-                                        Free Replacement upto: <span className="text-[#2E6DFF] font-black">{freeReplacementExpiry}</span>
+                                    <p className="text-[14px] !text-[#FFFFFF] font-bold">
+                                        Free Replacement: <span className="text-blue-400 font-black">{freeReplacementExpiry}</span>
                                     </p>
                                 )}
                             </div>
@@ -579,50 +610,60 @@ export function Checkout() {
                 </section>
 
                 {/* ── Payment Method & Action ── */}
-                <div className="bg-white rounded-3xl shadow-md border border-gray-100 p-6 space-y-5">
+                <div className="bg-slate-900 rounded-[40px] border border-slate-800 p-8 space-y-8 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full -mr-16 -mt-16"></div>
+                    
                     {/* Grand Total */}
-                    <div className="flex items-end justify-between">
+                    <div className="flex items-end justify-between relative z-10">
                         <div className="space-y-1">
-                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
-                                Grand Total
-                                <span className="text-[9px] normal-case font-medium ml-1">
+                            <p className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-[0.2em] mb-1">
+                                Grand Total Payable
+                                <span className="text-[9px] normal-case font-bold ml-1 !text-[#FFFFFF]">
                                     (Incl. ₹{productGst.toLocaleString(undefined, { maximumFractionDigits: 0 })} GST)
                                 </span>
                             </p>
-                            <p className="text-4xl font-black text-slate-900 tracking-tighter">
+                            <p className="text-5xl font-black !text-[#FFFFFF] tracking-tighter transition-all">
                                 ₹{Math.max(0, grandTotal).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                             </p>
                         </div>
-                        <div className="bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-100">
-                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tight">Confirmed</p>
+                        <div className="bg-emerald-500/10 dark:bg-emerald-500/20 px-5 py-2 rounded-full border border-emerald-500/20">
+                            <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Confirmed</p>
+                            </div>
                         </div>
                     </div>
 
                     {/* Payment Method Dropdown */}
-                    <div className="space-y-3">
-                        <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider block">Transaction Method</label>
-                        <select
-                            value={paymentMethod}
-                            onChange={(e) => {
-                                const val = e.target.value as "Cash" | "UPI" | "Split";
-                                setPaymentMethod(val);
-                                if (val === "Split") setCashPart(0);
-                            }}
-                            className="w-full bg-[#F8FAFF] border border-gray-100 rounded-2xl px-5 h-16 text-slate-900 font-bold focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none appearance-none cursor-pointer"
-                        >
-                            <option value="Cash">Cash Transaction</option>
-                            <option value="UPI">UPI / QR Payment</option>
-                            <option value="Split">Split Payment (Cash + UPI)</option>
-                        </select>
+                    <div className="space-y-4 relative z-10">
+                        <label className="text-[12px] font-black !text-[#FFFFFF] uppercase tracking-[0.15em] block ml-1">Transaction Method</label>
+                        <div className="relative group">
+                            <select
+                                value={paymentMethod}
+                                onChange={(e) => {
+                                    const val = e.target.value as "Cash" | "UPI" | "Split";
+                                    setPaymentMethod(val);
+                                    if (val === "Split") setCashPart(0);
+                                }}
+                                className="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl px-6 h-16 !text-[#FFFFFF] font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none appearance-none cursor-pointer transition-all pr-12 group-hover:bg-slate-800"
+                            >
+                                <option value="Cash">Cash Transaction</option>
+                                <option value="UPI">UPI / QR Payment</option>
+                                <option value="Split">Split Payment (Mix Mode)</option>
+                            </select>
+                            <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none !text-[#FFFFFF]">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Split Payment Inputs */}
                     {paymentMethod === "Split" && (
-                        <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <div className="space-y-2">
-                                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Cash Amount</label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                        <div className="grid grid-cols-2 gap-5 animate-in fade-in zoom-in-95 duration-500 relative z-10">
+                            <div className="space-y-3">
+                                <label className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">Cash Part</label>
+                                <div className="relative group">
+                                    <span className="absolute left-5 top-1/2 -translate-y-1/2 !text-[#FFFFFF] font-bold text-lg">₹</span>
                                     <input
                                         type="number"
                                         value={cashPart || ""}
@@ -630,21 +671,21 @@ export function Checkout() {
                                             const val = Math.min(grandTotal, Math.max(0, Number(e.target.value)));
                                             setCashPart(val);
                                         }}
-                                        className="w-full bg-[#F8FAFF] border border-gray-100 rounded-2xl pl-8 pr-4 h-14 text-slate-900 font-bold focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none"
+                                        className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-900 !text-[#FFFFFF] placeholder:!text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                         placeholder="0"
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">UPI Amount</label>
-                                <div className="relative">
-                                    <div className="w-full bg-blue-50/50 border border-blue-100/50 rounded-2xl flex items-center px-4 h-14">
-                                        <span className="text-slate-400 font-bold mr-1.5">₹</span>
-                                        <span className="text-[#2E6DFF] font-black text-lg">
-                                            {(grandTotal - cashPart).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            <div className="space-y-3">
+                                <label className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">UPI Part</label>
+                                <div className="relative group">
+                                    <div className="w-full bg-blue-900/20 border-2 border-blue-800/50 rounded-2xl flex items-center px-6 h-16 transition-all group-hover:bg-blue-900/30">
+                                        <span className="!text-[#FFFFFF] font-bold mr-2 text-lg">₹</span>
+                                        <span className="text-blue-400 font-black text-2xl tracking-tighter">
+                                            {(grandTotal - cashPart).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                         </span>
                                     </div>
-                                    <div className="absolute -top-1 -right-1 bg-[#2E6DFF] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
+                                    <div className="absolute -top-1 -right-1 bg-[#2E6DFF] !text-[#FFFFFF] text-[9px] font-black px-2 py-0.5 rounded-full border border-white dark:border-slate-900">
                                         AUTO
                                     </div>
                                 </div>
@@ -656,19 +697,21 @@ export function Checkout() {
                     <Button
                         onClick={handleProcessSale}
                         disabled={loading}
-                        className={`w-full text-white h-16 rounded-[20px] text-xl font-black shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 ${paymentMethod === "Cash"
-                            ? "bg-green-500 hover:bg-green-600 shadow-green-400/25"
+                        className={`w-full !text-[#FFFFFF] h-20 rounded-[28px] text-xl font-black transition-all active:scale-[0.97] flex items-center justify-center gap-4 relative z-10 ${paymentMethod === "Cash"
+                            ? "bg-emerald-500 hover:bg-emerald-600"
                             : paymentMethod === "Split"
-                                ? "bg-gradient-to-r from-green-500 to-[#2E6DFF] hover:opacity-90 shadow-blue-400/25"
-                                : "bg-[#2E6DFF] hover:bg-[#1E5AFF] shadow-[#2E6DFF]/25"
+                                ? "bg-gradient-to-r from-emerald-500 via-[#2E6DFF] to-blue-600 hover:opacity-95"
+                                : "bg-[#2E6DFF] hover:bg-blue-600"
                             }`}
                     >
                         {loading ? (
-                            <Zap className="w-6 h-6 animate-pulse text-yellow-300 fill-current" />
+                            <Zap className="w-8 h-8 animate-pulse text-yellow-300 fill-current" />
                         ) : (
                             <>
-                                {paymentMethod === "Cash" ? <Banknote className="w-6 h-6" /> : paymentMethod === "Split" ? <RefreshCcw className="w-6 h-6" /> : <QrCode className="w-6 h-6" />}
-                                Complete Transaction & Invoice
+                                <div className="p-2 bg-white/20 rounded-xl">
+                                    {paymentMethod === "Cash" ? <Banknote className="w-6 h-6" /> : paymentMethod === "Split" ? <RefreshCcw className="w-6 h-6" /> : <QrCode className="w-6 h-6" />}
+                                </div>
+                                <span className="uppercase tracking-widest">Generate Bill & Pay</span>
                             </>
                         )}
                     </Button>
@@ -684,17 +727,19 @@ export function Checkout() {
 /** Helpers */
 function SectionHead({ icon, title }: { icon: React.ReactNode; title: string }) {
     return (
-        <div className="flex items-center gap-2 px-1">
-            {icon}
-            <h2 className="text-[13px] font-bold text-slate-500 uppercase tracking-wider">{title}</h2>
+        <div className="flex items-center gap-3 px-2">
+            <div className="p-2 bg-slate-800 rounded-lg border border-slate-700">
+                {icon}
+            </div>
+            <h2 className="text-[13px] font-black !text-[#FFFFFF] uppercase tracking-[0.2em]">{title}</h2>
         </div>
     );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
-        <div className="space-y-2">
-            <label className="text-[13px] font-semibold text-slate-500 ml-1">{label}</label>
+        <div className="space-y-2.5">
+            <label className="text-[12px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">{label}</label>
             {children}
         </div>
     );
@@ -706,10 +751,10 @@ function ChargeRow({
     label: string; sublabel?: string; children: React.ReactNode;
 }) {
     return (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between group">
             <div>
-                <span className="text-[14px] font-bold text-slate-600">{label}</span>
-                {sublabel && <p className="text-[10px] text-slate-400 font-medium">{sublabel}</p>}
+                <span className="text-[15px] font-black !text-[#FFFFFF] transition-colors group-hover:text-blue-500">{label}</span>
+                {sublabel && <p className="text-[10px] !text-[#FFFFFF] font-bold uppercase tracking-widest mt-0.5">{sublabel}</p>}
             </div>
             {children}
         </div>
@@ -718,9 +763,9 @@ function ChargeRow({
 
 function SummaryRow({ label, value, accent }: { label: string; value: string; accent?: string }) {
     return (
-        <div className="flex justify-between items-center">
-            <span className="text-[13px] text-slate-500 font-medium">{label}</span>
-            <span className={`text-[14px] font-bold ${accent ?? "text-slate-900"}`}>{value}</span>
+        <div className="flex justify-between items-center py-0.5">
+            <span className="text-[14px] !text-[#FFFFFF] font-bold tracking-tight">{label}</span>
+            <span className={`text-[15px] font-black ${accent ?? "!text-[#FFFFFF]"} tracking-tight`}>{value}</span>
         </div>
     );
 }

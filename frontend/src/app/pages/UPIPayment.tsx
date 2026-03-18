@@ -154,7 +154,7 @@ export function UPIPayment() {
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
             {/* Fixed header */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
                 <button
                     onClick={() => navigate(-1)}
                     disabled={status === "finalising" || status === "done"}
@@ -196,7 +196,7 @@ export function UPIPayment() {
                 {(status === "waiting" || status === "received" || status === "error") && (
                     <>
                         {/* Amount banner */}
-                        <div className="bg-gradient-to-br from-[#2E6DFF] to-[#1A4FCC] rounded-3xl p-6 text-white text-center shadow-xl shadow-[#2E6DFF]/30">
+                        <div className="bg-gradient-to-br from-[#2E6DFF] to-[#1A4FCC] rounded-3xl p-6 text-white text-center">
                             <p className="text-xs font-bold uppercase tracking-widest text-blue-200 mb-1">Amount to Pay</p>
                             <p className="text-5xl font-black tracking-tighter">
                                 ₹{amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -229,14 +229,14 @@ export function UPIPayment() {
                         )}
 
                         {/* QR Card */}
-                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col items-center gap-5">
+                        <div className="bg-white rounded-3xl border border-gray-100 p-6 flex flex-col items-center gap-5">
                             <div className="flex items-center gap-2">
                                 <Smartphone className="w-5 h-5 text-[#2E6DFF]" />
                                 <p className="text-[13px] font-bold text-slate-500 uppercase tracking-wider">Scan &amp; Pay via UPI</p>
                             </div>
 
                             <div className="relative">
-                                <div className="p-3 bg-white rounded-2xl border-2 border-[#2E6DFF]/10 shadow-inner">
+                                <div className="p-3 bg-white rounded-2xl border-2 border-[#2E6DFF]/10">
                                     <img
                                         src={qrUrl}
                                         alt={`UPI QR — ₹${amount.toFixed(2)} to ${UPI_ID}`}
@@ -251,7 +251,7 @@ export function UPIPayment() {
                                         }}
                                     />
                                 </div>
-                                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white border-2 border-[#2E6DFF]/20 rounded-full px-3 py-1 shadow-sm">
+                                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white border-2 border-[#2E6DFF]/20 rounded-full px-3 py-1">
                                     <span className="text-[11px] font-black text-[#2E6DFF] tracking-tight">UPI</span>
                                 </div>
                             </div>
@@ -284,7 +284,7 @@ export function UPIPayment() {
                         {/* Open UPI App */}
                         <a
                             href={upiUrl}
-                            className="flex w-full items-center justify-center gap-2 bg-[#2E6DFF] hover:bg-[#1E5AFF] text-white h-14 rounded-2xl text-[16px] font-black shadow-lg shadow-[#2E6DFF]/25 transition-all active:scale-[0.98] no-underline"
+                            className="flex w-full items-center justify-center gap-2 bg-[#2E6DFF] hover:bg-[#1E5AFF] text-white h-14 rounded-2xl text-[16px] font-black transition-all active:scale-[0.98] no-underline"
                         >
                             <Smartphone className="w-5 h-5" />
                             Open UPI App
@@ -306,7 +306,7 @@ export function UPIPayment() {
                         {status === "received" && upiPaymentId && (
                             <button
                                 onClick={() => finalisePayment(upiPaymentId)}
-                                className="w-full py-5 rounded-2xl text-[16px] font-black bg-green-500 hover:bg-green-600 text-white shadow-xl shadow-green-400/30 transition-all active:scale-[0.98] flex items-center justify-center gap-3 animate-pulse-once"
+                                className="w-full py-5 rounded-2xl text-[16px] font-black bg-green-500 hover:bg-green-600 text-white transition-all active:scale-[0.98] flex items-center justify-center gap-3 animate-pulse-once"
                             >
                                 <FileText className="w-5 h-5" />
                                 Generate Invoice

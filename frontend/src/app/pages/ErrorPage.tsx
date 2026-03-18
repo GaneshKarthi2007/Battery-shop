@@ -24,7 +24,7 @@ export function ErrorPage() {
             <div className="max-w-md w-full text-center space-y-8">
                 <div className="relative">
                     <div className="absolute inset-0 bg-red-100 rounded-full blur-3xl opacity-50 animate-pulse" />
-                    <div className="relative w-24 h-24 bg-white rounded-3xl shadow-2xl flex items-center justify-center mx-auto border border-red-50">
+                    <div className="relative w-24 h-24 bg-white rounded-3xl flex items-center justify-center mx-auto border border-red-50">
                         <AlertTriangle className="w-12 h-12 text-red-500" />
                     </div>
                 </div>

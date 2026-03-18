@@ -1,13 +1,24 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, AlertTriangle, Zap, MapPin, Mic, Play, CreditCard, ShoppingCart, ShoppingBag, RefreshCw, Activity } from "lucide-react";
+import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, AlertTriangle, Zap, MapPin, Mic, CreditCard, ShoppingCart, ShoppingBag, RefreshCw, Activity, Trash2, CheckCheck } from "lucide-react";
 import { Button } from "../components/Button";
 import { ContactActions } from "../components/ui/ContactActions";
 import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
+import { AudioPlayer } from "../components/ui/AudioPlayer";
 import { useAuth } from "../contexts/AuthContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { apiClient } from "../api/client";
 import { ServiceGpsCamera } from "../components/ServiceGpsCamera";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 
 interface ServiceRequest {
     id: number;
@@ -51,7 +62,20 @@ interface ServiceRequest {
             price: number;
         }
     };
+    process_flows?: ServiceProcessFlowRecord[];
     created_at: string;
+}
+
+interface ServiceProcessFlowRecord {
+    id: number;
+    sub_status: string;
+    notes?: string;
+    voice_note?: string;
+    created_at: string;
+    staff?: {
+        id: number;
+        name: string;
+    };
 }
 
 interface Staff {
@@ -59,23 +83,6 @@ interface Staff {
     name: string;
 }
 
-interface Product {
-    id: number;
-    brand: string;
-    model: string;
-    ah: string;
-    type: string;
-    price: number;
-    stock: number;
-}
-
-interface Receipt {
-    id: number;
-    receipt_number: string;
-    quantity: number;
-    price: string;
-    total: string;
-}
 
 const SUB_STATUS_OPTIONS: Record<string, string[]> = {
     "Charging Issue": ["Battery on charging", "Checking Gravity", "Cell Failed", "Charged Successfully"],
@@ -116,12 +123,8 @@ export function ServiceDetails() {
         issue: ""
     });
 
-    // Receipt flow states
-    const [showReceiptModal, setShowReceiptModal] = useState(false);
-    const [products, setProducts] = useState<Product[]>([]);
-    const [selectedProductId, setSelectedProductId] = useState<number | "">("");
-    const [receiptQuantity, setReceiptQuantity] = useState(1);
-    const [generatedReceipt, setGeneratedReceipt] = useState<Receipt | null>(null);
+    const [staffNote, setStaffNote] = useState("");
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     useEffect(() => {
         fetchService();
@@ -242,12 +245,41 @@ export function ServiceDetails() {
         setUpdating(true);
         const formData = new FormData();
         formData.append('voice_note', file);
+        if (staffNote) {
+            formData.append('notes', staffNote);
+        }
+
         try {
             const updated = await apiClient.post<ServiceRequest>(`/services/${id}/voice-note`, formData);
             setService(updated);
-            alert("Voice note uploaded successfully");
+            setStaffNote("");
+            addNotification({
+                type: "SERVICE",
+                title: "Update Logged",
+                message: "Your note and voice recording have been attached successfully.",
+                role: "staff"
+            });
         } catch (err: any) {
             alert(err.message || "Failed to upload voice note");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleDeleteProcessFlow = async (flowId: number) => {
+        if (!confirm("Are you sure you want to delete this update? This will also delete any associated voice recording.")) return;
+        setUpdating(true);
+        try {
+            await apiClient.delete(`/service-flows/${flowId}`);
+            addNotification({
+                type: "SERVICE",
+                title: "Update Deleted",
+                message: "The service update has been removed.",
+                role: "staff"
+            });
+            fetchService(); // Refresh data
+        } catch (err: any) {
+            alert(err.message || "Failed to delete update");
         } finally {
             setUpdating(false);
         }
@@ -277,103 +309,29 @@ export function ServiceDetails() {
             setService(updated);
             addNotification({
                 type: "SERVICE",
-                title: "Converted to Order",
-                message: `Service #${id} marked as Converted to Order. Awaiting Admin to process replacement.`,
-                role: "staff"
+                title: "Conversion Requested",
+                message: isAdmin 
+                    ? `Service #${id} converted! Navigating to billing...`
+                    : `Service #${id} conversion request sent to Admin.`,
+                role: isAdmin ? "admin" : "staff"
             });
+
+            if (isAdmin) {
+                // Navigate immediately to billing page
+                navigate("/sales", { 
+                    state: { 
+                        fromService: true,
+                        serviceId: updated.id,
+                        customerInfo: {
+                            name: updated.customer_name,
+                            phone: updated.contact_number,
+                            address: updated.address
+                        }
+                    } 
+                });
+            }
         } catch (err: any) {
             alert(err.message || "Failed to convert to order");
-        } finally {
-            setUpdating(false);
-        }
-    };
-
-    const handleProcessConvertedOrder = async () => {
-        if (!id || !selectedProductId) return;
-        setUpdating(true);
-        try {
-            const payload = {
-                product_id: selectedProductId,
-                quantity: receiptQuantity
-            };
-            const updatedService = await apiClient.post<ServiceRequest>(`/services/${id}/process-converted-order`, payload);
-
-            addNotification({
-                type: "SALES",
-                title: "Order Processed",
-                message: `Converted Order ${id} processed successfully.`,
-                role: "admin"
-            });
-
-            // Redirect Admin straight to Invoice
-            const invoiceItems = [];
-
-            // 1. Add Service Charge
-            if (Number(updatedService.service_charge) > 0 || !updatedService.receipt) {
-                invoiceItems.push({
-                    id: updatedService.id,
-                    name: updatedService.battery_brand || "Service",
-                    model: updatedService.battery_model || "Maintenance",
-                    price: Number(updatedService.service_charge),
-                    quantity: 1,
-                    warranty: "N/A",
-                    type: "Service"
-                });
-            }
-
-            // 2. Add Receipt Cost
-            if (updatedService.receipt && updatedService.receipt.product) {
-                invoiceItems.push({
-                    id: updatedService.receipt.product_id,
-                    name: updatedService.receipt.product.brand + " (Replacement)",
-                    model: updatedService.receipt.product.model,
-                    price: Number(updatedService.receipt.price),
-                    quantity: updatedService.receipt.quantity,
-                    warranty: "N/A",
-                    type: "Battery"
-                });
-            }
-
-            const finalTotalVal = Number(updatedService.service_charge) + (updatedService.receipt ? Number(updatedService.receipt.total) : 0);
-
-            navigate("/invoice", {
-                state: {
-                    items: invoiceItems,
-                    customerInfo: {
-                        name: updatedService.customer_name,
-                        phone: updatedService.contact_number,
-                        billingAddress: updatedService.address || "N/A"
-                    },
-                    vehicleNumber: updatedService.vehicle_details || "N/A",
-                    paymentMethod: "Cash",
-                    productSubtotal: updatedService.receipt ? Number(updatedService.receipt.total) : 0,
-                    serviceSubtotal: Number(updatedService.service_charge),
-                    productGst: 0,
-                    exchangeDiscount: 0,
-                    finalTotal: finalTotalVal,
-                    warrantyDetails: {
-                        totalWarranty: "N/A",
-                        totalWarrantyExpiry: "N/A"
-                    }
-                }
-            });
-
-            setShowReceiptModal(false);
-        } catch (err: any) {
-            alert(err.message || "Failed to process order. Ensure sufficient stock.");
-        } finally {
-            setUpdating(false);
-        }
-    };
-
-    const handleOpenProcessModal = async () => {
-        setUpdating(true);
-        try {
-            const data = await apiClient.get<Product[]>('/products');
-            setProducts(data);
-            setShowReceiptModal(true);
-        } catch (err: any) {
-            alert(err.message || "Failed to load products");
         } finally {
             setUpdating(false);
         }
@@ -401,8 +359,29 @@ export function ServiceDetails() {
         }
     };
 
+    const handleDeleteService = () => {
+        setShowDeleteDialog(true);
+    };
+
+    const confirmDeleteService = async () => {
+        if (!id) return;
+        setUpdating(true);
+        try {
+            await apiClient.delete(`/services/${id}`);
+            alert("Service deleted successfully");
+            navigate("/service");
+        } catch (err: any) {
+            alert(err.message || "Failed to delete service");
+        } finally {
+            setUpdating(false);
+            setShowDeleteDialog(false);
+        }
+    };
+
     if (loading) {
-        // Page loader removed for smoother page transitions
+        return <div className="min-h-[60vh] flex items-center justify-center">
+            <Zap className="w-12 h-12 text-blue-600 animate-pulse fill-current" />
+        </div>;
     }
 
     if (error || !service) {
@@ -438,23 +417,34 @@ export function ServiceDetails() {
                     onClick={() => navigate("/service")}
                     className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group"
                 >
-                    <div className="p-2 bg-white rounded-lg border border-gray-200 group-hover:border-blue-200 shadow-sm">
+                    <div className="p-2 bg-white rounded-lg border border-gray-200 group-hover:border-blue-200">
                         <ArrowLeft className="w-5 h-5" />
                     </div>
                     <span className="font-semibold">Back to Services</span>
                 </button>
-                <div className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm ${currentStatus.color} flex items-center gap-2 border border-current/10`}>
-                    <StatusIcon className="w-4 h-4" />
-                    {service.status}
+                <div className="flex items-center gap-3">
+                    <div className={`px-4 py-2 rounded-full text-sm font-bold ${currentStatus.color} flex items-center gap-2 border border-current/10`}>
+                        <StatusIcon className="w-4 h-4" />
+                        {service.status}
+                    </div>
+                    {isAdmin && (
+                        <button
+                            onClick={handleDeleteService}
+                            className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all duration-300 border border-red-100"
+                            title="Delete Service"
+                        >
+                            <Trash2 className="w-5 h-5" />
+                        </button>
+                    )}
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                         <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
+                                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
                                     <Wrench className="w-6 h-6 text-white" />
                                 </div>
                                 <div>
@@ -541,10 +531,69 @@ export function ServiceDetails() {
                                                     </div>
                                                     {(service.resolved_at || (service.billed_at && isAdmin)) && <div className="w-px h-full bg-gray-200 mt-1"></div>}
                                                 </div>
-                                                <div className="pb-4">
-                                                    <p className="text-sm font-bold text-gray-900">In Progress</p>
-                                                    {service.sub_status && <p className="text-xs font-semibold text-amber-600">Sub-Status: {service.sub_status}</p>}
-                                                    <p className="text-xs text-gray-500">{new Date(service.status_updated_at).toLocaleString()}</p>
+                                                <div className="pb-4 flex-1">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <p className="text-sm font-bold text-gray-900">In Progress</p>
+                                                            {service.sub_status && <p className="text-xs font-semibold text-amber-600">Sub-Status: {service.sub_status}</p>}
+                                                            <p className="text-[10px] text-gray-500">{new Date(service.status_updated_at).toLocaleString()}</p>
+                                                        </div>
+
+                                                        {/* Integrated Audio Recorder for Staff */}
+                                                        {service.assigned_to === user?.id && !isAdmin && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowAudioRecorder(true)}
+                                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-100 animate-in fade-in zoom-in-95"
+                                                            >
+                                                                <Mic className="w-3.5 h-3.5" />
+                                                                <span className="text-[10px] font-bold uppercase">Record Update</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Nested Sub-Process Flow */}
+                                                    {service.process_flows && service.process_flows.length > 0 && (
+                                                        <div className="mt-4 ml-1 space-y-3 relative before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-[1px] before:bg-amber-100">
+                                                            {service.process_flows.slice().reverse().map((flow, fIdx) => (
+                                                                <div key={flow.id} className="relative pl-5 group">
+                                                                    <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full border-2 border-white bg-amber-400"></div>
+                                                                    <div className="bg-amber-50/40 p-2.5 rounded-xl border border-amber-100/50 hover:border-amber-200 transition-all">
+                                                                        <div className="flex justify-between items-start">
+                                                                            <p className="text-xs font-bold text-gray-800 leading-tight">{flow.sub_status}</p>
+                                                                            <span className="text-[8px] font-bold text-amber-600/50 uppercase">
+                                                                                {fIdx === 0 ? "Latest" : `#${service.process_flows!.length - fIdx}`}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2 mt-1">
+                                                                            <p className="text-[9px] text-gray-400 font-medium">
+                                                                                {new Date(flow.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {new Date(flow.created_at).toLocaleDateString([], { day: '2-digit', month: 'short' })}
+                                                                            </p>
+                                                                            {flow.staff && (
+                                                                                <p className="text-[9px] font-bold text-gray-400/60 uppercase">— {flow.staff.name}</p>
+                                                                            )}
+                                                                         </div>
+
+                                                                         {flow.notes && (
+                                                                             <p className="mt-2 text-xs text-gray-600 bg-white/50 p-2 rounded-lg border border-amber-100/30 italic leading-relaxed">
+                                                                                 "{flow.notes}"
+                                                                             </p>
+                                                                         )}
+
+                                                                         {flow.voice_note && (
+                                                                            <div className="mt-3">
+                                                                                <AudioPlayer
+                                                                                    src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/storage/${flow.voice_note}`}
+                                                                                    label="Status Update Audio"
+                                                                                    className="!p-2 border-amber-200/50 bg-white/50"
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -582,10 +631,7 @@ export function ServiceDetails() {
                                     </div>
                                 </section>
 
-                                <section className="pt-4 border-t border-gray-100">
-                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Site Photos</h3>
-                                    <ServiceGpsCamera serviceId={service.id} />
-                                </section>
+
 
                                 <section className="pt-4 border-t border-gray-100">
                                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Issue Details</h3>
@@ -601,32 +647,16 @@ export function ServiceDetails() {
                                         </div>
 
                                         {service.voice_note && (
-                                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                                                        <Mic className="w-4 h-4 text-indigo-600" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-bold text-indigo-900">Voice Note</p>
-                                                        <p className="text-[10px] text-indigo-600 font-medium uppercase tracking-wider">Recorded Audio</p>
-                                                    </div>
-                                                </div>
-                                                <audio
-                                                    controls
-                                                    className="hidden"
-                                                    id="voice-player-issue"
+                                            <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+                                                <AudioPlayer
                                                     src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/storage/${service.voice_note}`}
+                                                    label="Initial Complaint Voice Note"
                                                 />
-                                                <Button
-                                                    size="sm"
-                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200"
-                                                    onClick={() => (document.getElementById('voice-player-issue') as HTMLAudioElement)?.play()}
-                                                >
-                                                    <Play className="w-4 h-4 mr-2" /> Play
-                                                </Button>
                                             </div>
                                         )}
                                     </div>
+
+
 
                                     {/* Admin Verification Input */}
                                     {isAdmin && service.status === "Completed" && service.payment_status === "pending" && (
@@ -729,7 +759,7 @@ export function ServiceDetails() {
                                                         });
                                                     }
                                                 }}
-                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 font-bold"
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl flex items-center justify-center gap-2 font-bold"
                                             >
                                                 <Zap className="w-4 h-4" />
                                                 Verify Payment & Generate Bill
@@ -754,133 +784,145 @@ export function ServiceDetails() {
                         </div>
                     </div>
                 </div>
-
                 <div className="space-y-6">
-                    {!isAdmin && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                <Zap className="w-4 h-4 text-blue-600" />
-                                Service Actions
-                            </h3>
-                            <div className="space-y-4">
-                                {!service.assigned_to && !isAdmin && (
+                    <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                        <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <Zap className="w-4 h-4 text-blue-600" />
+                            Service Actions
+                        </h3>
+                        <div className="space-y-4">
+                            {!service.assigned_to && !isAdmin && (
+                                <Button
+                                    onClick={handlePickUp}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 rounded-xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-xs"
+                                >
+                                    <ShoppingBag className="w-5 h-5" />
+                                    Pick Up This Task
+                                </Button>
+                            )}
+
+                            {service.assigned_to === user?.id && !isAdmin && (
+                                <div className="bg-blue-50/50 border-2 border-blue-100 rounded-2xl p-4 space-y-4 mb-4 border-dashed">
+                                    <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2 mb-2">
+                                        <Wrench className="w-3 h-3" />
+                                        Staff Toolbox
+                                    </h4>
+
+                                    <div className="space-y-3">
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block ml-1">Update Progress Notes</label>
+                                            <textarea
+                                                className="w-full px-3 py-2 rounded-xl border border-blue-100 bg-white text-sm focus:ring-2 focus:ring-blue-500 min-h-[80px]"
+                                                placeholder="Add status notes here... (e.g. Battery is charging well)"
+                                                value={staffNote}
+                                                onChange={(e) => setStaffNote(e.target.value)}
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <ServiceGpsCamera serviceId={service.id} />
+                                            <Button
+                                                onClick={() => setShowAudioRecorder(true)}
+                                                variant="primary"
+                                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center gap-2 font-bold py-2.5"
+                                            >
+                                                <Mic className="w-4 h-4" />
+                                                Record Update
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Conversion Actions - Visible to both Admin & Staff */}
+                            {service.status !== "Converted to Order" && (
+                                <Button
+                                    onClick={handleConvertToOrder}
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl flex items-center justify-center gap-2 font-bold mb-4"
+                                >
+                                    <ShoppingCart className="w-4 h-4" />
+                                    {isAdmin ? "Convert & Bill" : "Request New Battery"}
+                                </Button>
+                            )}
+
+                            {service.status === "Converted to Order" && (
+                                <div className="w-full p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-center space-y-4 mb-4">
+                                    <div className="space-y-1">
+                                        <ShoppingCart className="w-6 h-6 text-indigo-400 mx-auto" />
+                                        <p className="font-bold text-indigo-900">Converted to Order</p>
+                                        <p className="text-xs text-indigo-600">
+                                            {isAdmin ? "Staff has requested a new order conversion." : "Waiting for Admin to process..."}
+                                        </p>
+                                    </div>
+                                    {isAdmin && (
+                                        <Button
+                                            onClick={() => navigate("/sales", {
+                                                state: {
+                                                    fromService: true,
+                                                    serviceId: service.id,
+                                                    customerInfo: {
+                                                        name: service.customer_name,
+                                                        phone: service.contact_number,
+                                                        address: service.address
+                                                    }
+                                                }
+                                            })}
+                                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl flex items-center justify-center gap-2 font-bold"
+                                        >
+                                            <CheckCheck className="w-4 h-4" />
+                                            Accept & Process
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Admin-only Verification Action */}
+                            {service.payment_status === "pending" && isAdmin && service.status === "Completed" && !service.receipt && (
+                                <Button
+                                    onClick={handleVerifyPayment}
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl flex items-center justify-center gap-2 font-bold opacity-50 cursor-not-allowed mb-4"
+                                    disabled
+                                >
+                                    <CreditCard className="w-4 h-4" />
+                                    Verify Payment & Close
+                                </Button>
+                            )}
+
+                            {/* Revisit Case Action */}
+                            {service.status === "Completed" && (
+                                <div className="space-y-3 mt-4 border-t border-gray-100 pt-4">
                                     <Button
-                                        onClick={handlePickUp}
-                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 rounded-xl shadow-lg shadow-blue-100 flex items-center justify-center gap-3 font-black uppercase tracking-widest text-xs"
+                                        onClick={() => setShowRevisitForm(!showRevisitForm)}
+                                        className="w-full bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-xl flex items-center justify-center gap-2 font-bold"
                                     >
-                                        <ShoppingBag className="w-5 h-5" />
-                                        Pick Up This Task
+                                        <RefreshCw className="w-4 h-4" />
+                                        Create Revisit
                                     </Button>
-                                )}
 
-                                {service.assigned_to === user?.id && !isAdmin && (
-                                    <>
-                                        {/* Sub-status module was moved to the Status Update section */}
-
-                                        {service.status !== "Completed" && service.status !== "Converted to Order" && service.sub_status === "Battery Dead/Needs Replace" && (
-                                            <Button
-                                                onClick={handleConvertToOrder}
-                                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 font-bold"
-                                            >
-                                                <ShoppingCart className="w-4 h-4" />
-                                                Convert to New Order
-                                            </Button>
-                                        )}
-
-                                        {service.status === "Converted to Order" && (
-                                            <div className="w-full p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-center space-y-2">
-                                                <ShoppingCart className="w-6 h-6 text-indigo-400 mx-auto" />
-                                                <p className="font-bold text-indigo-900">Converted to Order</p>
-                                                <p className="text-xs text-indigo-600">Waiting for Admin to process...</p>
+                                    {showRevisitForm && (
+                                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3 animate-in slide-in-from-top-2">
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-amber-700 uppercase">Issue Summary</label>
+                                                <input
+                                                    className="w-full px-3 py-2 rounded-xl border border-amber-300 text-sm focus:ring-2 focus:ring-amber-500"
+                                                    value={revisitData.issue}
+                                                    onChange={(e) => setRevisitData({ ...revisitData, issue: e.target.value })}
+                                                    placeholder="Required..."
+                                                />
                                             </div>
-                                        )}
-
-                                        {service.payment_status === "pending" && isAdmin && service.status === "Completed" && !service.receipt && (
-                                            <Button
-                                                onClick={handleVerifyPayment}
-                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 font-bold opacity-50 cursor-not-allowed"
-                                                disabled
-                                            >
-                                                <CreditCard className="w-4 h-4" />
-                                                Verify Payment & Close
-                                            </Button>
-                                        )}
-
-                                        {service.status === "Completed" && (
-                                            <div className="space-y-3 mt-4">
-                                                <Button
-                                                    onClick={() => setShowRevisitForm(!showRevisitForm)}
-                                                    className="w-full bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-xl shadow-lg shadow-amber-100 flex items-center justify-center gap-2 font-bold"
-                                                >
-                                                    <RefreshCw className="w-4 h-4" />
-                                                    Create Revisit
-                                                </Button>
-
-                                                {showRevisitForm && (
-                                                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3 animate-in slide-in-from-top-2">
-                                                        <div className="space-y-1">
-                                                            <label className="text-xs font-bold text-amber-700 uppercase">Issue Summary</label>
-                                                            <input
-                                                                className="w-full px-3 py-2 rounded-xl border border-amber-300 text-sm focus:ring-2 focus:ring-amber-500"
-                                                                value={revisitData.issue}
-                                                                onChange={(e) => setRevisitData({ ...revisitData, issue: e.target.value })}
-                                                                placeholder="e.g. Battery not holding charge"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <label className="text-xs font-bold text-amber-700 uppercase">Complaint Type</label>
-                                                            <select
-                                                                className="w-full px-3 py-2 rounded-xl border border-amber-300 text-sm focus:ring-2 focus:ring-amber-500"
-                                                                value={revisitData.complaint_type}
-                                                                onChange={(e) => setRevisitData({ ...revisitData, complaint_type: e.target.value })}
-                                                            >
-                                                                <option value="">Select Type...</option>
-                                                                <option value="Battery Drain">Battery Drain</option>
-                                                                <option value="Starting Trouble">Starting Trouble</option>
-                                                                <option value="Physical Damage">Physical Damage</option>
-                                                                <option value="Other">Other</option>
-                                                            </select>
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <label className="text-xs font-bold text-amber-700 uppercase">Detailed Description</label>
-                                                            <textarea
-                                                                className="w-full px-3 py-2 rounded-xl border border-amber-300 text-sm focus:ring-2 focus:ring-amber-500 min-h-[80px]"
-                                                                value={revisitData.complaint_details}
-                                                                onChange={(e) => setRevisitData({ ...revisitData, complaint_details: e.target.value })}
-                                                                placeholder="Provide more context..."
-                                                            />
-                                                        </div>
-                                                        <div className="flex gap-2 pt-2">
-                                                            <Button
-                                                                variant="outline"
-                                                                className="flex-1 bg-white border-amber-300 text-amber-700 hover:bg-amber-50"
-                                                                onClick={() => {
-                                                                    setShowRevisitForm(false);
-                                                                    setRevisitData({ issue: "", complaint_type: "", complaint_details: "" });
-                                                                }}
-                                                            >
-                                                                Cancel
-                                                            </Button>
-                                                            <Button
-                                                                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-200"
-                                                                onClick={handleCreateRevisit}
-                                                                disabled={updating || !revisitData.issue}
-                                                            >
-                                                                Confirm Revisit
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                            <div className="flex gap-2 pt-2">
+                                                <Button variant="outline" className="flex-1 bg-white border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setShowRevisitForm(false)}>Cancel</Button>
+                                                <Button className="flex-1 bg-amber-600 hover:bg-amber-700 text-white" onClick={handleCreateRevisit}>Confirm</Button>
                                             </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
 
                     {isAdmin && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                        <div className="bg-white rounded-2xl border border-gray-200 p-6">
                             <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <User className="w-4 h-4 text-blue-600" />
                                 Assign Staff
@@ -903,25 +945,8 @@ export function ServiceDetails() {
                         </div>
                     )}
 
-                    {isAdmin && service.status === "Converted to Order" && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-indigo-200 p-6">
-                            <h3 className="text-sm font-bold text-indigo-900 mb-2 flex items-center gap-2">
-                                <ShoppingCart className="w-5 h-5 text-indigo-600" />
-                                Process Converted Order
-                            </h3>
-                            <p className="text-xs text-indigo-600 mb-4">Staff requested a replacement battery for this service.</p>
-                            <Button
-                                onClick={handleOpenProcessModal}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 font-bold"
-                            >
-                                <ShoppingCart className="w-4 h-4" />
-                                Select Product & Generate Bill
-                            </Button>
-                        </div>
-                    )}
-
                     {!isAdmin && service.assigned_to === user?.id && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                        <div className="bg-white rounded-2xl border border-gray-200 p-6">
                             <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-green-600" />
                                 Update Status
@@ -986,48 +1011,12 @@ export function ServiceDetails() {
                                                                     alert("Please enter a valid service charge.");
                                                                     return;
                                                                 }
-                                                                handleUpdateStatus("Completed", Number(tempCharge));
+                                                                handleUpdateStatus(status, Number(tempCharge));
                                                                 setShowChargeInput(false);
                                                             }}
                                                         >
                                                             Confirm Completion
                                                         </Button>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Show Sub-Status and Audio Recorder if In Progress is active */}
-                                            {status === "In Progress" && isActive && (
-                                                <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl space-y-4 mt-2 animate-in slide-in-from-top-2">
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block ml-1">Current Task Sub-Status</label>
-                                                        <select
-                                                            className="w-full px-4 py-3 border-2 border-white hover:border-blue-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all text-sm font-bold text-gray-700 bg-white"
-                                                            value={service.sub_status || ""}
-                                                            onChange={(e) => handleUpdateSubStatus(e.target.value)}
-                                                        >
-                                                            <option value="" disabled>-- Select Sub Status --</option>
-                                                            {(SUB_STATUS_OPTIONS[service.complaint_type || "Other"] || SUB_STATUS_OPTIONS["Other"]).map(option => (
-                                                                <option key={option} value={option}>{option}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-
-                                                    <div className="space-y-2 pt-2 border-t border-blue-100">
-                                                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block ml-1">Daily Status Update (Audio)</label>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setShowAudioRecorder(true)}
-                                                            className="w-full group relative overflow-hidden rounded-2xl p-[1px] transition-all"
-                                                        >
-                                                            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500 opacity-40 group-hover:opacity-100 transition-opacity blur-sm"></div>
-                                                            <div className="relative w-full py-4 bg-white rounded-2xl flex items-center justify-center gap-3 text-gray-600 group-hover:text-indigo-600 transition-colors shadow-sm">
-                                                                <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-100 transition-transform">
-                                                                    <Mic className="w-4 h-4 text-indigo-600" />
-                                                                </div>
-                                                                <span className="font-bold text-sm">Tap to Record Update</span>
-                                                            </div>
-                                                        </button>
                                                     </div>
                                                 </div>
                                             )}
@@ -1037,16 +1026,6 @@ export function ServiceDetails() {
                             </div>
                         </div>
                     )}
-
-                    {/* <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-lg shadow-blue-200">
-                        <h3 className="font-bold mb-2">Service Policy</h3>
-                        <p className="text-xs text-blue-50 leading-relaxed mb-4">
-                            All services should be updated within 24 hours of registration. Please ensure charging levels are checked before completion.
-                        </p>
-                        <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20">
-                            View Guidelines
-                        </Button>
-                    </div> */}
                 </div>
             </div>
 
@@ -1056,94 +1035,22 @@ export function ServiceDetails() {
                 onCapture={(file) => handleUploadVoiceNote(file)}
             />
 
-            {/* Receipt Modal */}
-            {showReceiptModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95">
-                        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-indigo-100">
-                            <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                                <ShoppingCart className="w-5 h-5 text-indigo-600" />
-                                Generate Product Receipt
-                            </h2>
-                            <p className="text-sm text-gray-600 mt-1">Select a battery to link to this service</p>
-                        </div>
-
-                        <div className="p-6 space-y-4">
-                            {generatedReceipt ? (
-                                <div className="text-center py-4 space-y-4">
-                                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <CheckCircle className="w-8 h-8" />
-                                    </div>
-                                    <h3 className="text-lg font-bold text-gray-900">Receipt Generated!</h3>
-                                    <p className="text-sm text-gray-500">
-                                        Receipt <strong>{generatedReceipt.receipt_number}</strong> created successfully.
-                                    </p>
-                                    <p className="text-xs text-gray-400">
-                                        Admin can now generate the final invoice.
-                                    </p>
-                                    <Button
-                                        className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white"
-                                        onClick={() => {
-                                            setShowReceiptModal(false);
-                                            setGeneratedReceipt(null);
-                                        }}
-                                    >
-                                        Close
-                                    </Button>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-gray-500 uppercase">Select Battery</label>
-                                        <select
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
-                                            value={selectedProductId}
-                                            onChange={(e) => setSelectedProductId(Number(e.target.value))}
-                                        >
-                                            <option value="">-- Choose a Product --</option>
-                                            {products.map(p => (
-                                                <option key={p.id} value={p.id} disabled={p.stock < 1}>
-                                                    {p.brand} {p.model} ({p.ah}) - ₹{p.price} {p.stock < 1 && "(Out of Stock)"}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {selectedProductId && (
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase">Quantity</label>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-center font-bold"
-                                                value={receiptQuantity}
-                                                onChange={(e) => setReceiptQuantity(Number(e.target.value))}
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div className="flex gap-3 pt-4 border-t border-gray-100">
-                                        <Button
-                                            variant="outline"
-                                            className="flex-1"
-                                            onClick={() => setShowReceiptModal(false)}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
-                                            disabled={!selectedProductId || updating}
-                                            onClick={handleProcessConvertedOrder}
-                                        >
-                                            {updating ? "Processing..." : "Process Order & Bill"}
-                                        </Button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete this service record and all associated logs.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteService} className="bg-red-600 hover:bg-red-700">
+                            Delete Permanently
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

@@ -170,7 +170,7 @@ export function MainLayout() {
 
       {/* Sidebar Drawer */}
       <aside
-        className={`fixed left-0 top-0 h-full w-72 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out print:hidden ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed left-0 top-0 h-full w-72 bg-white border-r border-gray-100 z-50 transform transition-transform duration-300 ease-in-out print:hidden ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
       >
         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">

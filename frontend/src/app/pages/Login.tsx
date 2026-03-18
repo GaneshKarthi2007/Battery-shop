@@ -50,7 +50,7 @@ export function Login() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo and Title */}
         <div className="text-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl mb-6 shadow-2xl shadow-blue-500/20 ring-4 ring-white/10">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl mb-6 ring-4 ring-white/10">
             <Zap className="w-10 h-10 text-white animate-pulse" />
           </div>
           <h1 className={`text-4xl font-black tracking-tight mb-2 ${isDarkMode ? "text-[#ffffff]" : "text-gray-900"}`}>
@@ -62,9 +62,9 @@ export function Login() {
         </div>
 
         {/* Login Card */}
-        <div className={`rounded-[2.5rem] shadow-2xl p-10 border transition-all duration-500 ${isDarkMode
-            ? "bg-white/5 backdrop-blur-xl border-white/10 shadow-black/40"
-            : "bg-white border-gray-100 shadow-blue-100/50"
+        <div className={`rounded-[2.5rem] p-10 border transition-all duration-500 ${isDarkMode
+            ? "bg-white/5 backdrop-blur-xl border-white/10"
+            : "bg-white border-gray-100"
           }`}>
           <form onSubmit={handleLogin} className="space-y-6">
             {error && (
@@ -128,9 +128,9 @@ export function Login() {
             <Button
               type="submit"
               disabled={loading}
-              className={`w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest transition-all shadow-xl active:scale-95 disabled:opacity-50 ${isDarkMode
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/20"
-                : "bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-blue-200 text-white"
+              className={`w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 ${isDarkMode
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white"
+                : "bg-gradient-to-r from-blue-600 to-blue-700 text-white"
                 }`}
             >
               <span>{loading ? "Authenticating..." : "Login"}</span>

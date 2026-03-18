@@ -2,15 +2,17 @@ import { Bell, ShoppingBag, Package, Wrench, FileText } from "lucide-react";
 import { useNotifications, NotificationType } from "../../contexts/NotificationContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router";
 
 export function NotificationDropdown({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const { notifications, markAsRead, markAllAsRead, clearAll } = useNotifications();
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     if (!user) return null;
 
-    // Filter notifications based on user role
-    const filteredNotifications = notifications.filter(n => n.role === user.role);
+    // Notifications are already filtered by user_id on the backend
+    const filteredNotifications = notifications;
 
     // Grouping logic
     const sections = [
@@ -113,7 +115,22 @@ export function NotificationDropdown({ isOpen, onClose }: { isOpen: boolean; onC
                                                         initial={{ opacity: 0, x: -10 }}
                                                         animate={{ opacity: 1, x: 0 }}
                                                         transition={{ delay: idx * 0.05 }}
-                                                        onClick={() => markAsRead(notif.id)}
+                                                        onClick={() => {
+                                                            markAsRead(notif.id);
+                                                            onClose();
+                                                            
+                                                            // Logic to navigate if it's a service notification
+                                                            if (notif.type === "SERVICE") {
+                                                                const match = notif.message.match(/Service #(\d+)/);
+                                                                if (match && match[1]) {
+                                                                    navigate(`/service/${match[1]}`);
+                                                                } else {
+                                                                    navigate("/service");
+                                                                }
+                                                            } else if (notif.type === "SALES") {
+                                                                navigate("/sales");
+                                                            }
+                                                        }}
                                                         className={`w-full px-3 py-3 rounded-xl text-left transition-all duration-300 flex gap-3.5 group relative hover:scale-[1.015] active:scale-[0.98] ${!notif.isRead
                                                             ? "bg-white shadow-sm ring-1 ring-blue-500/10 hover:shadow-md"
                                                             : "hover:bg-black/5"

@@ -150,7 +150,7 @@ export function BatteryExchange() {
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === key ? "bg-white text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
           >
             {label}
           </button>
@@ -166,7 +166,7 @@ export function BatteryExchange() {
                 <p className="text-sm text-green-800 font-medium">{successMsg}</p>
               </div>
             )}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center">
                   <RefreshCcw className="w-6 h-6 text-white" />
@@ -223,7 +223,7 @@ export function BatteryExchange() {
 
           {/* Summary panel */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm lg:sticky lg:top-24">
+            <div className="bg-white rounded-xl border border-gray-200 lg:sticky lg:top-24">
               <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-amber-100">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center">
@@ -259,7 +259,7 @@ export function BatteryExchange() {
         </div>
       ) : (
         /* History Tab */
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="p-5 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <History className="w-5 h-5 text-gray-500" />

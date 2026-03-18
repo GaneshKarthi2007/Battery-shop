@@ -111,7 +111,7 @@ export function Dashboard() {
         {/* Pending Services */}
         <div
           onClick={() => navigate('/service')}
-          className="bg-white rounded-xl p-4 md:p-5 border border-gray-200 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
+          className="bg-white rounded-xl p-4 md:p-5 border border-gray-200 cursor-pointer hover:border-gray-300 transition-all"
         >
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <h3 className="text-xs md:text-sm font-medium text-gray-500">Pending Services</h3>
@@ -123,7 +123,7 @@ export function Dashboard() {
         {/* Inventory */}
         <div
           onClick={() => navigate('/inventory')}
-          className="bg-white rounded-xl p-4 md:p-5 border border-gray-200 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
+          className="bg-white rounded-xl p-4 md:p-5 border border-gray-200 cursor-pointer hover:border-gray-300 transition-all"
         >
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <h3 className="text-xs md:text-sm font-medium text-gray-500">Inventory</h3>

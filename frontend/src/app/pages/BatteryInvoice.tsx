@@ -80,14 +80,14 @@ const BatteryInvoice: React.FC = () => {
           <button
             onClick={() => window.print()}
             title="Print Invoice"
-            className="text-blue-700 bg-blue-50 p-2.5 rounded-xl font-bold flex items-center justify-center hover:bg-blue-100 transition-all shadow-sm active:scale-95"
+            className="text-blue-700 bg-blue-50 p-2.5 rounded-xl font-bold flex items-center justify-center hover:bg-blue-100 transition-all active:scale-95"
           >
             <Printer className="w-5 h-5" />
           </button>
           <button
             onClick={() => window.print()}
             title="Download as PDF"
-            className="bg-blue-700 text-white p-2.5 rounded-xl font-bold flex items-center justify-center hover:bg-blue-800 transition-all shadow-lg active:scale-95"
+            className="bg-blue-700 text-white p-2.5 rounded-xl font-bold flex items-center justify-center hover:bg-blue-800 transition-all active:scale-95"
           >
             <Download className="w-5 h-5" />
           </button>
@@ -117,7 +117,7 @@ const BatteryInvoice: React.FC = () => {
         }
       `}</style>
 
-      <div className="max-w-4xl mx-auto bg-white shadow-lg invoice-container">
+      <div className="max-w-4xl mx-auto bg-white border border-gray-100 invoice-container">
         {/* Header */}
         <div className="border-b-4 border-blue-600 p-8">
           <div className="flex justify-between items-start">

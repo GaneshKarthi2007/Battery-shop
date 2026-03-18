@@ -4,34 +4,33 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Service;
+use App\Models\ServiceProcessFlow;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
 {
     public function index()
     {
-        return response()->json(Service::with('assignedStaff')->latest()->get());
+        return response()->json(Service::with(['assignedStaff', 'processFlows', 'processFlows.staff'])->latest()->get());
     }
 
     public function markAsConverted(Request $request, Service $service)
     {
-        // Only allow if not already completed
-        if ($service->status === 'Completed' || $service->status === 'Converted to Order') {
-            return response()->json(['message' => 'Service already completed or converted'], 400);
-        }
-
         $service->update([
             'status' => 'Converted to Order',
             'status_updated_at' => now()
         ]);
 
         // Notify Admins
-        \App\Models\Notification::create([
-            'user_id' => 1, // Assuming admin ID 1
-            'type' => 'SERVICE',
-            'title' => 'Service Converted to Order',
-            'message' => "Service #{$service->id} ({$service->customer_name}) has been marked as 'Converted to Order' by staff. Please process the replacement product.",
-        ]);
+        $admins = \App\Models\User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            \App\Models\Notification::create([
+                'user_id' => $admin->id,
+                'type' => 'SERVICE',
+                'title' => 'Conversion Requested',
+                'message' => "Staff requested to convert Service #{$service->id} ({$service->customer_name}) to a new order replacement.",
+            ]);
+        }
 
         return response()->json($service->load('assignedStaff'));
     }
@@ -142,6 +141,18 @@ class ServiceController extends Controller
             $validated['status'] = 'In Progress';
         }
 
+        // Deduplication Logic
+        $duplicate = Service::where('contact_number', $validated['contact_number'])
+            ->where('customer_name', $validated['customer_name'])
+            ->where('complaint_type', $validated['complaint_type'] ?? null)
+            ->where('status', 'Pending')
+            ->where('created_at', '>=', now()->subMinutes(5))
+            ->first();
+
+        if ($duplicate) {
+            return response()->json($duplicate->load('assignedStaff'), 200);
+        }
+
         $service = Service::create($validated);
 
         if ($service->assigned_to) {
@@ -158,7 +169,7 @@ class ServiceController extends Controller
 
     public function show(Service $service)
     {
-        return response()->json($service->load(['assignedStaff', 'sale', 'receipt', 'receipt.product']));
+        return response()->json($service->load(['assignedStaff', 'sale', 'receipt', 'receipt.product', 'processFlows', 'processFlows.staff']));
     }
 
     public function update(Request $request, Service $service)
@@ -191,11 +202,28 @@ class ServiceController extends Controller
             $validated['resolved_at'] = now();
         }
 
+        if (isset($validated['sub_status']) && $validated['sub_status'] !== $service->sub_status) {
+            ServiceProcessFlow::create([
+                'service_id' => $service->id,
+                'sub_status' => $validated['sub_status'],
+                'staff_id' => $request->user()?->id,
+                'notes' => $request->input('notes') // Optional notes if provided
+            ]);
+        }
+
         $oldAssignedTo = $service->assigned_to;
         $service->update($validated);
 
         if ($service->assigned_to && $service->assigned_to != $oldAssignedTo) {
             $service->update(['assigned_at' => now(), 'status' => 'In Progress']);
+
+            // Create initial process flow for pickup
+            ServiceProcessFlow::create([
+                'service_id' => $service->id,
+                'sub_status' => 'Task Picked Up / Commenced',
+                'staff_id' => $service->assigned_to,
+            ]);
+
             \App\Models\Notification::create([
                 'user_id' => $service->assigned_to,
                 'type' => 'SERVICE',
@@ -221,28 +249,75 @@ class ServiceController extends Controller
             'status_updated_at' => now()
         ]);
 
+        ServiceProcessFlow::create([
+            'service_id' => $service->id,
+            'sub_status' => 'Task Picked Up / Commenced',
+            'staff_id' => $user->id,
+        ]);
+
         return response()->json($service->load('assignedStaff'));
     }
 
     public function uploadVoiceNote(Request $request, Service $service)
     {
         $request->validate([
-            'voice_note' => 'required|file|mimes:audio/mpeg,mp3,wav,ogg,m4a,webm',
+            'voice_note' => 'required|file|mimes:audio/mpeg,mp3,wav,ogg,m4a,webm,application/octet-stream',
+            'notes' => 'nullable|string',
         ]);
 
         if ($request->hasFile('voice_note')) {
             $path = $request->file('voice_note')->store('voice_notes', 'public');
-            $service->update(['voice_note' => $path]);
+            $user = $request->user();
+            $notes = $request->input('notes');
+
+            // Logic to decide where to attach the voice note
+            // If it's the initial stage (Pending & not assigned) or if forced to service level
+            if ($service->status === 'Pending' && !$service->assigned_to) {
+                $service->update([
+                    'voice_note' => $path,
+                    'complaint_details' => $notes ? ($service->complaint_details . "\n\nNote: " . $notes) : $service->complaint_details
+                ]);
+            } else {
+                // Try to find the latest process flow entry for this staff member
+                $latestFlow = $service->processFlows()
+                    ->where('staff_id', $user->id)
+                    ->latest()
+                    ->first();
+
+                if ($latestFlow) {
+                    $latestFlow->update([
+                        'voice_note' => $path,
+                        'notes' => $notes ?: $latestFlow->notes
+                    ]);
+                } else {
+                    // Fallback to service level if no flow exists yet
+                    $service->update([
+                        'voice_note' => $path,
+                        // If it's a general staff update without a flow, we just update the voice note
+                    ]);
+                    
+                    if ($notes) {
+                        // Create a new process flow entry if notes are provided but no flow exists
+                        ServiceProcessFlow::create([
+                            'service_id' => $service->id,
+                            'sub_status' => 'Staff Update',
+                            'staff_id' => $user->id,
+                            'notes' => $notes,
+                            'voice_note' => $path
+                        ]);
+                    }
+                }
+            }
             
             // Notify Admin
             \App\Models\Notification::create([
                 'user_id' => 1, // Assuming ID 1 is the main admin
                 'type' => 'SERVICE',
                 'title' => 'New Voice Feedback',
-                'message' => "Service person left a voice note for service #{$service->id} ({$service->customer_name}).",
+                'message' => "Voice note recorded for service #{$service->id} ({$service->customer_name}).",
             ]);
 
-            return response()->json($service->load(['assignedStaff', 'sale', 'receipt', 'receipt.product']));
+            return response()->json($service->load(['assignedStaff', 'sale', 'receipt', 'receipt.product', 'processFlows', 'processFlows.staff']));
         }
 
         return response()->json(['message' => 'No file uploaded'], 400);
@@ -364,6 +439,24 @@ class ServiceController extends Controller
 
             return response()->json($receipt->load(['service', 'product', 'generator']), 201);
         });
+    }
+
+    public function deleteProcessFlow(\App\Models\ServiceProcessFlow $flow)
+    {
+        $user = auth()->user();
+        
+        // Only the staff who created it or an admin can delete it
+        if ($user->role !== 'admin' && $flow->staff_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($flow->voice_note) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($flow->voice_note);
+        }
+
+        $flow->delete();
+
+        return response()->json(['message' => 'Update deleted successfully']);
     }
 
     public function destroy(Service $service)

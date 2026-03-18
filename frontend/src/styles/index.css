@@ -43,4 +43,16 @@
     .dark-app textarea::placeholder {
         color: #94a3b8;
     }
+
+    /* Global Selection Highlight */
+    ::selection {
+        background-color: #2E6DFF;
+        color: #FFFFFF;
+    }
+
+    /* Standardize dropdown option colors for dark mode */
+    select option {
+        background-color: #0f172a;
+        color: #FFFFFF;
+    }
 }

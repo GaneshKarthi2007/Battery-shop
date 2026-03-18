@@ -124,17 +124,17 @@ export function Profile() {
                 <h1 className="text-2xl font-black text-gray-900 uppercase">My Profile</h1>
                 <button
                     onClick={handleLogout}
-                    className="bg-red-50 text-red-600 hover:bg-red-100 font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-red-100 shadow-sm text-sm"
+                    className="bg-red-50 text-red-600 hover:bg-red-100 font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-red-100 text-sm"
                 >
                     <LogOut className="w-4 h-4" />
                     Logout
                 </button>
             </div>
 
-            <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden">
                 <div className="relative h-48 bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center group">
                     <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-white shadow-2xl relative z-10 transition-transform group-hover:scale-105">
+                    <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-white relative z-10 transition-transform group-hover:scale-105">
                         <div className="w-full h-full bg-white flex items-center justify-center text-blue-600">
                             <span className="text-5xl font-black">{profile.name.charAt(0)}</span>
                         </div>
@@ -148,7 +148,7 @@ export function Profile() {
 
                 <div className="px-8 pb-10">
                     <div className="flex justify-center -mt-6 mb-8 relative z-20">
-                        <div className="bg-white px-6 py-2 rounded-2xl shadow-lg border border-gray-50 flex items-center gap-2">
+                        <div className="bg-white px-6 py-2 rounded-2xl border border-gray-50 flex items-center gap-2">
                             <ShieldCheck className="w-5 h-5 text-emerald-500" />
                             <span className="text-sm font-black text-gray-900 uppercase tracking-widest">{profile.role}</span>
                         </div>

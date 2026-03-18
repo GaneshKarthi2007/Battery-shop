@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/services/{service}/generate-receipt', [ServiceController::class, 'generateReceipt']);
     Route::post('/services/{service}/mark-converted', [ServiceController::class, 'markAsConverted']);
     Route::post('/services/{service}/process-converted-order', [ServiceController::class, 'processConvertedOrder']);
+    Route::delete('/service-flows/{flow}', [ServiceController::class, 'deleteProcessFlow']);
 
     Route::get('/reports', [\App\Http\Controllers\Api\ReportController::class, 'index']);
     Route::get('/reports/download', [\App\Http\Controllers\Api\ReportController::class, 'download']);

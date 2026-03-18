@@ -9,7 +9,7 @@ export function NotFound() {
             <div className="relative mb-12 w-32 h-48 flex items-center justify-center">
                 {/* Animated Battery Outline */}
                 <motion.div
-                    className="absolute inset-0 border-[10px] border-gray-300 rounded-[2rem] flex flex-col justify-end overflow-hidden pb-2 px-2 bg-white shadow-sm"
+                    className="absolute inset-0 border-[10px] border-gray-300 rounded-[2rem] flex flex-col justify-end overflow-hidden pb-2 px-2 bg-white"
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
@@ -70,7 +70,7 @@ export function NotFound() {
                 transition={{ delay: 0.8 }}
             >
                 <Link to="/">
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 font-bold text-lg">
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl flex items-center justify-center gap-2 transition-all hover:-translate-y-1 font-bold text-lg">
                         <Home className="w-5 h-5" />
                         Return to Dashboard
                     </Button>

@@ -165,7 +165,7 @@ export function GpsPhotoDashboard() {
                     {photos.map((photo) => (
                         <div
                             key={photo.id}
-                            className="group relative rounded-xl overflow-hidden bg-gray-800 border border-gray-700/50 transition hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10"
+                            className="group relative rounded-xl overflow-hidden bg-gray-800 border border-gray-700/50 transition hover:border-emerald-500/50"
                         >
                             <img
                                 src={photo.image_url}

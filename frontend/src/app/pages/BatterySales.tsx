@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { Plus, Minus, Trash2, ShoppingCart, Search, CreditCard, ChevronUp, CheckCheck, AlertTriangle } from "lucide-react";
 import { Button } from "../components/Button";
 import { apiClient } from "../api/client";
@@ -68,6 +68,7 @@ export function BatterySales() {
   // History State
   const [viewMode, setViewMode] = useState<"NewBill" | "History">("NewBill");
   const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
+  const location = useLocation();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -87,6 +88,12 @@ export function BatterySales() {
     };
 
     fetchData();
+
+    // Context for service conversion
+    const routerState = location.state as { fromService?: boolean; serviceId?: number; customerInfo?: any };
+    if (routerState?.fromService) {
+      console.log("Processing conversion for service:", routerState.serviceId);
+    }
 
     // Load persisted bill items
     const savedItems = localStorage.getItem("pending_bill_items");
@@ -191,12 +198,17 @@ export function BatterySales() {
 
   const handleProceedToCheckout = () => {
     if (billItems.length === 0) return;
+    const routerState = location.state as { fromService?: boolean; serviceId?: number; customerInfo?: any };
+    
     navigate("/checkout", {
       state: {
         items: billItems,
         subtotal,
         gst,
-        total
+        total,
+        fromService: routerState?.fromService,
+        serviceId: routerState?.serviceId,
+        customerInfo: routerState?.customerInfo
       }
     });
   };
@@ -229,11 +241,11 @@ export function BatterySales() {
           <p className="text-gray-600 mt-1">Select batteries, generate invoice, or view history</p>
         </div>
 
-        <div className="bg-white rounded-lg p-1.5 border border-gray-200 shadow-sm flex shadow-inner">
+        <div className="bg-white rounded-lg p-1.5 border border-gray-200 flex">
           <button
             onClick={() => setViewMode("NewBill")}
             className={`flex-1 px-6 py-2 rounded-md font-bold text-sm transition-all ${viewMode === "NewBill"
-              ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+              ? "bg-blue-600 text-white"
               : "bg-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
               }`}
           >
@@ -244,7 +256,7 @@ export function BatterySales() {
             <button
               onClick={() => setViewMode("History")}
               className={`flex-1 px-6 py-2 rounded-md font-bold text-sm transition-all ${viewMode === "History"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                ? "bg-blue-600 text-white"
                 : "bg-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 }`}
             >
@@ -255,7 +267,7 @@ export function BatterySales() {
       </div>
 
       {viewMode === "History" && features.salesHistory ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white flex justify-between items-center">
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               Sales History Database
@@ -339,7 +351,7 @@ export function BatterySales() {
                 transition={{ duration: 0.2 }}
                 className="space-y-4"
               >
-                <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                <div className="bg-white rounded-xl p-4 border border-gray-200">
                   <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -369,7 +381,7 @@ export function BatterySales() {
                   {filteredBatteries.map((battery) => {
                     const isAdded = billItems.some(item => item.id === battery.id);
                     return (
-                      <div key={battery.id} className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover:shadow-md transition-all">
+                      <div key={battery.id} className="bg-white rounded-xl p-5 border border-gray-200 hover:border-gray-300 transition-all">
                         <div className="flex items-start justify-between mb-3">
                           <div>
                             <h3 className="font-bold text-gray-900">{battery.brand}</h3>
@@ -425,7 +437,7 @@ export function BatterySales() {
 
           {isAdmin && (
             <div ref={billModuleRef} className="lg:col-span-1 order-1 lg:order-2">
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm lg:sticky lg:top-24 overflow-hidden">
+              <div className="bg-white rounded-xl border border-gray-200 lg:sticky lg:top-24 overflow-hidden">
                 <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -507,7 +519,7 @@ export function BatterySales() {
       )}
 
       {isAdmin && viewMode === "NewBill" && billItems.length > 0 && showFloatingBar && (
-        <div className="lg:hidden fixed bottom-[72px] left-4 right-4 p-4 bg-white/95 backdrop-blur-md border border-gray-200 rounded-2xl shadow-xl z-30">
+        <div className="lg:hidden fixed bottom-[72px] left-4 right-4 p-4 bg-white/95 backdrop-blur-md border border-gray-200 rounded-2xl z-30">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <div className="bg-blue-600 p-2 rounded-xl hidden sm:block">
@@ -533,7 +545,7 @@ export function BatterySales() {
       {isAdmin && viewMode === "NewBill" && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className={`lg:hidden fixed bottom-[160px] right-4 w-12 h-12 bg-white border border-gray-200 rounded-full shadow-xl flex items-center justify-center z-30 transition-all duration-300 ${(billItems.length > 0 && showFloatingBar) ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0 pointer-events-none"}`}
+          className={`lg:hidden fixed bottom-[160px] right-4 w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center z-30 transition-all duration-300 ${(billItems.length > 0 && showFloatingBar) ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0 pointer-events-none"}`}
         >
           <ChevronUp className="w-6 h-6 text-blue-600" />
         </button>

@@ -32,8 +32,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     const fetchNotifications = async () => {
         try {
-            const data = await apiClient.get<Notification[]>('/notifications');
-            setNotifications(data);
+            const data = await apiClient.get<any[]>('/notifications');
+            const mapped: Notification[] = data.map(n => ({
+                id: n.id?.toString() || "",
+                type: n.type as NotificationType,
+                title: n.title || "",
+                message: n.message || "",
+                isRead: !!(n.is_read || n.isRead),
+                createdAt: n.created_at || n.createdAt || new Date().toISOString(),
+                time: n.time || (n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"),
+                role: n.role as UserRole
+            }));
+            setNotifications(mapped);
         } catch (err) {
             console.error("Failed to fetch notifications", err);
         }

@@ -20,7 +20,7 @@ export function DeveloperSettings() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
                     <div className="flex items-center gap-3">
                         <ShieldCheck className="w-5 h-5 text-purple-600" />
@@ -124,7 +124,7 @@ export function DeveloperSettings() {
             </div>
 
             {/* Shop Details Management */}
-            <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden mt-6">
+            <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden mt-6">
                 <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
                     <div className="flex items-center gap-3">
                         <Edit2 className="w-5 h-5 text-purple-600" />
@@ -178,7 +178,7 @@ export function DeveloperSettings() {
             </div>
 
             {/* Developer's Personal Preferences */}
-            <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden mt-6">
+            <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden mt-6">
                 <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
                     <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Personal Workspace</h2>
                 </div>
@@ -205,7 +205,7 @@ export function DeveloperSettings() {
             </div>
 
             {/* User Management Section Link */}
-            <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden mt-6">
+            <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden mt-6">
                 <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
                     <div className="flex items-center gap-3">
                         <Users className="w-5 h-5 text-purple-600" />

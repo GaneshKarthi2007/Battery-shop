@@ -30,7 +30,7 @@ export function BottomNav({ onMenuClick }: BottomNavProps) {
 
     return (
         <div className="md:hidden fixed bottom-4 left-4 right-4 z-20 flex justify-center">
-            <div className="w-full max-w-[320px] bg-white/95 backdrop-blur-xl border border-gray-200 shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex items-center p-1 justify-between relative overflow-hidden rounded-3xl transition-colors">
+            <div className="w-full max-w-[320px] bg-white/95 backdrop-blur-xl border border-gray-200 flex items-center p-1 justify-between relative overflow-hidden rounded-3xl transition-colors">
 
                 {navItems.map((item) => {
                     const Icon = item.icon;

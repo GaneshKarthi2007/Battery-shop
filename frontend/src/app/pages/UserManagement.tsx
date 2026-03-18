@@ -66,7 +66,7 @@ export function UserManagement() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
                     <div className="flex items-center gap-3">
                         <Users className="w-5 h-5 text-purple-600" />
@@ -131,7 +131,7 @@ export function UserManagement() {
                         <button
                             onClick={handleCreateUser}
                             disabled={isCreating}
-                            className="mt-6 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md active:scale-95 disabled:opacity-50"
+                            className="mt-6 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:from-purple-700 hover:to-indigo-700 transition-all active:scale-95 disabled:opacity-50"
                         >
                             {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
                             Create New User

@@ -43,4 +43,9 @@ class Service extends Model
     {
         return $this->hasOne(Receipt::class);
     }
+
+    public function processFlows()
+    {
+        return $this->hasMany(ServiceProcessFlow::class);
+    }
 }

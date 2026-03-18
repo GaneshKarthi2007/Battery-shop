@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { User, Phone, ArrowLeft, Save, AlertTriangle, Zap, MapPin, ChevronDown, Check, Mic, Trash2, Activity } from "lucide-react";
@@ -35,6 +35,16 @@ export function NewService() {
     ];
 
     const [showSuccess, setShowSuccess] = useState<{ id: number; name: string } | null>(null);
+    const submittingRef = useRef(false);
+    const createdServiceIdRef = useRef<number | null>(null);
+
+    // Reset when navigating away or on success
+    useEffect(() => {
+        return () => {
+            submittingRef.current = false;
+            createdServiceIdRef.current = null;
+        };
+    }, []);
 
     const handlePhoneChange = async (phone: string) => {
         setFormData({ ...formData, contact_number: phone });
@@ -57,7 +67,12 @@ export function NewService() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Submission Guard: Prevent concurrent clicks
+        if (submittingRef.current) return;
+        
         try {
+            submittingRef.current = true;
             setLoading(true);
             setError("");
 
@@ -66,23 +81,37 @@ export function NewService() {
                 throw new Error("Please fill in required fields (Customer Name and Contact Number)");
             }
 
-            const response = await apiClient.post<any>("/services", {
-                ...formData,
-                status: "Pending"
-            });
+            let serviceId = createdServiceIdRef.current;
+            let customerName = formData.customer_name;
 
-            if (voiceNote) {
-                const fd = new FormData();
-                fd.append('voice_note', voiceNote);
-                await apiClient.post(`/services/${response.id}/voice-note`, fd);
+            // Step 1: Create Service (only if not already created in a previous failed attempt)
+            if (!serviceId) {
+                const response = await apiClient.post<any>("/services", {
+                    ...formData,
+                    status: "Pending"
+                });
+                serviceId = response.id;
+                customerName = response.customer_name;
+                createdServiceIdRef.current = serviceId;
             }
 
-            setShowSuccess({ id: response.id, name: response.customer_name });
-            // Don't navigate immediately, show success first
+            // Step 2: Upload Voice Note (if exists)
+            if (voiceNote && serviceId) {
+                const fd = new FormData();
+                fd.append('voice_note', voiceNote);
+                await apiClient.post(`/services/${serviceId}/voice-note`, fd);
+            }
+
+            // Success: Clear the persisted ID and show modal
+            const finalId = serviceId;
+            createdServiceIdRef.current = null;
+            setShowSuccess({ id: finalId!, name: customerName });
+            
         } catch (err: any) {
             setError(err.message || "Failed to create service request");
         } finally {
             setLoading(false);
+            submittingRef.current = false;
         }
     };
 
@@ -92,7 +121,7 @@ export function NewService() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate(-1)}
-                        className="p-2.5 bg-white hover:bg-gray-50 rounded-2xl text-gray-500 hover:text-blue-600 transition-all border border-gray-100 shadow-sm hover:shadow-md active:scale-95"
+                        className="p-2.5 bg-white hover:bg-gray-50 rounded-2xl text-gray-500 hover:text-blue-600 transition-all border border-gray-100 hover:border-gray-200 active:scale-95"
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </button>
@@ -111,7 +140,7 @@ export function NewService() {
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Customer Section */}
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/40 divide-y divide-gray-50">
+                <div className="bg-white rounded-3xl border border-gray-100 divide-y divide-gray-50">
                     <div className="p-6 flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100/50">
                             <User className="w-6 h-6 text-blue-600" />
@@ -163,7 +192,7 @@ export function NewService() {
 
                                 {/* Quick Actions */}
                                 {formData.contact_number && (
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-white shadow-sm border border-gray-100 rounded-lg p-1">
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-1">
                                         {features.enableContactActions ? (
                                             <>
                                                 <button
@@ -223,7 +252,7 @@ export function NewService() {
                 </div>
 
                 {/* Complaint Section */}
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/40 divide-y divide-gray-50">
+                <div className="bg-white rounded-3xl border border-gray-100 divide-y divide-gray-50">
                     <div className="p-6 flex items-center gap-4">
                         <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-100/50">
                             <AlertTriangle className="w-6 h-6 text-amber-600" />
@@ -255,7 +284,7 @@ export function NewService() {
                             {isDropdownOpen && (
                                 <>
                                     <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)}></div>
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                         <div className="p-2 max-h-[300px] overflow-y-auto">
                                             {complaintTypes.map((type) => (
                                                 <button
@@ -297,9 +326,9 @@ export function NewService() {
                             </div>
 
                             {voiceNote ? (
-                                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-blue-50/50 border border-indigo-100 rounded-2xl shadow-sm">
+                                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-blue-50/50 border border-indigo-100 rounded-2xl">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-indigo-600">
+                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-indigo-600 border border-indigo-50">
                                             <Activity className="w-6 h-6 animate-pulse" />
                                         </div>
                                         <div>
@@ -310,7 +339,7 @@ export function NewService() {
                                     <button
                                         type="button"
                                         onClick={() => setVoiceNote(null)}
-                                        className="w-10 h-10 flex items-center justify-center text-red-500 bg-white hover:bg-red-50 hover:text-red-600 rounded-full shadow-sm transition-colors active:scale-95"
+                                        className="w-10 h-10 flex items-center justify-center text-red-500 bg-white hover:bg-red-50 hover:text-red-600 rounded-full border border-gray-100 transition-colors active:scale-95"
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </button>
@@ -322,7 +351,7 @@ export function NewService() {
                                     className="w-full group relative overflow-hidden rounded-2xl p-[1px] transition-all"
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500 opacity-40 group-hover:opacity-100 transition-opacity blur-sm"></div>
-                                    <div className="relative w-full py-5 bg-white rounded-2xl flex items-center justify-center gap-3 text-gray-600 group-hover:text-indigo-600 transition-colors shadow-sm">
+                                    <div className="relative w-full py-5 bg-white rounded-2xl flex items-center justify-center gap-3 text-gray-600 group-hover:text-indigo-600 transition-colors">
                                         <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-100 transition-transform">
                                             <Mic className="w-5 h-5 text-indigo-600" />
                                         </div>
@@ -352,7 +381,7 @@ export function NewService() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="flex-[2] py-5 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 uppercase font-black tracking-widest text-xs transition-all hover:-translate-y-1 active:scale-[0.98] disabled:opacity-70 rounded-2xl"
+                        className="flex-[2] py-5 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white flex items-center justify-center gap-3 uppercase font-black tracking-widest text-xs transition-all hover:-translate-y-1 active:scale-[0.98] disabled:opacity-70 rounded-2xl"
                     >
                         {loading ? (
                             <Zap className="w-5 h-5 animate-spin" />
@@ -399,7 +428,7 @@ export function NewService() {
                             initial={{ scale: 0.95, opacity: 0, y: 10 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.95, opacity: 0, y: 10 }}
-                            className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-5 overflow-hidden relative"
+                            className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-5 overflow-hidden relative border border-gray-100"
                         >
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
 
@@ -426,7 +455,7 @@ export function NewService() {
 
                             <button
                                 onClick={() => navigate("/service")}
-                                className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold text-sm transition-all hover:shadow-lg active:scale-[0.98]"
+                                className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98]"
                             >
                                 Continue to Dashboard
                             </button>
