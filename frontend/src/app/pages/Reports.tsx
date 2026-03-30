@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { FileText, Download, DollarSign, TrendingUp, Filter, Search, ChevronDown, Calendar, X } from "lucide-react";
 import { Button } from "../components/Button";
 import { apiClient, BASE_URL } from "../api/client";
-import { BatteryLoader } from "../components/ui/BatteryLoader";
+import { CircleLoader } from "../components/ui/CircleLoader";
 
 interface Invoice {
   id: string;
@@ -140,8 +140,12 @@ export function Reports() {
 
 
   return (
-    <div className="space-y-6">
-      {loading && <BatteryLoader />}
+    <div className="space-y-6 relative">
+      {loading && (
+        <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-50 flex items-center justify-center min-h-[400px]">
+          <CircleLoader size="lg" />
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Reports & Billing</h1>

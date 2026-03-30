@@ -20,6 +20,7 @@ const BatteryInvoice: React.FC = () => {
     finalTotal: number;
     cashAmount?: number;
     upiAmount?: number;
+    isQuotation?: boolean;
     warrantyDetails: {
       totalWarranty: string;
       totalWarrantyExpiry: string;
@@ -40,7 +41,7 @@ const BatteryInvoice: React.FC = () => {
     address: shopConfig.address,
     phone: shopConfig.phone,
     gst: shopConfig.gst,
-    invoiceNo: `INV-${Date.now().toString().slice(-6)}`,
+    invoiceNo: state.isQuotation ? `QT-${Date.now().toString().slice(-6)}` : `INV-${Date.now().toString().slice(-6)}`,
     date: new Date().toLocaleDateString('en-IN'),
     customerName: state.customerInfo.name,
     customerPhone: state.customerInfo.phone,
@@ -74,12 +75,12 @@ const BatteryInvoice: React.FC = () => {
           className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors font-semibold"
         >
           <ArrowLeft className="w-5 h-5" />
-          Back to Dashboard
+          {state.isQuotation ? "Back to Sales" : "Back to Dashboard"}
         </button>
         <div className="flex gap-3">
           <button
             onClick={() => window.print()}
-            title="Print Invoice"
+            title={state.isQuotation ? "Print Quotation" : "Print Invoice"}
             className="text-blue-700 bg-blue-50 p-2.5 rounded-xl font-bold flex items-center justify-center hover:bg-blue-100 transition-all active:scale-95"
           >
             <Printer className="w-5 h-5" />
@@ -130,29 +131,31 @@ const BatteryInvoice: React.FC = () => {
               </div>
             </div>
             <div className="text-right">
-              <h2 className="text-3xl mb-4 font-bold text-gray-800">INVOICE</h2>
+              <h2 className="text-3xl mb-4 font-bold text-gray-800">{state.isQuotation ? "QUOTATION" : "INVOICE"}</h2>
               <div className="space-y-1 text-gray-600">
                 <div className="flex justify-end gap-4">
-                  <span className="font-medium text-gray-900">Invoice #:</span>
+                  <span className="font-medium text-gray-900">{state.isQuotation ? "Quotation" : "Invoice"} #:</span>
                   <span>{invoiceData.invoiceNo}</span>
                 </div>
                 <div className="flex justify-end gap-4">
                   <span className="font-medium text-gray-900">Date:</span>
                   <span>{invoiceData.date}</span>
                 </div>
-                <div className="flex justify-end gap-4">
-                  <span className="font-medium text-gray-900">Payment Mode:</span>
-                  <div className="text-right">
-                    <span className="font-semibold text-blue-600">
-                      {invoiceData.paymentMethod === "Split" ? "Split (Cash + UPI)" : invoiceData.paymentMethod}
-                    </span>
-                    {invoiceData.paymentMethod === "Split" && (
-                      <div className="text-[11px] text-gray-500 mt-0.5">
-                        Cash: ₹{invoiceData.cashAmount?.toLocaleString()} | UPI: ₹{invoiceData.upiAmount?.toLocaleString()}
-                      </div>
-                    )}
+                {!state.isQuotation && (
+                  <div className="flex justify-end gap-4">
+                    <span className="font-medium text-gray-900">Payment Mode:</span>
+                    <div className="text-right">
+                      <span className="font-semibold text-blue-600">
+                        {invoiceData.paymentMethod === "Split" ? "Split (Cash + UPI)" : invoiceData.paymentMethod}
+                      </span>
+                      {invoiceData.paymentMethod === "Split" && (
+                        <div className="text-[11px] text-gray-500 mt-0.5">
+                          Cash: ₹{invoiceData.cashAmount?.toLocaleString()} | UPI: ₹{invoiceData.upiAmount?.toLocaleString()}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -160,7 +163,7 @@ const BatteryInvoice: React.FC = () => {
 
         {/* Bill To Section */}
         <div className="p-8 border-b border-gray-200">
-          <h3 className="mb-3 text-lg font-bold text-gray-800">Bill To:</h3>
+          <h3 className="mb-3 text-lg font-bold text-gray-800">{state.isQuotation ? "Quotation For:" : "Bill To:"}</h3>
           <div className="space-y-1 text-gray-600">
             <p className="font-bold text-gray-900 text-xl">{invoiceData.customerName}</p>
             <p>Phone: {invoiceData.customerPhone}</p>
@@ -228,9 +231,19 @@ const BatteryInvoice: React.FC = () => {
             <div>
               <h4 className="mb-2 font-bold text-gray-800">Terms & Conditions:</h4>
               <ul className="text-gray-500 text-sm space-y-1 list-disc list-inside">
-                <li>Goods once sold cannot be taken back or exchanged.</li>
-                <li>Warranty is subject to manufacturer's terms and conditions.</li>
-                <li>Original invoice is mandatory for warranty claims.</li>
+                {state.isQuotation ? (
+                  <>
+                    <li>This quotation is valid for 7 days from the date of issue.</li>
+                    <li>Prices are subject to availability of stock.</li>
+                    <li>Final pricing may vary at the time of actual billing.</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Goods once sold cannot be taken back or exchanged.</li>
+                    <li>Warranty is subject to manufacturer's terms and conditions.</li>
+                    <li>Original invoice is mandatory for warranty claims.</li>
+                  </>
+                )}
               </ul>
             </div>
 
@@ -258,7 +271,7 @@ const BatteryInvoice: React.FC = () => {
 
         {/* Footer */}
         <div className="p-4 bg-blue-700 text-white text-center">
-          <p>Thank you for your business! For queries, contact us at {invoiceData.phone}</p>
+          <p>{state.isQuotation ? "Interested? Contact us at" : "Thank you for your business! For queries, contact us at"} {invoiceData.phone}</p>
         </div>
       </div>
     </div>

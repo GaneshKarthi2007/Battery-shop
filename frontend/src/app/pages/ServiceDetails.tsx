@@ -19,6 +19,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "../components/ui/alert-dialog";
+import { CircleLoader } from "../components/ui/CircleLoader";
 
 interface ServiceRequest {
     id: number;
@@ -332,9 +333,11 @@ export function ServiceDetails() {
     };
 
     if (loading) {
-        return <div className="min-h-[60vh] flex items-center justify-center">
-            <Zap className="w-12 h-12 text-blue-600 animate-pulse fill-current" />
-        </div>;
+        return (
+            <div className="min-h-[60vh] flex items-center justify-center">
+                <CircleLoader size="lg" />
+            </div>
+        );
     }
 
     if (error || !service) {
@@ -361,7 +364,7 @@ export function ServiceDetails() {
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
             {updating && (
                 <div className="fixed inset-0 bg-white/40 backdrop-blur-[1px] z-50 flex items-center justify-center">
-                    <Zap className="w-12 h-12 text-blue-600 animate-pulse fill-current" />
+                    <CircleLoader size="md" />
                 </div>
             )}
 

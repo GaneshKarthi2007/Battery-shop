@@ -76,6 +76,7 @@ export function Checkout() {
             phone: string;
             address: string;
         };
+        isQuotation?: boolean;
     } | undefined;
 
     /** ── Customer ── */
@@ -232,8 +233,12 @@ export function Checkout() {
         if (!customerInfo.name.trim()) { alert("Customer name is required."); return; }
         if (!customerInfo.phone.replace("+91 ", "").trim()) { alert("Phone number is required."); return; }
 
-        setLoading(true);
+        if (state.isQuotation) {
+            navigate("/invoice", { state: { ...buildInvoiceState(), isQuotation: true } });
+            return;
+        }
 
+        setLoading(true);
         try {
             const vehicleDetails = productType === "Vehicle"
                 ? `Vehicle: ${vehicleNumber} ${vehicleModel ? `(${vehicleModel})` : ""}`
@@ -317,7 +322,9 @@ export function Checkout() {
                 >
                     <ArrowLeft className="w-5 h-5 !text-[#FFFFFF]" />
                 </button>
-                <h1 className="text-lg font-black !text-[#FFFFFF] tracking-tight uppercase">Final Checkout</h1>
+                <h1 className="text-lg font-black !text-[#FFFFFF] tracking-tight uppercase">
+                    {state.isQuotation ? "Quotation Details" : "Final Checkout"}
+                </h1>
                 <div className="w-9" />
             </header>
 
@@ -373,6 +380,7 @@ export function Checkout() {
                 </section>
 
                 {/* ── Section: Installation Info ── */}
+                {!state.isQuotation && (
                 <section className="space-y-4">
                     <SectionHead icon={<Zap className="w-5 h-5 text-[#2E6DFF]" />} title="Installation Info" />
                     <div className="bg-slate-900 rounded-3xl p-8 border border-slate-800 space-y-6">
@@ -441,6 +449,7 @@ export function Checkout() {
                         </div>
                     </div>
                 </section>
+                )}
 
                 {/* ── Section: Order Items & Charges ── */}
                 <section className="space-y-4">
@@ -635,62 +644,66 @@ export function Checkout() {
                     </div>
 
                     {/* Payment Method Dropdown */}
-                    <div className="space-y-4 relative z-10">
-                        <label className="text-[12px] font-black !text-[#FFFFFF] uppercase tracking-[0.15em] block ml-1">Transaction Method</label>
-                        <div className="relative group">
-                            <select
-                                value={paymentMethod}
-                                onChange={(e) => {
-                                    const val = e.target.value as "Cash" | "UPI" | "Split";
-                                    setPaymentMethod(val);
-                                    if (val === "Split") setCashPart(0);
-                                }}
-                                className="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl px-6 h-16 !text-[#FFFFFF] font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none appearance-none cursor-pointer transition-all pr-12 group-hover:bg-slate-800"
-                            >
-                                <option value="Cash">Cash Transaction</option>
-                                <option value="UPI">UPI / QR Payment</option>
-                                <option value="Split">Split Payment (Mix Mode)</option>
-                            </select>
-                            <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none !text-[#FFFFFF]">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Split Payment Inputs */}
-                    {paymentMethod === "Split" && (
-                        <div className="grid grid-cols-2 gap-5 animate-in fade-in zoom-in-95 duration-500 relative z-10">
-                            <div className="space-y-3">
-                                <label className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">Cash Part</label>
+                    {!state.isQuotation && (
+                        <>
+                            <div className="space-y-4 relative z-10">
+                                <label className="text-[12px] font-black !text-[#FFFFFF] uppercase tracking-[0.15em] block ml-1">Transaction Method</label>
                                 <div className="relative group">
-                                    <span className="absolute left-5 top-1/2 -translate-y-1/2 !text-[#FFFFFF] font-bold text-lg">₹</span>
-                                    <input
-                                        type="number"
-                                        value={cashPart || ""}
+                                    <select
+                                        value={paymentMethod}
                                         onChange={(e) => {
-                                            const val = Math.min(grandTotal, Math.max(0, Number(e.target.value)));
-                                            setCashPart(val);
+                                            const val = e.target.value as "Cash" | "UPI" | "Split";
+                                            setPaymentMethod(val);
+                                            if (val === "Split") setCashPart(0);
                                         }}
-                                        className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-900 !text-[#FFFFFF] placeholder:!text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                        placeholder="0"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">UPI Part</label>
-                                <div className="relative group">
-                                    <div className="w-full bg-blue-900/20 border-2 border-blue-800/50 rounded-2xl flex items-center px-6 h-16 transition-all group-hover:bg-blue-900/30">
-                                        <span className="!text-[#FFFFFF] font-bold mr-2 text-lg">₹</span>
-                                        <span className="text-blue-400 font-black text-2xl tracking-tighter">
-                                            {(grandTotal - cashPart).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                                        </span>
-                                    </div>
-                                    <div className="absolute -top-1 -right-1 bg-[#2E6DFF] !text-[#FFFFFF] text-[9px] font-black px-2 py-0.5 rounded-full border border-white dark:border-slate-900">
-                                        AUTO
+                                        className="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl px-6 h-16 !text-[#FFFFFF] font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none appearance-none cursor-pointer transition-all pr-12 group-hover:bg-slate-800"
+                                    >
+                                        <option value="Cash">Cash Transaction</option>
+                                        <option value="UPI">UPI / QR Payment</option>
+                                        <option value="Split">Split Payment (Mix Mode)</option>
+                                    </select>
+                                    <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none !text-[#FFFFFF]">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+
+                            {/* Split Payment Inputs */}
+                            {paymentMethod === "Split" && (
+                                <div className="grid grid-cols-2 gap-5 animate-in fade-in zoom-in-95 duration-500 relative z-10">
+                                    <div className="space-y-3">
+                                        <label className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">Cash Part</label>
+                                        <div className="relative group">
+                                            <span className="absolute left-5 top-1/2 -translate-y-1/2 !text-[#FFFFFF] font-bold text-lg">₹</span>
+                                            <input
+                                                type="number"
+                                                value={cashPart || ""}
+                                                onChange={(e) => {
+                                                    const val = Math.min(grandTotal, Math.max(0, Number(e.target.value)));
+                                                    setCashPart(val);
+                                                }}
+                                                className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-900 !text-[#FFFFFF] placeholder:!text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">UPI Part</label>
+                                        <div className="relative group">
+                                            <div className="w-full bg-blue-900/20 border-2 border-blue-800/50 rounded-2xl flex items-center px-6 h-16 transition-all group-hover:bg-blue-900/30">
+                                                <span className="!text-[#FFFFFF] font-bold mr-2 text-lg">₹</span>
+                                                <span className="text-blue-400 font-black text-2xl tracking-tighter">
+                                                    {(grandTotal - cashPart).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                                </span>
+                                            </div>
+                                            <div className="absolute -top-1 -right-1 bg-[#2E6DFF] !text-[#FFFFFF] text-[9px] font-black px-2 py-0.5 rounded-full border border-white dark:border-slate-900">
+                                                AUTO
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
 
                     {/* Action button */}
@@ -711,7 +724,9 @@ export function Checkout() {
                                 <div className="p-2 bg-white/20 rounded-xl">
                                     {paymentMethod === "Cash" ? <Banknote className="w-6 h-6" /> : paymentMethod === "Split" ? <RefreshCcw className="w-6 h-6" /> : <QrCode className="w-6 h-6" />}
                                 </div>
-                                <span className="uppercase tracking-widest">Generate Bill & Pay</span>
+                                <span className="uppercase tracking-widest">
+                                    {state.isQuotation ? "Confirm Quotation Details" : "Generate Bill & Pay"}
+                                </span>
                             </>
                         )}
                     </Button>

@@ -10,6 +10,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useDeveloper } from "../contexts/DeveloperContext";
 import { apiClient } from "../api/client";
+import { CircleLoader } from "../components/ui/CircleLoader";
 
 interface DashboardData {
   todaySales: number;
@@ -60,26 +61,6 @@ export function Dashboard() {
     fetchDashboardData();
   }, []);
 
-  if (loading) {
-    // Component mounts immediately, data populates when ready
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-100 rounded-xl p-6 text-center">
-        <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">Sync Error</h3>
-        <p className="text-red-500 text-sm mb-4">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* 1. Header & Greetings */}
@@ -96,6 +77,26 @@ export function Dashboard() {
           Shop: <span className="font-medium text-gray-900">{shopConfig.name}</span>
         </div>
       </div>
+
+      {loading ? (
+        <div className="min-h-[400px] flex items-center justify-center bg-white rounded-2xl border border-gray-100">
+          <CircleLoader size="lg" />
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-100 rounded-xl p-6 text-center">
+          <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">Sync Error</h3>
+          <p className="text-red-500 text-sm mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* 2. Primary KPI Grid */}
 
       {/* 2. Primary KPI Grid */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:gap-6">
@@ -199,6 +200,8 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

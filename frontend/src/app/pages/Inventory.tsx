@@ -3,6 +3,7 @@ import { Package, Plus, Edit, AlertTriangle, TrendingUp, Trash2 } from "lucide-r
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { apiClient } from "../api/client";
+import { CircleLoader } from "../components/ui/CircleLoader";
 
 interface Product {
   id: number;
@@ -116,26 +117,6 @@ export function Inventory() {
     return { label: "Good", color: "text-green-600 bg-green-100" };
   };
 
-  if (loading) {
-    // Page loader removed for smoother page transitions
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center">
-        <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-        <h3 className="text-xl font-black text-gray-900 mb-2">Sync Error</h3>
-        <p className="text-red-600/80 font-medium mb-6">{error}</p>
-        <button
-          onClick={fetchInventory}
-          className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -152,6 +133,26 @@ export function Inventory() {
           Add Stock
         </Button>
       </div>
+
+      {loading ? (
+        <div className="min-h-[400px] flex items-center justify-center bg-white rounded-2xl border border-gray-100">
+          <CircleLoader size="lg" />
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center">
+          <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+          <h3 className="text-xl font-black text-gray-900 mb-2">Sync Error</h3>
+          <p className="text-red-600/80 font-medium mb-6">{error}</p>
+          <button
+            onClick={fetchInventory}
+            className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Stats Overview */}
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -420,6 +421,8 @@ export function Inventory() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

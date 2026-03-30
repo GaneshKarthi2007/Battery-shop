@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
+import { CircleLoader } from "../components/ui/CircleLoader";
 
 interface ServiceRequest {
   id: number;
@@ -231,9 +232,20 @@ export function ServiceManagement() {
         }
       >
         <AnimatePresence mode="popLayout" initial={false}>
-          {filteredServices.length === 0 ? (
+          {loading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="col-span-full flex flex-col items-center justify-center min-h-[400px]"
+            >
+              <CircleLoader size="lg" />
+            </motion.div>
+          ) : filteredServices.length === 0 ? (
             <motion.div
               layout
+              key="empty"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
