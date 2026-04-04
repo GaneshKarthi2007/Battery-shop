@@ -12,6 +12,7 @@ export interface ShopConfig {
     phone: string;
     address: string;
     gst: string;
+    email?: string;
 }
 
 interface DeveloperContextType {
@@ -33,6 +34,7 @@ const defaultShopConfig: ShopConfig = {
     phone: "7092706484",
     address: "Thoothukudi, Tamilnadu",
     gst: "33XXXXX1234X1Z5",
+    email: "smrbattery@gmail.com",
 };
 
 const DeveloperContext = createContext<DeveloperContextType | undefined>(undefined);

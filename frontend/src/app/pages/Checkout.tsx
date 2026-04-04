@@ -228,15 +228,10 @@ export function Checkout() {
         };
     };
 
-    /* ── Submit Sale ── */
+    /* ── Submit Sale / Quotation ── */
     const handleProcessSale = async () => {
         if (!customerInfo.name.trim()) { alert("Customer name is required."); return; }
         if (!customerInfo.phone.replace("+91 ", "").trim()) { alert("Phone number is required."); return; }
-
-        if (state.isQuotation) {
-            navigate("/invoice", { state: { ...buildInvoiceState(), isQuotation: true } });
-            return;
-        }
 
         setLoading(true);
         try {
@@ -252,7 +247,7 @@ export function Checkout() {
                 vehicle_details: vehicleDetails,
                 installation_address: installationAddress,
                 product_category: state?.fromService ? "Converted to New Order" : productType,
-                type: "Sale",
+                type: state.isQuotation ? "Quotation" : "Sale",
                 items: state.items.map(item => ({
                     product_id: item.type === "Product" ? Number(item.id) : null,
                     service_id: item.type === "Service" ? Number(item.id.toString().replace("service-", "")) : (state?.fromService ? state.serviceId : null),
@@ -263,24 +258,26 @@ export function Checkout() {
                 extra_charges: installCharges + deliveryCharges,
                 discount_amount: exchangeDiscount,
                 exchange_record_id: selectedExchange?.id ?? null,
-                payment_method: paymentMethod,
-                cash_amount: paymentMethod === "Split" ? cashPart : (paymentMethod === "Cash" ? grandTotal : 0),
-                upi_amount: paymentMethod === "Split" ? (grandTotal - cashPart) : (paymentMethod === "UPI" ? grandTotal : 0),
+                payment_method: state.isQuotation ? "Cash" : paymentMethod,
+                cash_amount: state.isQuotation ? 0 : (paymentMethod === "Split" ? cashPart : (paymentMethod === "Cash" ? grandTotal : 0)),
+                upi_amount: state.isQuotation ? 0 : (paymentMethod === "Split" ? (grandTotal - cashPart) : (paymentMethod === "UPI" ? grandTotal : 0)),
             };
 
             await apiClient.post('/sales', saleData);
             localStorage.removeItem("pending_bill_items");
 
-            addNotification({
-                type: "SALES",
-                title: `New Sale: ₹${grandTotal.toLocaleString()}`,
-                message: `${state.items.length} item(s) sold via ${paymentMethod} to ${customerInfo.name || "Walk-in Customer"}.`,
-                role: "admin",
-            });
+            if (!state.isQuotation) {
+                addNotification({
+                    type: "SALES",
+                    title: `New Sale: ₹${grandTotal.toLocaleString()}`,
+                    message: `${state.items.length} item(s) sold via ${paymentMethod} to ${customerInfo.name || "Walk-in Customer"}.`,
+                    role: "admin",
+                });
+            }
 
             navigate("/invoice", { state: { ...buildInvoiceState() } });
         } catch (err: any) {
-            const msg = err.message || "Failed to process sale. Please try again.";
+            const msg = err.message || "Failed to process. Please try again.";
             alert(msg);
         } finally {
             setLoading(false);

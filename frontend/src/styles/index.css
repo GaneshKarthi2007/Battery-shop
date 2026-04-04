@@ -3,56 +3,72 @@
 @import './theme.css';
 
 @layer base {
-    .dark-app {
+    .dark {
         color-scheme: dark;
-        --color-white: #0f172a;
-        --color-gray-50: #1e293b;
-        --color-gray-100: #334155;
-        --color-gray-200: #475569;
-        --color-gray-300: #64748b;
-        --color-gray-400: #94a3b8;
-        --color-gray-500: #cbd5e1;
-        --color-gray-600: #e2e8f0;
-        --color-gray-700: #f1f5f9;
-        --color-gray-800: #f8fafc;
-        --color-gray-900: #ffffff;
+        --color-blue-50: #0D1B2A;
+        --color-blue-100: #1B263B;
+        --color-blue-300: #5FA8FF;
+        --color-blue-500: #5FA8FF;
+        --color-blue-600: #3A86FF;
+        --color-blue-700: #2b6fe1;
 
-        --color-blue-50: #1e3a8a;
-        --color-blue-100: #1e40af;
-        --color-blue-200: #1d4ed8;
-        --color-blue-600: #60a5fa;
-        --color-blue-700: #93c5fd;
-        --color-blue-800: #bfdbfe;
+        --color-emerald-50: #022c22;
+        --color-emerald-100: #064e3b;
+        --color-emerald-400: #06D6A0;
+        --color-emerald-500: #06D6A0;
+        --color-emerald-600: #04b383;
 
-        --color-emerald-50: #064e3b;
-        --color-emerald-100: #022c22;
-        --color-emerald-500: #34d399;
-        --color-emerald-600: #6ee7b7;
+        --color-red-500: #EF476F;
+        --color-red-600: #EF476F;
 
-        --color-border: #334155;
-        --color-background: #0f172a;
+        --color-purple-50: #1e103d;
+        --color-purple-100: #2e1666;
+        --color-purple-600: #9333ea;
+
+        --color-orange-50: #3b1706;
+        --color-orange-100: #5a220a;
+        --color-orange-500: #f97316;
+        --color-orange-600: #ea580c;
+        
+        --color-border: #2E3B55;
+        --color-background: #0D1B2A;
     }
 
-    .dark-app input,
-    .dark-app textarea,
-    .dark-app select {
-        color: #ffffff;
+    .dark .text-gray-900 { color: #E0E1DD; }
+    .dark .text-gray-800 { color: #E0E1DD; }
+    .dark .text-gray-700 { color: #A9B4C2; }
+    .dark .text-gray-600 { color: #A9B4C2; }
+    .dark .text-gray-500 { color: #A9B4C2; }
+    .dark .text-gray-400 { color: #7B8B9E; }
+    .dark .text-black { color: #E0E1DD; }
+    .dark .text-white { color: #FFFFFF; }
+    
+    .dark input,
+    .dark textarea,
+    .dark select {
+        color: #E0E1DD;
+        background-color: #1B263B;
+        border-color: #2E3B55;
     }
 
-    .dark-app input::placeholder,
-    .dark-app textarea::placeholder {
-        color: #94a3b8;
+    .dark input::placeholder,
+    .dark textarea::placeholder {
+        color: #A9B4C2;
     }
 
-    /* Global Selection Highlight */
     ::selection {
-        background-color: #2E6DFF;
+        background-color: #3A86FF;
         color: #FFFFFF;
     }
-
-    /* Standardize dropdown option colors for dark mode */
+    
     select option {
-        background-color: #0f172a;
-        color: #FFFFFF;
+        background-color: #1B263B;
+        color: #E0E1DD;
+    }
+}
+
+@layer base {
+    body {
+        @apply bg-[#f8f9fc] dark:bg-[#05050a] text-gray-900 dark:text-gray-100 transition-colors duration-500;
     }
 }

@@ -23,7 +23,7 @@ export function Settings() {
             <div className="space-y-6">
                 {/* Appearance Module - ONLY render if Developer enabled it */}
                 {features.darkMode && (
-                    <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden">
+                    <div className="bg-white dark:bg-[#1B263B] rounded-[2rem] border border-gray-100 dark:border-[#2E3B55] overflow-hidden">
                         <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
                             <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Appearance</h2>
                         </div>

@@ -16,6 +16,13 @@ class ServiceController extends Controller
 
     public function markAsConverted(Request $request, Service $service)
     {
+        // Prevent duplicate conversion if already in requested status
+        if ($service->status === 'Converted to Order') {
+            return response()->json([
+                'message' => 'This service already has an active conversion request. Please wait for the admin to process.'
+            ], 400);
+        }
+
         $service->update([
             'status' => 'Converted to Order',
             'status_updated_at' => now()
@@ -169,7 +176,7 @@ class ServiceController extends Controller
 
     public function show(Service $service)
     {
-        return response()->json($service->load(['assignedStaff', 'sale', 'receipt', 'receipt.product', 'processFlows', 'processFlows.staff']));
+        return response()->json($service->load(['assignedStaff', 'sale', 'sales', 'sales.items.product', 'receipt', 'receipt.product', 'processFlows', 'processFlows.staff']));
     }
 
     public function update(Request $request, Service $service)

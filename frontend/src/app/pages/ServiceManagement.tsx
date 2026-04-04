@@ -332,7 +332,7 @@ export function ServiceManagement() {
                     layout: { type: "spring", bounce: 0.2, duration: 0.6 }
                   }}
                   onClick={() => navigate(`/service/${service.id}`)}
-                  className="bg-white rounded-3xl p-6 border border-gray-100 transition-shadow cursor-pointer group relative overflow-hidden"
+                  className="bg-white dark:bg-[#1B263B] rounded-3xl p-6 border border-gray-100 dark:border-[#2E3B55] transition-shadow cursor-pointer group relative overflow-hidden"
                 >
                   <div className="flex items-start justify-between mb-5">
                     <div className="flex items-center gap-3">

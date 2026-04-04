@@ -13,6 +13,9 @@ import { Checkout } from "./pages/Checkout";
 import BatteryInvoice from "./pages/BatteryInvoice";
 import { ServiceDetails } from "./pages/ServiceDetails";
 import { NewService } from "./pages/NewService";
+import { AssignedJobs } from "./pages/AssignedJobs";
+import { AvailableJobs } from "./pages/AvailableJobs";
+import { CompletedJobs } from "./pages/CompletedJobs";
 import { DeveloperSettings } from "./pages/DeveloperSettings";
 import { UserManagement } from "./pages/UserManagement";
 import { ErrorPage } from "./pages/ErrorPage";
@@ -80,7 +83,38 @@ export const router = createBrowserRouter([
             ),
           },
           { path: "service/:id", Component: ServiceDetails },
-          { path: "inventory", Component: Inventory },
+          {
+            path: "assigned-jobs",
+            element: (
+              <ProtectedRoute allowedRoles={["staff"]}>
+                <AssignedJobs />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "available-jobs",
+            element: (
+              <ProtectedRoute allowedRoles={["staff"]}>
+                <AvailableJobs />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "completed-jobs",
+            element: (
+              <ProtectedRoute allowedRoles={["staff"]}>
+                <CompletedJobs />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "inventory",
+            element: (
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <Inventory />
+              </ProtectedRoute>
+            ),
+          },
           {
             path: "reports",
             element: (

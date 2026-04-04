@@ -154,7 +154,7 @@ export function UPIPayment() {
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
             {/* Fixed header */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#0D1B2A] border-b border-gray-100 dark:border-[#2E3B55] px-4 py-3 flex items-center justify-between">
                 <button
                     onClick={() => navigate(-1)}
                     disabled={status === "finalising" || status === "done"}
@@ -229,14 +229,14 @@ export function UPIPayment() {
                         )}
 
                         {/* QR Card */}
-                        <div className="bg-white rounded-3xl border border-gray-100 p-6 flex flex-col items-center gap-5">
+                        <div className="bg-white dark:bg-[#1B263B] rounded-3xl border border-gray-100 dark:border-[#2E3B55] p-6 flex flex-col items-center gap-5">
                             <div className="flex items-center gap-2">
                                 <Smartphone className="w-5 h-5 text-[#2E6DFF]" />
                                 <p className="text-[13px] font-bold text-slate-500 uppercase tracking-wider">Scan &amp; Pay via UPI</p>
                             </div>
 
                             <div className="relative">
-                                <div className="p-3 bg-white rounded-2xl border-2 border-[#2E6DFF]/10">
+                                <div className="p-3 bg-white dark:bg-[#1B263B] rounded-2xl border-2 border-[#2E6DFF]/10 dark:border-[#2E6DFF]/20">
                                     <img
                                         src={qrUrl}
                                         alt={`UPI QR — ₹${amount.toFixed(2)} to ${UPI_ID}`}
@@ -251,7 +251,7 @@ export function UPIPayment() {
                                         }}
                                     />
                                 </div>
-                                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white border-2 border-[#2E6DFF]/20 rounded-full px-3 py-1">
+                                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white dark:bg-[#0D1B2A] border-2 border-[#2E6DFF]/20 rounded-full px-3 py-1">
                                     <span className="text-[11px] font-black text-[#2E6DFF] tracking-tight">UPI</span>
                                 </div>
                             </div>

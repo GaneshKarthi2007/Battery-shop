@@ -24,11 +24,22 @@ class DashboardController extends Controller
         $pendingServices = $pendingServicesQuery->count();
 
         $assignedJobs = [];
+        $myActiveJobs = 0;
+        $completedToday = 0;
         if ($user->role === 'staff') {
             $assignedJobs = Service::where('assigned_to', $user->id)
                 ->where('status', '!=', 'completed')
                 ->latest()
                 ->get();
+            
+            $myActiveJobs = Service::where('assigned_to', $user->id)
+                ->where('status', 'In Progress')
+                ->count();
+                
+            $completedToday = Service::where('assigned_to', $user->id)
+                ->where('status', 'Completed')
+                ->whereDate('resolved_at', today())
+                ->count();
         }
         
         // Simple mock for monthly profit (revenue based for now)
@@ -82,7 +93,9 @@ class DashboardController extends Controller
                 'unassigned' => $unassignedTasks,
                 'pendingPayments' => $pendingPayments,
                 'escalated' => $escalatedTasks,
-            ]
+            ],
+            'myActiveJobs' => $myActiveJobs,
+            'completedToday' => $completedToday,
         ]);
     }
 }

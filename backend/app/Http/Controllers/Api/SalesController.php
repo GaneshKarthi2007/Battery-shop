@@ -23,7 +23,7 @@ class SalesController extends Controller
             'vehicle_details' => 'nullable|string',
             'installation_address' => 'nullable|string',
             'product_category' => 'nullable|string',
-            'type' => 'sometimes|string|in:Sale,Exchange',
+            'type' => 'sometimes|string|in:Sale,Exchange,Quotation',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'nullable|required_without:items.*.service_id|exists:products,id',
             'items.*.service_id' => 'nullable|required_without:items.*.product_id|exists:services,id',
@@ -39,6 +39,8 @@ class SalesController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated) {
+            $isQuotation = ($validated['type'] ?? 'Sale') === 'Quotation';
+
             $sale = Sale::create([
                 'customer_name' => $validated['customer_name'],
                 'customer_phone' => $validated['customer_phone'] ?? null,
@@ -54,14 +56,16 @@ class SalesController extends Controller
                 'upi_amount' => $validated['upi_amount'] ?? null,
             ]);
 
-            // Handle exchange record consumption
-            if (!empty($validated['exchange_record_id'])) {
+            // Handle exchange record consumption (only for real sales)
+            if (!$isQuotation && !empty($validated['exchange_record_id'])) {
                 \App\Models\ExchangeRecord::where('id', $validated['exchange_record_id'])
                     ->update(['status' => 'consumed']);
             }
 
+            $processedServices = [];
             foreach ($validated['items'] as $itemData) {
-                if (!empty($itemData['product_id'])) {
+                // Only deduct stock for actual sales, not for quotations
+                if (!$isQuotation && !empty($itemData['product_id'])) {
                     $product = Product::lockForUpdate()->find($itemData['product_id']);
                     
                     if ($product->stock < $itemData['quantity']) {
@@ -77,6 +81,18 @@ class SalesController extends Controller
                     'quantity' => $itemData['quantity'],
                     'price' => $itemData['price'],
                 ]);
+
+                // If this item is linked to a service, check if we need to reset its status
+                if (!empty($itemData['service_id']) && !in_array($itemData['service_id'], $processedServices)) {
+                    $service = \App\Models\Service::find($itemData['service_id']);
+                    if ($service && $service->status === 'Converted to Order') {
+                        $service->update([
+                            'status' => 'In Progress',
+                            'status_updated_at' => now()
+                        ]);
+                    }
+                    $processedServices[] = $itemData['service_id'];
+                }
             }
 
             return response()->json($sale->load('items.product', 'items.service'), 201);

@@ -22,9 +22,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const shouldBeDark = isDarkMode && features.darkMode;
 
         if (shouldBeDark) {
-            document.documentElement.classList.add('dark-app');
+            document.documentElement.classList.add('dark');
         } else {
-            document.documentElement.classList.remove('dark-app');
+            document.documentElement.classList.remove('dark');
         }
 
         localStorage.setItem('powercell_dark_mode', JSON.stringify(isDarkMode));

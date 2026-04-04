@@ -29,6 +29,15 @@ class Service extends Model
         return $this->hasOneThrough(Sale::class, SaleItem::class, 'service_id', 'id', 'id', 'sale_id');
     }
 
+    /**
+     * All sales and quotations linked to this service via sale_items.
+     */
+    public function sales()
+    {
+        // Fetch all Sale rows that have at least one SaleItem pointing to this service
+        return $this->hasManyThrough(Sale::class, SaleItem::class, 'service_id', 'id', 'id', 'sale_id');
+    }
+
     public function parentService()
     {
         return $this->belongsTo(Service::class, 'parent_id');

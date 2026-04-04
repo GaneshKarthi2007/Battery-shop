@@ -172,7 +172,7 @@ export function Reports() {
 
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-white" />
@@ -182,7 +182,7 @@ export function Reports() {
             <h3 className="text-2xl font-bold text-gray-900">₹{summary.totalSales.toLocaleString()}</h3>
           </div>
 
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-6 h-6 text-white" />
@@ -192,7 +192,7 @@ export function Reports() {
             <h3 className="text-2xl font-bold text-gray-900">₹{summary.totalProfit.toLocaleString()}</h3>
           </div>
 
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-gradient-to-br from-orange-600 to-orange-700 rounded-lg flex items-center justify-center">
                 <FileText className="w-6 h-6 text-white" />
@@ -202,7 +202,7 @@ export function Reports() {
             <h3 className="text-2xl font-bold text-gray-900">₹{summary.totalGST.toLocaleString()}</h3>
           </div>
 
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg flex items-center justify-center">
                 <FileText className="w-6 h-6 text-white" />
@@ -215,7 +215,7 @@ export function Reports() {
       )}
 
       {summary && (
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
+        <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
           <h2 className="font-bold text-gray-900 mb-4">Sales Breakdown by Type</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -234,7 +234,7 @@ export function Reports() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-gray-200">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-[#1B263B] p-4 rounded-2xl border border-gray-200 dark:border-[#2E3B55]">
         <div className="relative w-full md:max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
@@ -272,7 +272,7 @@ export function Reports() {
                 className="fixed inset-0 z-10" 
                 onClick={() => setShowFilters(false)}
               ></div>
-              <div className="absolute right-0 top-full mt-3 w-full md:w-[480px] bg-white rounded-2xl border border-gray-100 p-6 z-20 animate-in fade-in slide-in-from-top-4">
+              <div className="absolute right-0 top-full mt-3 w-full md:w-[480px] bg-white dark:bg-[#0D1B2A] rounded-2xl border border-gray-100 dark:border-[#2E3B55] p-6 z-20 animate-in fade-in slide-in-from-top-4">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs flex items-center gap-2">
                     <Filter className="w-3.5 h-3.5 text-blue-600" />
@@ -359,7 +359,7 @@ export function Reports() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden min-h-[400px] relative">
+      <div className="bg-white dark:bg-[#1B263B] rounded-xl border border-gray-200 dark:border-[#2E3B55] overflow-hidden min-h-[400px] relative">
         <div className="p-6 border-b border-gray-200 bg-gray-50">
           <h2 className="font-bold text-gray-900">Invoice History</h2>
           <p className="text-sm text-gray-600 mt-1">

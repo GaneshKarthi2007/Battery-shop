@@ -131,7 +131,7 @@ export function Profile() {
                 </button>
             </div>
 
-            <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-[#1B263B] rounded-[2rem] border border-gray-100 dark:border-[#2E3B55] overflow-hidden">
                 <div className="relative h-48 bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center group">
                     <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-white relative z-10 transition-transform group-hover:scale-105">

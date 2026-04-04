@@ -135,7 +135,7 @@ export function Inventory() {
       </div>
 
       {loading ? (
-        <div className="min-h-[400px] flex items-center justify-center bg-white rounded-2xl border border-gray-100">
+        <div className="min-h-[400px] flex items-center justify-center bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-100 dark:border-[#2E3B55]">
           <CircleLoader size="lg" />
         </div>
       ) : error ? (
@@ -156,7 +156,7 @@ export function Inventory() {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
+        <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Stock Value</p>
@@ -168,7 +168,7 @@ export function Inventory() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
+        <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Units</p>
@@ -180,7 +180,7 @@ export function Inventory() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
+        <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Low Stock Items</p>
@@ -201,7 +201,7 @@ export function Inventory() {
             onClick={() => setFilterType(type)}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${filterType === type
               ? "bg-blue-600 text-white"
-              : "bg-white text-gray-700 border border-gray-200 hover:border-gray-300"
+              : "bg-white dark:bg-[#0F172A] text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-[#1E293B] hover:border-gray-300 dark:border-[#1E293B]"
               }`}
           >
             {type}
@@ -210,7 +210,7 @@ export function Inventory() {
       </div>
 
       {/* Inventory Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-[#1B263B] rounded-xl border border-gray-200 dark:border-[#2E3B55] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -314,7 +314,7 @@ export function Inventory() {
       {/* Add/Edit Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-[#1B263B] rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
               <h2 className="text-xl font-bold text-gray-900">
                 {editingItem ? "Edit Stock" : "Add New Stock"}
