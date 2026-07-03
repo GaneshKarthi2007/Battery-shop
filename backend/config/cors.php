@@ -22,7 +22,8 @@ return [
     'allowed_origins' => [
     'http://localhost:5173', 
     'http://127.0.0.1:5173',
-    //  'https://batter-shop.netlify.app'
+    'https://battery.auralendr.com',
+
     ],
 
     'allowed_origins_patterns' => [],
