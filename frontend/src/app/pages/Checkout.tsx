@@ -43,14 +43,14 @@ function WarrantyInput({
 }) {
     return (
         <div className="flex items-center justify-between group">
-            <label className="text-[14px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">{label}</label>
+            <label className="text-[14px] font-black text-gray-900 dark:text-[#FFFFFF] uppercase tracking-widest ml-1">{label}</label>
             <div className="relative w-32">
                 <input
                     type="number"
                     min="0"
                     value={value}
                     onChange={(e) => onValueChange(e.target.value)}
-                    className="w-full bg-slate-900 border-2 border-slate-600 rounded-xl px-4 h-12 !text-[#FFFFFF] font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none transition-all placeholder:!text-[#CBD5E1] text-right"
+                    className="w-full bg-white dark:bg-[#070A13] border-2 border-gray-300 dark:border-[#25314D] rounded-xl px-4 h-12 text-gray-900 dark:text-[#FFFFFF] font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 text-right"
                     placeholder="0"
                 />
             </div>
@@ -168,8 +168,8 @@ export function Checkout() {
 
     if (!state) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <p className="!text-[#FFFFFF]">No items selected for checkout.</p>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-gray-900 dark:text-white">
+                <p>No items selected for checkout.</p>
                 <Button onClick={() => navigate("/sales")}>Go to Sales</Button>
             </div>
         );
@@ -304,22 +304,22 @@ export function Checkout() {
         setWarrantyUnit(newUnit);
     };
 
-    const inputClass = "bg-slate-900 border border-slate-600 h-14 !text-[#FFFFFF] font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 rounded-xl transition-all placeholder:!text-[#CBD5E1]";
-    const chargeInput = "bg-transparent border-none w-24 text-right font-black !text-[#FFFFFF] focus:ring-0 outline-none p-0 text-[16px] placeholder:!text-[#CBD5E1]";
+    const inputClass = "bg-white dark:bg-[#070A13] border border-gray-300 dark:border-[#25314D] h-14 text-gray-900 dark:text-[#FFFFFF] font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 rounded-xl transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500";
+    const chargeInput = "bg-transparent border-none w-24 text-right font-black text-gray-900 dark:text-[#FFFFFF] focus:ring-0 outline-none p-0 text-[16px] placeholder:text-gray-400 dark:placeholder:text-gray-500";
 
     return (
-        <div className="min-h-screen bg-slate-950 flex flex-col font-sans !text-[#FFFFFF] transition-colors duration-500">
+        <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#05050A] flex flex-col font-sans text-gray-900 dark:text-gray-100 transition-colors duration-500">
             {loading && <BatteryLoader />}
 
             {/* ── Fixed Checkout Header ── */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#0D121F]/80 backdrop-blur-md border-b border-gray-200 dark:border-[#25314D] px-4 py-3 flex items-center justify-between">
                 <button
                     onClick={() => navigate(-1)}
-                    className="p-2 hover:bg-slate-800 rounded-full transition-colors"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-[#161D30] rounded-full transition-colors"
                 >
-                    <ArrowLeft className="w-5 h-5 !text-[#FFFFFF]" />
+                    <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-gray-200" />
                 </button>
-                <h1 className="text-lg font-black !text-[#FFFFFF] tracking-tight uppercase">
+                <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase">
                     {state.isQuotation ? "Quotation Details" : "Final Checkout"}
                 </h1>
                 <div className="w-9" />
@@ -330,7 +330,7 @@ export function Checkout() {
                 {/* ── Section: Customer Details ── */}
                 <section className="space-y-4">
                     <SectionHead icon={<User className="w-5 h-5 text-[#2E6DFF]" />} title="Customer Details" />
-                    <div className="bg-slate-900 rounded-3xl p-8 border border-slate-800 space-y-6">
+                    <div className="bg-white dark:bg-[#0D121F] rounded-3xl p-8 border border-gray-200 dark:border-[#25314D] space-y-6">
                         <div className="grid grid-cols-1 gap-6">
                             <Field label="Full Name">
                                 <Input
@@ -368,7 +368,7 @@ export function Checkout() {
                                         if (sameAsBilling) setInstallAddress(e.target.value);
                                     }}
                                     rows={3}
-                                    className="w-full bg-slate-900 border border-slate-600 rounded-2xl px-4 py-4 !text-[#FFFFFF] font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:!text-[#CBD5E1]"
+                                    className="w-full bg-white dark:bg-[#070A13] border border-gray-300 dark:border-[#25314D] rounded-2xl px-4 py-4 text-gray-900 dark:text-gray-100 font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                     placeholder="Door No, Street, City, Pincode"
                                 />
                             </Field>
@@ -380,17 +380,17 @@ export function Checkout() {
                 {!state.isQuotation && (
                 <section className="space-y-4">
                     <SectionHead icon={<Zap className="w-5 h-5 text-[#2E6DFF]" />} title="Installation Info" />
-                    <div className="bg-slate-900 rounded-3xl p-8 border border-slate-800 space-y-6">
-                        <div className="flex p-1.5 bg-slate-800 rounded-2xl">
+                    <div className="bg-white dark:bg-[#0D121F] rounded-3xl p-8 border border-gray-200 dark:border-[#25314D] space-y-6">
+                        <div className="flex p-1.5 bg-gray-100 dark:bg-[#161D30] rounded-2xl">
                             <button
                                 onClick={() => setProductType("Vehicle")}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black transition-all ${productType === "Vehicle" ? "bg-slate-700 !text-[#FFFFFF]" : "!text-[#FFFFFF] hover:!text-[#FFFFFF]"}`}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black transition-all ${productType === "Vehicle" ? "bg-white dark:bg-[#0D121F] text-blue-600 shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"}`}
                             >
                                 <Zap className="w-4 h-4" /> BATTERY / VEHICLE
                             </button>
                             <button
                                 onClick={() => setProductType("Inverter")}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black transition-all ${productType === "Inverter" ? "bg-slate-700 !text-[#FFFFFF]" : "!text-[#FFFFFF] hover:!text-[#FFFFFF]"}`}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black transition-all ${productType === "Inverter" ? "bg-white dark:bg-[#0D121F] text-blue-600 shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"}`}
                             >
                                 <Zap className="w-4 h-4" /> UPS / INVERTER
                             </button>
@@ -423,10 +423,10 @@ export function Checkout() {
                                             }}
                                             className="sr-only"
                                         />
-                                        <div className={`w-12 h-6 rounded-full transition-colors ${sameAsBilling ? "bg-[#2E6DFF]" : "bg-slate-700"}`}></div>
+                                        <div className={`w-12 h-6 rounded-full transition-colors ${sameAsBilling ? "bg-[#2E6DFF]" : "bg-gray-300 dark:bg-gray-700"}`}></div>
                                         <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${sameAsBilling ? "translate-x-6" : ""}`}></div>
                                     </div>
-                                    <span className="text-[14px] font-bold !text-[#FFFFFF] transition-colors">Same as Billing Address</span>
+                                    <span className="text-[14px] font-bold text-gray-700 dark:text-gray-300 transition-colors">Same as Billing Address</span>
                                 </label>
                             </div>
 
@@ -437,7 +437,7 @@ export function Checkout() {
                                             value={installAddress}
                                             onChange={(e) => setInstallAddress(e.target.value)}
                                             rows={2}
-                                            className="w-full bg-slate-900 border border-slate-600 rounded-2xl px-4 py-4 !text-[#FFFFFF] font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:!text-[#CBD5E1]"
+                                            className="w-full bg-white dark:bg-[#070A13] border border-gray-300 dark:border-[#25314D] rounded-2xl px-4 py-4 text-gray-900 dark:text-gray-100 font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                             placeholder="Specific installation location..."
                                         />
                                     </Field>
@@ -451,105 +451,107 @@ export function Checkout() {
                 {/* ── Section: Order Items & Charges ── */}
                 <section className="space-y-4">
                     <SectionHead icon={<FileText className="w-5 h-5 text-[#2E6DFF]" />} title="Order Items & Charges" />
-                    <div className="bg-slate-900 rounded-[32px] border border-slate-800 overflow-hidden">
+                    <div className="bg-white dark:bg-[#0D121F] rounded-[32px] border border-gray-200 dark:border-[#25314D] overflow-hidden">
                         {/* Items list */}
-                        <div className="divide-y divide-slate-800">
+                        <div className="divide-y divide-gray-100 dark:divide-[#25314D]">
                             {state.items.map((item) => (
                                 <div key={item.id} className="p-5 flex justify-between items-center">
                                     <div className="flex items-center gap-4">
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${item.type === "Product" ? "bg-blue-900/30 text-blue-400" : "bg-emerald-900/30 text-emerald-400"}`}>
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${item.type === "Product" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"}`}>
                                             {item.type === "Product" ? <Zap className="w-6 h-6" /> : <Wrench className="w-6 h-6" />}
                                         </div>
                                         <div>
-                                            <h3 className="text-[15px] font-black !text-[#FFFFFF] tracking-tight">{item.name} {item.model}</h3>
-                                            <p className="text-[11px] !text-[#FFFFFF] font-black uppercase tracking-widest">
+                                            <h3 className="text-[15px] font-black text-gray-900 dark:text-white tracking-tight">{item.name} {item.model}</h3>
+                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest">
                                                 {item.quantity} unit(s) · ₹{item.price.toLocaleString()}
-                                                {item.type === "Product" && <span className="!text-[#FFFFFF]"> · GST included</span>}
+                                                {item.type === "Product" && <span className="text-gray-400"> · GST included</span>}
                                             </p>
                                         </div>
                                     </div>
-                                    <p className="text-lg font-black !text-[#FFFFFF] tracking-tighter">₹{(item.price * item.quantity).toLocaleString()}</p>
+                                    <p className="text-lg font-black text-gray-900 dark:text-white tracking-tighter">₹{(item.price * item.quantity).toLocaleString()}</p>
                                 </div>
                             ))}
                         </div>
 
                         {/* Charges */}
-                        <div className="p-8 bg-slate-800/30 space-y-6 border-t border-slate-800">
-                            <ChargeRow label="Installation Charges" sublabel="No GST applied">
-                                <div className="flex items-center bg-slate-900 rounded-2xl px-4 py-3 border border-slate-700 transition-all focus-within:ring-2 focus-within:ring-blue-500/20">
-                                    <span className="!text-[#FFFFFF] font-bold mr-1">₹</span>
-                                    <input
-                                        type="number" min="0"
-                                        value={installCharges || ""}
-                                        onChange={(e) => setInstallCharges(Number(e.target.value))}
-                                        className={chargeInput} placeholder="0"
-                                    />
-                                </div>
-                            </ChargeRow>
-
-                            <ChargeRow label="Delivery Charges" sublabel="No GST applied">
-                                <div className="flex items-center bg-slate-900 rounded-2xl px-4 py-3 border border-slate-700 transition-all focus-within:ring-2 focus-within:ring-blue-500/20">
-                                    <Truck className="w-4 h-4 !text-[#FFFFFF] mr-2" />
-                                    <input
-                                        type="number" min="0"
-                                        value={deliveryCharges || ""}
-                                        onChange={(e) => setDeliveryCharges(Number(e.target.value))}
-                                        className={chargeInput} placeholder="0"
-                                    />
-                                </div>
-                            </ChargeRow>
-
-                            {/* Old Battery Exchange selection */}
-                            <div className="space-y-2 pt-1">
-                                <div className="flex items-center gap-2">
-                                    <RefreshCcw className="w-4 h-4 text-red-400" />
-                                    <span className="text-[14px] font-black text-rose-500 uppercase tracking-widest">Old Battery Exchange</span>
-                                </div>
-                                {loadingExchanges ? (
-                                    <p className="text-xs !text-[#FFFFFF] py-2">Loading exchange records…</p>
-                                ) : exchangeRecords.length === 0 ? (
-                    <div className="bg-slate-900 rounded-2xl p-6 border border-dashed border-slate-700 text-center transition-all">
-                        <p className="text-[12px] !text-[#FFFFFF] font-bold uppercase tracking-widest">No pending exchange records found</p>
-                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {/* Deselect option */}
-                                        {selectedExchange && (
-                                            <button
-                                                onClick={() => setSelectedExchange(null)}
-                                                className="text-xs !text-[#FFFFFF] hover:!text-[#FFFFFF] underline transition-colors"
-                                            >
-                                                Remove exchange selection
-                                            </button>
-                                        )}
-                                        {exchangeRecords.map(rec => (
-                                            <div
-                                                key={rec.id}
-                                                onClick={() => setSelectedExchange(selectedExchange?.id === rec.id ? null : rec)}
-                                                className={`flex items-center justify-between p-5 rounded-[22px] border-2 cursor-pointer transition-all duration-300 group ${selectedExchange?.id === rec.id
-                                                    ? "border-rose-400 bg-rose-50 dark:bg-rose-900/10 dark:border-rose-500"
-                                                    : "border-slate-800 bg-slate-900 hover:border-rose-900"
-                                                    }`}
-                                            >
-                                                <div>
-                                                    <p className="text-[14px] font-black !text-[#FFFFFF] transition-colors group-hover:text-rose-600">{rec.battery_brand} {rec.battery_model}</p>
-                                                    <p className="text-[11px] !text-[#FFFFFF] font-medium tracking-tight mt-0.5">{rec.customer_name}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-lg font-black text-rose-500 tracking-tighter">- ₹{Number(rec.valuation_amount).toLocaleString()}</p>
-                                                    {selectedExchange?.id === rec.id && (
-                                                        <p className="text-[10px] text-rose-400 font-black uppercase tracking-widest mt-0.5">Selected</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
+                        {!state.isQuotation && (
+                            <div className="p-8 bg-gray-50/50 dark:bg-[#070A13]/50 space-y-6 border-t border-gray-200 dark:border-[#25314D]">
+                                <ChargeRow label="Installation Charges" sublabel="No GST applied">
+                                    <div className="flex items-center bg-white dark:bg-[#070A13] rounded-2xl px-4 py-3 border border-gray-200 dark:border-[#25314D] transition-all focus-within:ring-2 focus-within:ring-blue-500/20">
+                                        <span className="text-gray-900 dark:text-white font-bold mr-1">₹</span>
+                                        <input
+                                            type="number" min="0"
+                                            value={installCharges || ""}
+                                            onChange={(e) => setInstallCharges(Number(e.target.value))}
+                                            className={chargeInput} placeholder="0"
+                                        />
                                     </div>
-                                )}
+                                </ChargeRow>
+
+                                <ChargeRow label="Delivery Charges" sublabel="No GST applied">
+                                    <div className="flex items-center bg-white dark:bg-[#070A13] rounded-2xl px-4 py-3 border border-gray-200 dark:border-[#25314D] transition-all focus-within:ring-2 focus-within:ring-blue-500/20">
+                                        <Truck className="w-4 h-4 text-gray-600 dark:text-gray-400 mr-2" />
+                                        <input
+                                            type="number" min="0"
+                                            value={deliveryCharges || ""}
+                                            onChange={(e) => setDeliveryCharges(Number(e.target.value))}
+                                            className={chargeInput} placeholder="0"
+                                        />
+                                    </div>
+                                </ChargeRow>
+
+                                {/* Old Battery Exchange selection */}
+                                <div className="space-y-2 pt-1">
+                                    <div className="flex items-center gap-2">
+                                        <RefreshCcw className="w-4 h-4 text-rose-500" />
+                                        <span className="text-[14px] font-black text-rose-500 uppercase tracking-widest">Old Battery Exchange</span>
+                                    </div>
+                                    {loadingExchanges ? (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 py-2">Loading exchange records…</p>
+                                    ) : exchangeRecords.length === 0 ? (
+                                        <div className="bg-white dark:bg-[#070A13] rounded-2xl p-6 border border-dashed border-gray-200 dark:border-[#25314D] text-center transition-all">
+                                            <p className="text-[12px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">No pending exchange records found</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {/* Deselect option */}
+                                            {selectedExchange && (
+                                                <button
+                                                    onClick={() => setSelectedExchange(null)}
+                                                    className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 underline transition-colors"
+                                                >
+                                                    Remove exchange selection
+                                                </button>
+                                            )}
+                                            {exchangeRecords.map(rec => (
+                                                <div
+                                                    key={rec.id}
+                                                    onClick={() => setSelectedExchange(selectedExchange?.id === rec.id ? null : rec)}
+                                                    className={`flex items-center justify-between p-5 rounded-[22px] border-2 cursor-pointer transition-all duration-300 group ${selectedExchange?.id === rec.id
+                                                        ? "border-rose-500 bg-rose-50 dark:bg-rose-950/10"
+                                                        : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] hover:border-rose-400 dark:hover:border-rose-500"
+                                                        }`}
+                                                >
+                                                    <div>
+                                                        <p className="text-[14px] font-black text-gray-900 dark:text-white transition-colors group-hover:text-rose-600">{rec.battery_brand} {rec.battery_model}</p>
+                                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium tracking-tight mt-0.5">{rec.customer_name}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-lg font-black text-rose-500 tracking-tighter">- ₹{Number(rec.valuation_amount).toLocaleString()}</p>
+                                                        {selectedExchange?.id === rec.id && (
+                                                            <p className="text-[10px] text-rose-400 font-black uppercase tracking-widest mt-0.5">Selected</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Summary breakdown */}
-                        <div className="p-8 space-y-3 bg-slate-900/50 border-t border-slate-800">
+                        <div className="p-8 space-y-3 bg-gray-50/30 dark:bg-[#070A13]/30 border-t border-gray-200 dark:border-[#25314D]">
                             {serviceSubtotal > 0 && (
                                 <SummaryRow label="Service Charges" value={`₹${serviceSubtotal.toLocaleString()}`} />
                             )}
@@ -565,77 +567,79 @@ export function Checkout() {
                 </section>
 
                 {/* ── Section: Warranty Registration ── */}
-                <section className="space-y-4">
-                    <div className="flex items-center justify-between px-2">
-                        <SectionHead icon={<ShieldCheck className="w-5 h-5 text-[#2E6DFF]" />} title="Warranty Registration" />
-                        <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
-                            <button
-                                onClick={() => handleUnitChange("Months")}
-                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Months" ? "bg-blue-600 !text-[#FFFFFF]" : "text-white/40 hover:text-white/70"}`}
-                            >
-                                MONTHS
-                            </button>
-                            <button
-                                onClick={() => handleUnitChange("Years")}
-                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Years" ? "bg-blue-600 !text-[#FFFFFF]" : "text-white/40 hover:text-white/70"}`}
-                            >
-                                YEARS
-                            </button>
-                        </div>
-                    </div>
-                    <div className="bg-slate-900 rounded-3xl p-8 border border-slate-800 space-y-8">
-                        <div className="space-y-6">
-                            <WarrantyInput
-                                label="Total Warranty"
-                                value={totalWarrantyVal}
-                                onValueChange={setTotalWarrantyVal}
-                            />
-                            <div className="h-px bg-slate-800/50 w-full" />
-                            <WarrantyInput
-                                label="Free Replacement"
-                                value={freeReplacementVal}
-                                onValueChange={setFreeReplacementVal}
-                            />
-                        </div>
-                        {(parseInt(totalWarrantyVal) > 0 || parseInt(freeReplacementVal) > 0) && (
-                            <div className="bg-[#2E6DFF]/5 rounded-2xl p-6 space-y-2 border border-blue-900/30">
-                                <p className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-[0.2em]">Calculated Expiry Dates</p>
-                                {parseInt(totalWarrantyVal) > 0 && (
-                                    <p className="text-[14px] !text-[#FFFFFF] font-bold">
-                                        Total Warranty: <span className="text-blue-400 font-black">{totalWarrantyExpiry}</span>
-                                    </p>
-                                )}
-                                {parseInt(freeReplacementVal) > 0 && (
-                                    <p className="text-[14px] !text-[#FFFFFF] font-bold">
-                                        Free Replacement: <span className="text-blue-400 font-black">{freeReplacementExpiry}</span>
-                                    </p>
-                                )}
+                {!state.isQuotation && (
+                    <section className="space-y-4">
+                        <div className="flex items-center justify-between px-2">
+                            <SectionHead icon={<ShieldCheck className="w-5 h-5 text-[#2E6DFF]" />} title="Warranty Registration" />
+                            <div className="flex bg-gray-100 dark:bg-[#161D30] p-1 rounded-xl border border-gray-200 dark:border-[#25314D]">
+                                <button
+                                    onClick={() => handleUnitChange("Months")}
+                                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Months" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70"}`}
+                                >
+                                    MONTHS
+                                </button>
+                                <button
+                                    onClick={() => handleUnitChange("Years")}
+                                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Years" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70"}`}
+                                >
+                                    YEARS
+                                </button>
                             </div>
-                        )}
-                    </div>
-                </section>
+                        </div>
+                        <div className="bg-white dark:bg-[#0D121F] rounded-3xl p-8 border border-gray-200 dark:border-[#25314D] space-y-8">
+                            <div className="space-y-6">
+                                <WarrantyInput
+                                    label="Total Warranty"
+                                    value={totalWarrantyVal}
+                                    onValueChange={setTotalWarrantyVal}
+                                />
+                                <div className="h-px bg-gray-200 dark:bg-gray-800 w-full" />
+                                <WarrantyInput
+                                    label="Free Replacement"
+                                    value={freeReplacementVal}
+                                    onValueChange={setFreeReplacementVal}
+                                />
+                            </div>
+                            {(parseInt(totalWarrantyVal) > 0 || parseInt(freeReplacementVal) > 0) && (
+                                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-6 space-y-2 border border-blue-100 dark:border-blue-900/30">
+                                    <p className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em]">Calculated Expiry Dates</p>
+                                    {parseInt(totalWarrantyVal) > 0 && (
+                                        <p className="text-[14px] text-gray-900 dark:text-white font-bold">
+                                            Total Warranty: <span className="text-blue-600 dark:text-blue-400 font-black">{totalWarrantyExpiry}</span>
+                                        </p>
+                                    )}
+                                    {parseInt(freeReplacementVal) > 0 && (
+                                        <p className="text-[14px] text-gray-900 dark:text-white font-bold">
+                                            Free Replacement: <span className="text-blue-600 dark:text-blue-400 font-black">{freeReplacementExpiry}</span>
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                )}
 
                 {/* ── Payment Method & Action ── */}
-                <div className="bg-slate-900 rounded-[40px] border border-slate-800 p-8 space-y-8 relative overflow-hidden">
+                <div className="bg-white dark:bg-[#0D121F] rounded-[40px] border border-gray-200 dark:border-[#25314D] p-8 space-y-8 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full -mr-16 -mt-16"></div>
                     
                     {/* Grand Total */}
                     <div className="flex items-end justify-between relative z-10">
                         <div className="space-y-1">
-                            <p className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-[0.2em] mb-1">
+                            <p className="text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] mb-1">
                                 Grand Total Payable
-                                <span className="text-[9px] normal-case font-bold ml-1 !text-[#FFFFFF]">
+                                <span className="text-[9px] normal-case font-bold ml-1 text-gray-400">
                                     (Incl. ₹{productGst.toLocaleString(undefined, { maximumFractionDigits: 0 })} GST)
                                 </span>
                             </p>
-                            <p className="text-5xl font-black !text-[#FFFFFF] tracking-tighter transition-all">
+                            <p className="text-5xl font-black text-gray-900 dark:text-white tracking-tighter transition-all">
                                 ₹{Math.max(0, grandTotal).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                             </p>
                         </div>
                         <div className="bg-emerald-500/10 dark:bg-emerald-500/20 px-5 py-2 rounded-full border border-emerald-500/20">
                             <div className="flex items-center gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Confirmed</p>
+                                <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Confirmed</p>
                             </div>
                         </div>
                     </div>
@@ -644,7 +648,7 @@ export function Checkout() {
                     {!state.isQuotation && (
                         <>
                             <div className="space-y-4 relative z-10">
-                                <label className="text-[12px] font-black !text-[#FFFFFF] uppercase tracking-[0.15em] block ml-1">Transaction Method</label>
+                                <label className="text-[12px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-[0.15em] block ml-1">Transaction Method</label>
                                 <div className="relative group">
                                     <select
                                         value={paymentMethod}
@@ -653,13 +657,13 @@ export function Checkout() {
                                             setPaymentMethod(val);
                                             if (val === "Split") setCashPart(0);
                                         }}
-                                        className="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl px-6 h-16 !text-[#FFFFFF] font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none appearance-none cursor-pointer transition-all pr-12 group-hover:bg-slate-800"
+                                        className="w-full bg-white dark:bg-[#070A13] border-2 border-gray-200 dark:border-[#25314D] rounded-2xl px-6 h-16 text-gray-900 dark:text-white font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none appearance-none cursor-pointer transition-all pr-12 hover:bg-gray-50 dark:hover:bg-[#161D30]"
                                     >
                                         <option value="Cash">Cash Transaction</option>
                                         <option value="UPI">UPI / QR Payment</option>
                                         <option value="Split">Split Payment (Mix Mode)</option>
                                     </select>
-                                    <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none !text-[#FFFFFF]">
+                                    <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
                                     </div>
                                 </div>
@@ -669,9 +673,9 @@ export function Checkout() {
                             {paymentMethod === "Split" && (
                                 <div className="grid grid-cols-2 gap-5 animate-in fade-in zoom-in-95 duration-500 relative z-10">
                                     <div className="space-y-3">
-                                        <label className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">Cash Part</label>
+                                        <label className="text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1">Cash Part</label>
                                         <div className="relative group">
-                                            <span className="absolute left-5 top-1/2 -translate-y-1/2 !text-[#FFFFFF] font-bold text-lg">₹</span>
+                                            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-900 dark:text-white font-bold text-lg">₹</span>
                                             <input
                                                 type="number"
                                                 value={cashPart || ""}
@@ -679,21 +683,21 @@ export function Checkout() {
                                                     const val = Math.min(grandTotal, Math.max(0, Number(e.target.value)));
                                                     setCashPart(val);
                                                 }}
-                                                className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-900 !text-[#FFFFFF] placeholder:!text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                                 placeholder="0"
                                             />
                                         </div>
                                     </div>
                                     <div className="space-y-3">
-                                        <label className="text-[11px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">UPI Part</label>
+                                        <label className="text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1">UPI Part</label>
                                         <div className="relative group">
-                                            <div className="w-full bg-blue-900/20 border-2 border-blue-800/50 rounded-2xl flex items-center px-6 h-16 transition-all group-hover:bg-blue-900/30">
-                                                <span className="!text-[#FFFFFF] font-bold mr-2 text-lg">₹</span>
-                                                <span className="text-blue-400 font-black text-2xl tracking-tighter">
+                                            <div className="w-full bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-100 dark:border-blue-800/50 rounded-2xl flex items-center px-6 h-16 transition-all">
+                                                <span className="text-gray-900 dark:text-white font-bold mr-2 text-lg">₹</span>
+                                                <span className="text-blue-600 dark:text-blue-400 font-black text-2xl tracking-tighter">
                                                     {(grandTotal - cashPart).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                                 </span>
                                             </div>
-                                            <div className="absolute -top-1 -right-1 bg-[#2E6DFF] !text-[#FFFFFF] text-[9px] font-black px-2 py-0.5 rounded-full border border-white dark:border-slate-900">
+                                            <div className="absolute -top-1 -right-1 bg-[#2E6DFF] text-white text-[9px] font-black px-2 py-0.5 rounded-full border border-white dark:border-slate-900">
                                                 AUTO
                                             </div>
                                         </div>
@@ -707,11 +711,11 @@ export function Checkout() {
                     <Button
                         onClick={handleProcessSale}
                         disabled={loading}
-                        className={`w-full !text-[#FFFFFF] h-20 rounded-[28px] text-xl font-black transition-all active:scale-[0.97] flex items-center justify-center gap-4 relative z-10 ${paymentMethod === "Cash"
-                            ? "bg-emerald-500 hover:bg-emerald-600"
+                        className={`w-full text-white h-20 rounded-[28px] text-xl font-black transition-all active:scale-[0.97] flex items-center justify-center gap-4 relative z-10 ${paymentMethod === "Cash"
+                            ? "bg-emerald-500 hover:bg-emerald-600 text-white"
                             : paymentMethod === "Split"
-                                ? "bg-gradient-to-r from-emerald-500 via-[#2E6DFF] to-blue-600 hover:opacity-95"
-                                : "bg-[#2E6DFF] hover:bg-blue-600"
+                                ? "bg-gradient-to-r from-emerald-500 via-[#2E6DFF] to-blue-600 hover:opacity-95 text-white"
+                                : "bg-[#2E6DFF] hover:bg-blue-600 text-white"
                             }`}
                     >
                         {loading ? (
@@ -719,9 +723,9 @@ export function Checkout() {
                         ) : (
                             <>
                                 <div className="p-2 bg-white/20 rounded-xl">
-                                    {paymentMethod === "Cash" ? <Banknote className="w-6 h-6" /> : paymentMethod === "Split" ? <RefreshCcw className="w-6 h-6" /> : <QrCode className="w-6 h-6" />}
+                                    {paymentMethod === "Cash" ? <Banknote className="w-6 h-6 text-white" /> : paymentMethod === "Split" ? <RefreshCcw className="w-6 h-6 text-white" /> : <QrCode className="w-6 h-6 text-white" />}
                                 </div>
-                                <span className="uppercase tracking-widest">
+                                <span className="uppercase tracking-widest text-white">
                                     {state.isQuotation ? "Confirm Quotation Details" : "Generate Bill & Pay"}
                                 </span>
                             </>
@@ -740,10 +744,10 @@ export function Checkout() {
 function SectionHead({ icon, title }: { icon: React.ReactNode; title: string }) {
     return (
         <div className="flex items-center gap-3 px-2">
-            <div className="p-2 bg-slate-800 rounded-lg border border-slate-700">
+            <div className="p-2 bg-gray-100 dark:bg-[#161D30] rounded-lg border border-gray-200 dark:border-[#25314D]">
                 {icon}
             </div>
-            <h2 className="text-[13px] font-black !text-[#FFFFFF] uppercase tracking-[0.2em]">{title}</h2>
+            <h2 className="text-[13px] font-black text-gray-900 dark:text-white uppercase tracking-[0.2em]">{title}</h2>
         </div>
     );
 }
@@ -751,7 +755,7 @@ function SectionHead({ icon, title }: { icon: React.ReactNode; title: string }) 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="space-y-2.5">
-            <label className="text-[12px] font-black !text-[#FFFFFF] uppercase tracking-widest ml-1">{label}</label>
+            <label className="text-[12px] font-black text-gray-600 dark:text-gray-400 uppercase tracking-widest ml-1">{label}</label>
             {children}
         </div>
     );
@@ -765,8 +769,8 @@ function ChargeRow({
     return (
         <div className="flex items-center justify-between group">
             <div>
-                <span className="text-[15px] font-black !text-[#FFFFFF] transition-colors group-hover:text-blue-500">{label}</span>
-                {sublabel && <p className="text-[10px] !text-[#FFFFFF] font-bold uppercase tracking-widest mt-0.5">{sublabel}</p>}
+                <span className="text-[15px] font-black text-gray-900 dark:text-white transition-colors group-hover:text-blue-500">{label}</span>
+                {sublabel && <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mt-0.5">{sublabel}</p>}
             </div>
             {children}
         </div>
@@ -776,8 +780,8 @@ function ChargeRow({
 function SummaryRow({ label, value, accent }: { label: string; value: string; accent?: string }) {
     return (
         <div className="flex justify-between items-center py-0.5">
-            <span className="text-[14px] !text-[#FFFFFF] font-bold tracking-tight">{label}</span>
-            <span className={`text-[15px] font-black ${accent ?? "!text-[#FFFFFF]"} tracking-tight`}>{value}</span>
+            <span className="text-[14px] text-gray-600 dark:text-gray-400 font-bold tracking-tight">{label}</span>
+            <span className={`text-[15px] font-black ${accent ?? "text-gray-900 dark:text-white"} tracking-tight`}>{value}</span>
         </div>
     );
 }

@@ -152,17 +152,17 @@ export function UPIPayment() {
 
     /* ──────────────────────────────────────────────────────────────────── */
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+        <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#05050A] text-gray-900 dark:text-gray-100 flex flex-col font-sans transition-colors duration-500">
             {/* Fixed header */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#0D1B2A] border-b border-gray-100 dark:border-[#2E3B55] px-4 py-3 flex items-center justify-between">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-white/85 dark:bg-[#0D121F]/85 backdrop-blur-md border-b border-gray-100 dark:border-[#25314D] px-4 py-3 flex items-center justify-between">
                 <button
                     onClick={() => navigate(-1)}
                     disabled={status === "finalising" || status === "done"}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-40"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-[#161D30] rounded-full transition-colors disabled:opacity-40"
                 >
-                    <ArrowLeft className="w-5 h-5 text-gray-800" />
+                    <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-gray-200" />
                 </button>
-                <h1 className="text-lg font-bold text-gray-900">UPI Payment</h1>
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">UPI Payment</h1>
                 {/* Live indicator dot */}
                 <div className={`w-3 h-3 rounded-full mr-2 transition-colors ${status === "done" ? "bg-green-500" :
                     status === "received" ? "bg-green-400 animate-pulse" :
@@ -175,17 +175,17 @@ export function UPIPayment() {
 
                 {/* ── DONE / Finalising ───────────────────────────────────── */}
                 {(status === "done" || status === "finalising") && (
-                    <div className="bg-green-50 border border-green-200 rounded-3xl p-10 flex flex-col items-center gap-4 text-center">
-                        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+                    <div className="bg-green-50 dark:bg-green-950/10 border border-green-200 dark:border-green-900/30 rounded-3xl p-10 flex flex-col items-center gap-4 text-center">
+                        <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
                             <ShieldCheck className="w-10 h-10 text-green-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-black text-green-800">Payment Confirmed!</p>
-                            <p className="text-sm text-green-600 mt-1">
+                            <p className="text-2xl font-black text-green-800 dark:text-green-400">Payment Confirmed!</p>
+                            <p className="text-sm text-green-600 dark:text-green-500 mt-1">
                                 ₹{amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })} received
                             </p>
                         </div>
-                        <div className="flex items-center gap-2 text-green-600 mt-2">
+                        <div className="flex items-center gap-2 text-green-600 dark:text-green-500 mt-2">
                             <Loader2 className="w-4 h-4 animate-spin" />
                             <span className="text-sm font-medium">Generating invoice…</span>
                         </div>
@@ -208,9 +208,9 @@ export function UPIPayment() {
 
                         {/* Status bar */}
                         {status === "waiting" && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+                            <div className="bg-blue-50 dark:bg-blue-950/15 border border-blue-200 dark:border-blue-900/30 rounded-2xl px-4 py-3 flex items-center gap-3">
                                 <Loader2 className="w-5 h-5 text-[#2E6DFF] animate-spin shrink-0" />
-                                <p className="text-sm font-bold text-blue-800">
+                                <p className="text-sm font-bold text-blue-800 dark:text-blue-400">
                                     {countdown !== null
                                         ? `Payment detected — verifying in ${countdown}s…`
                                         : `Waiting for payment${".".repeat(dot)}`
@@ -222,21 +222,21 @@ export function UPIPayment() {
 
                         {/* Payment received banner */}
                         {status === "received" && (
-                            <div className="bg-green-50 border border-green-300 rounded-2xl px-4 py-3 flex items-center gap-3">
+                            <div className="bg-green-50 dark:bg-green-950/15 border border-green-300 dark:border-green-900/30 rounded-2xl px-4 py-3 flex items-center gap-3">
                                 <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
-                                <p className="text-sm font-bold text-green-800">Payment received! Tap below to generate invoice.</p>
+                                <p className="text-sm font-bold text-green-800 dark:text-green-400">Payment received! Tap below to generate invoice.</p>
                             </div>
                         )}
 
                         {/* QR Card */}
-                        <div className="bg-white dark:bg-[#1B263B] rounded-3xl border border-gray-100 dark:border-[#2E3B55] p-6 flex flex-col items-center gap-5">
+                        <div className="bg-white dark:bg-[#0D121F] rounded-3xl border border-gray-200 dark:border-[#25314D] p-6 flex flex-col items-center gap-5">
                             <div className="flex items-center gap-2">
                                 <Smartphone className="w-5 h-5 text-[#2E6DFF]" />
-                                <p className="text-[13px] font-bold text-slate-500 uppercase tracking-wider">Scan &amp; Pay via UPI</p>
+                                <p className="text-[13px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Scan &amp; Pay via UPI</p>
                             </div>
 
                             <div className="relative">
-                                <div className="p-3 bg-white dark:bg-[#1B263B] rounded-2xl border-2 border-[#2E6DFF]/10 dark:border-[#2E6DFF]/20">
+                                <div className="p-3 bg-white dark:bg-[#0D121F] rounded-2xl border-2 border-[#2E6DFF]/10 dark:border-[#2E6DFF]/20">
                                     <img
                                         src={qrUrl}
                                         alt={`UPI QR — ₹${amount.toFixed(2)} to ${UPI_ID}`}
@@ -245,25 +245,25 @@ export function UPIPayment() {
                                         onError={(e) => {
                                             const img = e.target as HTMLImageElement;
                                             img.replaceWith(Object.assign(document.createElement("div"), {
-                                                className: "w-[220px] h-[220px] flex items-center justify-center bg-gray-50 rounded-lg",
-                                                innerHTML: `<p class='text-xs text-gray-400 text-center px-6 font-medium'>QR unavailable — use UPI ID or Open App below</p>`,
+                                                className: "w-[220px] h-[220px] flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg",
+                                                innerHTML: `<p class='text-xs text-gray-400 dark:text-gray-500 text-center px-6 font-medium'>QR unavailable — use UPI ID or Open App below</p>`,
                                             }));
                                         }}
                                     />
                                 </div>
-                                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white dark:bg-[#0D1B2A] border-2 border-[#2E6DFF]/20 rounded-full px-3 py-1">
+                                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white dark:bg-[#0D121F] border-2 border-[#2E6DFF]/20 rounded-full px-3 py-1">
                                     <span className="text-[11px] font-black text-[#2E6DFF] tracking-tight">UPI</span>
                                 </div>
                             </div>
 
                             {/* UPI ID */}
                             <div className="w-full mt-2">
-                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center mb-2">UPI ID</p>
+                                <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center mb-2">UPI ID</p>
                                 <button
                                     onClick={handleCopy}
-                                    className="w-full flex items-center justify-between bg-[#F8FAFF] rounded-xl px-4 py-3 border border-[#2E6DFF]/10 hover:bg-[#EEF3FF] transition-colors"
+                                    className="w-full flex items-center justify-between bg-gray-50/50 dark:bg-[#070A13] rounded-xl px-4 py-3 border border-[#2E6DFF]/10 dark:border-[#25314D] hover:bg-[#EEF3FF] dark:hover:bg-[#161D30] transition-colors"
                                 >
-                                    <span className="font-bold text-slate-900 text-sm tracking-wide">{UPI_ID}</span>
+                                    <span className="font-bold text-slate-900 dark:text-white text-sm tracking-wide">{UPI_ID}</span>
                                     <div className="flex items-center gap-1.5">
                                         {copied ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-[#2E6DFF]" />}
                                         <span className={`text-xs font-bold ${copied ? "text-green-500" : "text-[#2E6DFF]"}`}>
@@ -276,7 +276,7 @@ export function UPIPayment() {
                             {/* Supported apps */}
                             <div className="flex flex-wrap justify-center gap-2">
                                 {["GPay", "PhonePe", "Paytm", "BHIM", "Amazon Pay"].map(app => (
-                                    <span key={app} className="text-[11px] font-bold text-slate-400 bg-gray-100 px-2.5 py-1 rounded-full">{app}</span>
+                                    <span key={app} className="text-[11px] font-bold text-slate-400 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">{app}</span>
                                 ))}
                             </div>
                         </div>
@@ -292,9 +292,9 @@ export function UPIPayment() {
 
                         {/* Error */}
                         {error && (
-                            <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-start gap-3">
+                            <div className="bg-red-50 dark:bg-red-950/15 border border-red-100 dark:border-red-900/30 rounded-2xl p-4 flex items-start gap-3">
                                 <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                                <p className="text-sm text-red-700 font-medium">{error}</p>
+                                <p className="text-sm text-red-700 dark:text-red-400 font-medium">{error}</p>
                             </div>
                         )}
 
@@ -315,7 +315,7 @@ export function UPIPayment() {
 
                         {/* Hint text – only while waiting */}
                         {status === "waiting" && (
-                            <p className="text-center text-[11px] text-slate-400 font-medium pb-4">
+                            <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 font-medium pb-4">
                                 "Generate Invoice" button will appear automatically once payment is detected
                             </p>
                         )}

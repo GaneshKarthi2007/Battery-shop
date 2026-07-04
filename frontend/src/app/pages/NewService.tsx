@@ -24,6 +24,7 @@ export function NewService() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [showAudioRecorder, setShowAudioRecorder] = useState(false);
     const [voiceNote, setVoiceNote] = useState<File | null>(null);
+    const [isCustomMode, setIsCustomMode] = useState(false);
 
     const complaintTypes = [
         "Charging Issue",
@@ -31,7 +32,7 @@ export function NewService() {
         "Self Start Issue",
         "Warranty Claim",
         "Periodic Maintenance",
-        "Other"
+        "Others"
     ];
 
     const [showSuccess, setShowSuccess] = useState<{ id: number; name: string } | null>(null);
@@ -79,6 +80,10 @@ export function NewService() {
             // Validation
             if (!formData.customer_name || !formData.contact_number) {
                 throw new Error("Please fill in required fields (Customer Name and Contact Number)");
+            }
+
+            if (isCustomMode && !formData.complaint_type.trim()) {
+                throw new Error("Please specify the custom complaint type");
             }
 
             let serviceId = createdServiceIdRef.current;
@@ -286,28 +291,55 @@ export function NewService() {
                                     <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)}></div>
                                     <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                         <div className="p-2 max-h-[300px] overflow-y-auto">
-                                            {complaintTypes.map((type) => (
-                                                <button
-                                                    key={type}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setFormData({ ...formData, complaint_type: type });
-                                                        setIsDropdownOpen(false);
-                                                    }}
-                                                    className={`w-full px-4 py-3.5 rounded-xl flex items-center justify-between text-sm font-bold transition-all ${formData.complaint_type === type
-                                                        ? 'bg-blue-50 text-blue-700'
-                                                        : 'text-gray-600 hover:bg-gray-50'
-                                                        }`}
-                                                >
-                                                    {type}
-                                                    {formData.complaint_type === type && <Check className="w-4 h-4" />}
-                                                </button>
-                                            ))}
+                                            {complaintTypes.map((type) => {
+                                                const isActive = (type === "Others" && isCustomMode) || (type !== "Others" && !isCustomMode && formData.complaint_type === type);
+                                                return (
+                                                    <button
+                                                        key={type}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (type === "Others") {
+                                                                setIsCustomMode(true);
+                                                                setFormData({ ...formData, complaint_type: "" });
+                                                            } else {
+                                                                setIsCustomMode(false);
+                                                                setFormData({ ...formData, complaint_type: type });
+                                                            }
+                                                            setIsDropdownOpen(false);
+                                                        }}
+                                                        className={`w-full px-4 py-3.5 rounded-xl flex items-center justify-between text-sm font-bold transition-all ${isActive
+                                                            ? 'bg-blue-50 text-blue-700'
+                                                            : 'text-gray-600 hover:bg-gray-50'
+                                                            }`}
+                                                    >
+                                                        {type}
+                                                        {isActive && <Check className="w-4 h-4" />}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 </>
                             )}
                         </div>
+
+                        {/* Manual entry for custom complaint type when "Others" is selected */}
+                        {isCustomMode && (
+                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Specify Custom Complaint Type *</label>
+                                <div className="relative">
+                                    <Input
+                                        className="h-14"
+                                        placeholder="Enter manual entry of complaint type..."
+                                        value={formData.complaint_type}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, complaint_type: e.target.value });
+                                            if (error) setError("");
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Issue Description</label>

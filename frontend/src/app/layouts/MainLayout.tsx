@@ -241,7 +241,10 @@ export function MainLayout() {
               <div className="p-4 border-t border-gray-100 dark:border-[#2E3B55] bg-gray-50/50 dark:bg-white/[0.01]">
                 <div
                   className="p-4 bg-white dark:bg-[#15161E] border border-gray-100 dark:border-[#2E3B55] rounded-2xl shadow-sm group cursor-pointer hover:shadow-md hover:border-blue-100 dark:hover:border-blue-500/20 transition-all active:scale-[0.98]"
-                  onClick={() => navigate('/profile')}
+                  onClick={() => {
+                    navigate('/profile');
+                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative">

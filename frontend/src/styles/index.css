@@ -29,31 +29,91 @@
         --color-orange-100: #5a220a;
         --color-orange-500: #f97316;
         --color-orange-600: #ea580c;
+
+        /* Unified Blue-Gray/Navy Theme Color Scales */
+        --color-gray-50: #070A13;
+        --color-gray-100: #0D121F;
+        --color-gray-200: #161D30;
+        --color-gray-300: #25314D;
+        --color-gray-400: #3D4F75;
+        --color-gray-500: #64748B;
+        --color-gray-600: #94A3B8;
+        --color-gray-700: #CBD5E1;
+        --color-gray-800: #F1F5F9;
+        --color-gray-900: #FFFFFF;
+        --color-gray-950: #FFFFFF;
+
+        --color-slate-50: #070A13;
+        --color-slate-100: #0D121F;
+        --color-slate-200: #161D30;
+        --color-slate-300: #25314D;
+        --color-slate-400: #3D4F75;
+        --color-slate-500: #64748B;
+        --color-slate-600: #94A3B8;
+        --color-slate-700: #CBD5E1;
+        --color-slate-800: #F1F5F9;
+        --color-slate-900: #FFFFFF;
+        --color-slate-950: #FFFFFF;
+
+        --color-zinc-50: #070A13;
+        --color-zinc-100: #0D121F;
+        --color-zinc-200: #161D30;
+        --color-zinc-300: #25314D;
+        --color-zinc-400: #3D4F75;
+        --color-zinc-500: #64748B;
+        --color-zinc-600: #94A3B8;
+        --color-zinc-700: #CBD5E1;
+        --color-zinc-800: #F1F5F9;
+        --color-zinc-900: #FFFFFF;
+        --color-zinc-950: #FFFFFF;
+
+        --color-neutral-50: #070A13;
+        --color-neutral-100: #0D121F;
+        --color-neutral-200: #161D30;
+        --color-neutral-300: #25314D;
+        --color-neutral-400: #3D4F75;
+        --color-neutral-500: #64748B;
+        --color-neutral-600: #94A3B8;
+        --color-neutral-700: #CBD5E1;
+        --color-neutral-800: #F1F5F9;
+        --color-neutral-900: #FFFFFF;
+        --color-neutral-950: #FFFFFF;
         
-        --color-border: #2E3B55;
-        --color-background: #0D1B2A;
+        --color-border: #25314D;
+        --color-background: #0D121F;
     }
 
-    .dark .text-gray-900 { color: #E0E1DD; }
-    .dark .text-gray-800 { color: #E0E1DD; }
-    .dark .text-gray-700 { color: #A9B4C2; }
-    .dark .text-gray-600 { color: #A9B4C2; }
-    .dark .text-gray-500 { color: #A9B4C2; }
-    .dark .text-gray-400 { color: #7B8B9E; }
-    .dark .text-black { color: #E0E1DD; }
+    .dark .text-gray-950 { color: #FFFFFF; }
+    .dark .text-gray-900 { color: #FFFFFF; }
+    .dark .text-gray-800 { color: #F1F5F9; }
+    .dark .text-gray-700 { color: #CBD5E1; }
+    .dark .text-gray-600 { color: #CBD5E1; }
+    .dark .text-gray-500 { color: #94A3B8; }
+    .dark .text-gray-400 { color: #64748B; }
+    .dark .text-black { color: #FFFFFF; }
     .dark .text-white { color: #FFFFFF; }
     
     .dark input,
     .dark textarea,
     .dark select {
-        color: #E0E1DD;
-        background-color: #1B263B;
-        border-color: #2E3B55;
+        color: #F8FAFC;
+        background-color: #070A13;
+        border-color: #25314D;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .dark input:focus,
+    .dark textarea:focus,
+    .dark select:focus {
+        border-color: #3A86FF;
+        box-shadow: 0 0 0 2px rgba(58, 134, 255, 0.15);
+        outline: none;
     }
 
     .dark input::placeholder,
     .dark textarea::placeholder {
-        color: #A9B4C2;
+        color: #64748B;
     }
 
     ::selection {
@@ -62,8 +122,8 @@
     }
     
     select option {
-        background-color: #1B263B;
-        color: #E0E1DD;
+        background-color: #161D30;
+        color: #F1F5F9;
     }
 }
 
@@ -71,4 +131,37 @@
     body {
         @apply bg-[#f8f9fc] dark:bg-[#05050a] text-gray-900 dark:text-gray-100 transition-colors duration-500;
     }
+}
+
+/* View Transitions Circular Reveal Override */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+::view-transition-group(root) {
+    animation-duration: 0s;
+}
+
+/* Light -> Dark (Circle In): New theme expands on top of old theme */
+.transition-to-dark::view-transition-new(root) {
+    z-index: 9999;
+}
+.transition-to-dark::view-transition-old(root) {
+    z-index: 1;
+}
+
+/* Dark -> Light (Circle Out): Old theme shrinks on top of new theme */
+.transition-to-light::view-transition-new(root) {
+    z-index: 1;
+}
+.transition-to-light::view-transition-old(root) {
+    z-index: 9999;
+}
+
+/* Prevent transition conflicts during theme swap */
+.disable-transitions,
+.disable-transitions * {
+    transition: none !important;
 }
