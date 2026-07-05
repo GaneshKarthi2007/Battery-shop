@@ -23,6 +23,23 @@ interface SalesItem {
     originalData?: any;
 }
 
+function parseWarrantyString(wStr: string | undefined): { val: string; unit: "Months" | "Years" } {
+    if (!wStr || wStr === "N/A" || wStr === "0") {
+        return { val: "36", unit: "Months" };
+    }
+    const match = wStr.match(/^(\d+)\s*(Months|Month|Years|Year|M|Y)?/i);
+    if (match) {
+        const val = match[1];
+        let unit: "Months" | "Years" = "Months";
+        const unitStr = match[2]?.toLowerCase() || "";
+        if (unitStr.startsWith("y")) {
+            unit = "Years";
+        }
+        return { val, unit };
+    }
+    return { val: "36", unit: "Months" };
+}
+
 interface ExchangeRecord {
     id: number;
     customer_name: string;
@@ -36,10 +53,12 @@ function WarrantyInput({
     label,
     value,
     onValueChange,
+    disabled = false,
 }: {
     label: string;
     value: string;
     onValueChange: (v: string) => void;
+    disabled?: boolean;
 }) {
     return (
         <div className="flex items-center justify-between group">
@@ -50,7 +69,8 @@ function WarrantyInput({
                     min="0"
                     value={value}
                     onChange={(e) => onValueChange(e.target.value)}
-                    className="w-full bg-white dark:bg-[#070A13] border-2 border-gray-300 dark:border-[#25314D] rounded-xl px-4 h-12 text-gray-900 dark:text-[#FFFFFF] font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 text-right"
+                    disabled={disabled}
+                    className="w-full bg-white dark:bg-[#070A13] border-2 border-gray-300 dark:border-[#25314D] rounded-xl px-4 h-12 text-gray-900 dark:text-[#FFFFFF] font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 text-right disabled:opacity-75 disabled:cursor-not-allowed"
                     placeholder="0"
                 />
             </div>
@@ -103,10 +123,17 @@ export function Checkout() {
     const [selectedExchange, setSelectedExchange] = useState<ExchangeRecord | null>(null);
     const [loadingExchanges, setLoadingExchanges] = useState(false);
 
+    const productItem = state?.items?.find(item => item.type === "Product");
+    const parsedWarranty = parseWarrantyString(productItem?.warranty);
+
     /** ── Warranty ── */
-    const [totalWarrantyVal, setTotalWarrantyVal] = useState("36");
-    const [freeReplacementVal, setFreeReplacementVal] = useState("18");
-    const [warrantyUnit, setWarrantyUnit] = useState<"Months" | "Years">("Months");
+    const [totalWarrantyVal, setTotalWarrantyVal] = useState(parsedWarranty.val);
+    const [freeReplacementVal, setFreeReplacementVal] = useState(() => {
+        const tVal = parseInt(parsedWarranty.val) || 0;
+        return Math.round(tVal / 2).toString();
+    });
+    const [warrantyUnit, setWarrantyUnit] = useState<"Months" | "Years">(parsedWarranty.unit);
+    const [isWarrantyEditable, setIsWarrantyEditable] = useState(false);
 
     /** ── Payment ── */
     const [paymentMethod, setPaymentMethod] = useState<"Cash" | "UPI" | "Split">("Cash");
@@ -451,6 +478,74 @@ export function Checkout() {
                 </section>
                 )}
 
+                {/* ── Section: Warranty Registration ── */}
+                {!state.isQuotation && (
+                    <section className="space-y-4">
+                        <div className="flex items-center justify-between px-2">
+                            <div className="flex items-center gap-3">
+                                <SectionHead icon={<ShieldCheck className="w-5 h-5 text-[#2E6DFF]" />} title="Warranty Registration" />
+                                {!isWarrantyEditable && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsWarrantyEditable(true)}
+                                        className="px-3 py-1 text-[11px] font-black text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-lg transition-all uppercase tracking-wider shadow-sm"
+                                    >
+                                        Change
+                                    </button>
+                                )}
+                            </div>
+                            {isWarrantyEditable && (
+                                <div className="flex bg-gray-100 dark:bg-[#161D30] p-1 rounded-xl border border-gray-200 dark:border-[#25314D] animate-in fade-in zoom-in-95 duration-200">
+                                    <button
+                                        onClick={() => handleUnitChange("Months")}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Months" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70"}`}
+                                    >
+                                        MONTHS
+                                    </button>
+                                    <button
+                                        onClick={() => handleUnitChange("Years")}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Years" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70"}`}
+                                    >
+                                        YEARS
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        <div className="bg-white dark:bg-[#0D121F] rounded-3xl p-8 border border-gray-200 dark:border-[#25314D] space-y-8">
+                            <div className="space-y-6">
+                                <WarrantyInput
+                                    label="Total Warranty"
+                                    value={totalWarrantyVal}
+                                    onValueChange={setTotalWarrantyVal}
+                                    disabled={!isWarrantyEditable}
+                                />
+                                <div className="h-px bg-gray-200 dark:bg-gray-800 w-full" />
+                                <WarrantyInput
+                                    label="Free Replacement"
+                                    value={freeReplacementVal}
+                                    onValueChange={setFreeReplacementVal}
+                                    disabled={!isWarrantyEditable}
+                                />
+                            </div>
+                            {(parseInt(totalWarrantyVal) > 0 || parseInt(freeReplacementVal) > 0) && (
+                                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-6 space-y-2 border border-blue-100 dark:border-blue-900/30">
+                                    <p className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em]">Calculated Expiry Dates</p>
+                                    {parseInt(totalWarrantyVal) > 0 && (
+                                        <p className="text-[14px] text-gray-900 dark:text-white font-bold">
+                                            Total Warranty: <span className="text-blue-600 dark:text-blue-400 font-black">{totalWarrantyExpiry}</span>
+                                        </p>
+                                    )}
+                                    {parseInt(freeReplacementVal) > 0 && (
+                                        <p className="text-[14px] text-gray-900 dark:text-white font-bold">
+                                            Free Replacement: <span className="text-blue-600 dark:text-blue-400 font-black">{freeReplacementExpiry}</span>
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                )}
+
                 {/* ── Section: Order Items & Charges ── */}
                 <section className="space-y-4">
                     <SectionHead icon={<FileText className="w-5 h-5 text-[#2E6DFF]" />} title="Order Items & Charges" />
@@ -569,58 +664,7 @@ export function Checkout() {
                     </div>
                 </section>
 
-                {/* ── Section: Warranty Registration ── */}
-                {!state.isQuotation && (
-                    <section className="space-y-4">
-                        <div className="flex items-center justify-between px-2">
-                            <SectionHead icon={<ShieldCheck className="w-5 h-5 text-[#2E6DFF]" />} title="Warranty Registration" />
-                            <div className="flex bg-gray-100 dark:bg-[#161D30] p-1 rounded-xl border border-gray-200 dark:border-[#25314D]">
-                                <button
-                                    onClick={() => handleUnitChange("Months")}
-                                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Months" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70"}`}
-                                >
-                                    MONTHS
-                                </button>
-                                <button
-                                    onClick={() => handleUnitChange("Years")}
-                                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Years" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70"}`}
-                                >
-                                    YEARS
-                                </button>
-                            </div>
-                        </div>
-                        <div className="bg-white dark:bg-[#0D121F] rounded-3xl p-8 border border-gray-200 dark:border-[#25314D] space-y-8">
-                            <div className="space-y-6">
-                                <WarrantyInput
-                                    label="Total Warranty"
-                                    value={totalWarrantyVal}
-                                    onValueChange={setTotalWarrantyVal}
-                                />
-                                <div className="h-px bg-gray-200 dark:bg-gray-800 w-full" />
-                                <WarrantyInput
-                                    label="Free Replacement"
-                                    value={freeReplacementVal}
-                                    onValueChange={setFreeReplacementVal}
-                                />
-                            </div>
-                            {(parseInt(totalWarrantyVal) > 0 || parseInt(freeReplacementVal) > 0) && (
-                                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-6 space-y-2 border border-blue-100 dark:border-blue-900/30">
-                                    <p className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em]">Calculated Expiry Dates</p>
-                                    {parseInt(totalWarrantyVal) > 0 && (
-                                        <p className="text-[14px] text-gray-900 dark:text-white font-bold">
-                                            Total Warranty: <span className="text-blue-600 dark:text-blue-400 font-black">{totalWarrantyExpiry}</span>
-                                        </p>
-                                    )}
-                                    {parseInt(freeReplacementVal) > 0 && (
-                                        <p className="text-[14px] text-gray-900 dark:text-white font-bold">
-                                            Free Replacement: <span className="text-blue-600 dark:text-blue-400 font-black">{freeReplacementExpiry}</span>
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </section>
-                )}
+
 
                 {/* ── Payment Method & Action ── */}
                 <div className="bg-white dark:bg-[#0D121F] rounded-[40px] border border-gray-200 dark:border-[#25314D] p-8 space-y-8 relative overflow-hidden">

@@ -3,6 +3,7 @@ import { User, Mail, Phone, MapPin, Camera, Edit2, Check, X, Store, ShieldCheck,
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { useDeveloper } from "../contexts/DeveloperContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface UserProfile {
     name: string;
@@ -19,6 +20,7 @@ export function Profile() {
     const navigate = useNavigate();
     const { features } = useDeveloper();
     const [isEditing, setIsEditing] = useState<string | null>(null);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [profile, setProfile] = useState<UserProfile>({
         name: user?.name || "User",
         role: user?.role || "Staff",
@@ -123,7 +125,7 @@ export function Profile() {
             <div className="mb-6 flex justify-between items-center">
                 <h1 className="text-2xl font-black text-gray-900 uppercase">My Profile</h1>
                 <button
-                    onClick={handleLogout}
+                    onClick={() => setShowLogoutConfirm(true)}
                     className="bg-red-50 text-red-600 hover:bg-red-100 font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-red-100 text-sm"
                 >
                     <LogOut className="w-4 h-4" />
@@ -182,6 +184,49 @@ export function Profile() {
                     Member since February 2026 • PowerCell MS v2.0
                 </p>
             </div>
+
+            {/* Logout Confirmation Modal */}
+            <AnimatePresence>
+                {showLogoutConfirm && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowLogoutConfirm(false)}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                            className="bg-white dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-[2rem] p-8 max-w-sm w-full relative z-10 shadow-2xl text-center"
+                        >
+                            <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm border border-red-100 dark:border-red-900/30">
+                                <LogOut className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">Confirm Logout</h3>
+                            <p className="text-sm text-gray-550 dark:text-gray-400 font-medium mb-8">Are you sure you want to exit your workspace session?</p>
+                            
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => setShowLogoutConfirm(false)}
+                                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#161D30] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold rounded-2xl transition-all text-sm active:scale-95"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-500/20 transition-all text-sm active:scale-95"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
 
     );

@@ -54,10 +54,11 @@ const navGroups = [
 export function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { notifications } = useNotifications();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default to open on desktop
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Auto-close sidebar on mobile by default
   useEffect(() => {
@@ -134,15 +135,12 @@ export function MainLayout() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   // Reusable Nav Link Component
-  const NavLink = ({ item, index }: { item: NavItem; index: number }) => {
+  const NavLink = ({ item }: { item: NavItem }) => {
     const Icon = item.icon;
     const active = isActivePath(item.path);
 
     return (
       <motion.button
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: index * 0.05 }}
         whileHover={{ x: 4 }}
         onClick={() => {
           navigate(item.path);
@@ -221,7 +219,7 @@ export function MainLayout() {
               <div className="flex-1 overflow-y-auto p-4 py-6 space-y-8 custom-scrollbar">
                 {navGroups
                   .filter(group => !group.roles || group.roles.includes(user?.role || ""))
-                  .map((group, gIdx) => (
+                  .map((group) => (
                     <div key={group.title} className="space-y-2">
                       <h3 className="px-4 text-[10px] font-black text-gray-400 dark:text-gray-600 uppercase tracking-[0.25em] mb-4">
                         {group.title}
@@ -229,8 +227,8 @@ export function MainLayout() {
                       <div className="space-y-1">
                         {navItems
                           .filter(item => group.items.includes(item.name))
-                          .map((item, iIdx) => (
-                            <NavLink key={item.path} item={item} index={gIdx * 5 + iIdx} />
+                          .map((item) => (
+                            <NavLink key={item.path} item={item} />
                           ))}
                       </div>
                     </div>
@@ -261,9 +259,16 @@ export function MainLayout() {
                         {user?.role || 'Guest'}
                       </p>
                     </div>
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 group-hover:text-blue-500 dark:text-gray-700 dark:group-hover:text-blue-400 transition-colors">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowLogoutConfirm(true);
+                      }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 dark:text-gray-700 dark:hover:text-red-400 dark:hover:bg-red-950/30 transition-all duration-200 active:scale-90"
+                      title="Logout"
+                    >
                       <LogOut className="w-4 h-4" />
-                    </div>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -331,6 +336,52 @@ export function MainLayout() {
           </div>
         )}
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLogoutConfirm(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="bg-white dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-[2rem] p-8 max-w-sm w-full relative z-10 shadow-2xl text-center"
+            >
+              <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm border border-red-100 dark:border-red-900/30">
+                <LogOut className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">Confirm Logout</h3>
+              <p className="text-sm text-gray-550 dark:text-gray-400 font-medium mb-8">Are you sure you want to logout?</p>
+              
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#161D30] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold rounded-2xl transition-all text-sm active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    logout();
+                    navigate("/login");
+                  }}
+                  className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-500/20 transition-all text-sm active:scale-95"
+                >
+                  Logout
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
