@@ -23,6 +23,7 @@ import { UPIPayment } from "./pages/UPIPayment";
 import { GpsCamera } from "./pages/GpsCamera";
 import { GpsPhotoDashboard } from "./pages/GpsPhotoDashboard";
 import { NotFound } from "./pages/NotFound";
+import { Notifications } from "./pages/Notifications";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
@@ -141,6 +142,7 @@ export const router = createBrowserRouter([
             ),
           },
           { path: "profile", element: <Profile /> },
+          { path: "notifications", element: <Notifications /> },
           { path: "checkout", Component: Checkout },
           { path: "invoice", Component: BatteryInvoice },
           { path: "upi-payment", Component: UPIPayment },
