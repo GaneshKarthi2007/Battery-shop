@@ -5,6 +5,7 @@ interface DeveloperFeatures {
     darkMode: boolean;
     salesHistory: boolean;
     enableContactActions: boolean;
+    serviceViewToggle: boolean;
 }
 
 export interface ShopConfig {
@@ -27,6 +28,7 @@ const defaultFeatures: DeveloperFeatures = {
     darkMode: true,
     salesHistory: true,
     enableContactActions: false, // Default to Copy behavior
+    serviceViewToggle: true,
 };
 
 const defaultShopConfig: ShopConfig = {

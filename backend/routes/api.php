@@ -41,7 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::apiResource('products', ProductController::class);
-    Route::apiResource('sales', SalesController::class)->only(['index', 'store', 'show']);
+    Route::apiResource('sales', SalesController::class)->only(['index', 'store', 'show', 'update']);
     Route::apiResource('services', ServiceController::class);
     Route::post('/services/{service}/pickup', [ServiceController::class, 'pickUp']);
     Route::post('/services/{service}/voice-note', [ServiceController::class, 'uploadVoiceNote']);

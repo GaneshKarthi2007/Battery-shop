@@ -36,6 +36,7 @@ class SalesController extends Controller
             'payment_method' => 'sometimes|string',
             'cash_amount' => 'nullable|numeric',
             'upi_amount' => 'nullable|numeric',
+            'gst_enabled' => 'sometimes|boolean',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -54,6 +55,7 @@ class SalesController extends Controller
                 'payment_method' => $validated['payment_method'] ?? 'Cash',
                 'cash_amount' => $validated['cash_amount'] ?? null,
                 'upi_amount' => $validated['upi_amount'] ?? null,
+                'gst_enabled' => $validated['gst_enabled'] ?? true,
             ]);
 
             // Handle exchange record consumption (only for real sales)
@@ -102,5 +104,18 @@ class SalesController extends Controller
     public function show(Sale $sale)
     {
         return response()->json($sale->load('items.product'));
+    }
+
+    public function update(Request $request, Sale $sale)
+    {
+        $validated = $request->validate([
+            'gst_enabled' => 'required|boolean',
+        ]);
+
+        $sale->update([
+            'gst_enabled' => $validated['gst_enabled']
+        ]);
+
+        return response()->json($sale);
     }
 }

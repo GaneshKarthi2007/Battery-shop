@@ -1,7 +1,8 @@
 import { useLocation, useNavigate } from "react-router";
 import { ArrowLeft, Printer, Download } from "lucide-react";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useDeveloper } from "../contexts/DeveloperContext";
+import { apiClient } from "../api/client";
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -12,6 +13,24 @@ const BatteryInvoice: React.FC = () => {
   const sheetRef = useRef<HTMLDivElement>(null);
 
   const state = location.state as any;
+
+  const [gstEnabled, setGstEnabled] = useState<boolean>(() => {
+    if (state && state.gst_enabled !== undefined) {
+      return !!state.gst_enabled;
+    }
+    return true;
+  });
+
+  const handleToggleGst = async (enabled: boolean) => {
+    setGstEnabled(enabled);
+    if (state && state.id && !state.isQuotation) {
+      try {
+        await apiClient.put(`/sales/${state.id}`, { gst_enabled: enabled });
+      } catch (err) {
+        console.error("Failed to update GST status on server", err);
+      }
+    }
+  };
 
   // Scale A4 sheet to fit viewport on mobile
   useEffect(() => {
@@ -222,13 +241,30 @@ const BatteryInvoice: React.FC = () => {
       `}</style>
 
       {/* ACTION BAR */}
-      <div className="no-print max-w-[210mm] mx-auto mb-4 px-4 flex items-center justify-between">
+      <div className="no-print max-w-[210mm] mx-auto mb-4 px-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-gray-700 hover:text-black font-semibold text-sm"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
+
+        {/* Toggle Presentation Mode */}
+        <div className="flex bg-gray-200/80 dark:bg-slate-800/80 p-1 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
+          <button
+            onClick={() => handleToggleGst(true)}
+            className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${gstEnabled ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            GST Invoice
+          </button>
+          <button
+            onClick={() => handleToggleGst(false)}
+            className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${!gstEnabled ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            Cash Bill
+          </button>
+        </div>
+
         <div className="flex gap-2">
           <button
             onClick={() => window.print()}
@@ -259,11 +295,11 @@ const BatteryInvoice: React.FC = () => {
               <p className="text-gray-600 text-[11px] mt-0.5">{shopConfig.address}</p>
               <p className="text-gray-600 text-[11px]">Phone: {shopConfig.phone}</p>
               {shopConfig.email && <p className="text-gray-600 text-[11px]">Email: {shopConfig.email}</p>}
-              <p className="text-gray-700 text-[11px] font-bold mt-0.5">GSTIN: {shopConfig.gst}</p>
+              {gstEnabled && <p className="text-gray-700 text-[11px] font-bold mt-0.5">GSTIN: {shopConfig.gst}</p>}
             </div>
             <div className="text-right">
               <h2 className="text-[22px] font-black tracking-widest text-gray-900">
-                {isQuotation ? "QUOTATION" : "INVOICE"}
+                {isQuotation ? "QUOTATION" : (gstEnabled ? "TAX INVOICE" : "CASH BILL")}
               </h2>
               <div className="mt-1 text-[11px] text-gray-600 space-y-0.5">
                 <div className="flex justify-end gap-4">
@@ -316,7 +352,7 @@ const BatteryInvoice: React.FC = () => {
               <tr className="border-b-2 border-gray-900">
                 <th className="py-2 text-left font-bold text-gray-900 w-6">#</th>
                 <th className="py-2 text-left font-bold text-gray-900">Description</th>
-                <th className="py-2 text-center font-bold text-gray-900 w-12">HSN</th>
+                {gstEnabled && <th className="py-2 text-center font-bold text-gray-900 w-12">HSN</th>}
                 <th className="py-2 text-center font-bold text-gray-900 w-10">Qty</th>
                 <th className="py-2 text-right font-bold text-gray-900 w-24">Rate (₹)</th>
                 <th className="py-2 text-right font-bold text-gray-900 w-24">Amount (₹)</th>
@@ -332,7 +368,7 @@ const BatteryInvoice: React.FC = () => {
                       <span className="text-gray-400 text-[10px] ml-1">({item.warranty} warranty)</span>
                     )}
                   </td>
-                  <td className="py-2 align-top text-center text-gray-600">{getHSN(item.type)}</td>
+                  {gstEnabled && <td className="py-2 align-top text-center text-gray-600">{getHSN(item.type)}</td>}
                   <td className="py-2 align-top text-center text-gray-700">{item.quantity}</td>
                   <td className="py-2 align-top text-right text-gray-700">
                     {Number(item.price).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -348,24 +384,40 @@ const BatteryInvoice: React.FC = () => {
           {/* ── TOTALS ── */}
           <div className="flex justify-end mb-5">
             <div className="w-56 text-[11.5px]">
-              <div className="flex justify-between py-1 border-b border-gray-200">
-                <span className="text-gray-600">Subtotal:</span>
-                <span className="font-semibold">₹ {subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-              </div>
-              {gstAmount > 0 && (
-                <div className="flex justify-between py-1 border-b border-gray-200">
-                  <span className="text-gray-600">GST (18%):</span>
-                  <span className="font-semibold">₹ {gstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                </div>
-              )}
+              {gstEnabled ? (
+                <>
+                  <div className="flex justify-between py-1 border-b border-gray-200">
+                    <span className="text-gray-600">Subtotal:</span>
+                    <span className="font-semibold">₹ {subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  {gstAmount > 0 && (
+                    <>
+                      <div className="flex justify-between py-1 border-b border-gray-200">
+                        <span className="text-gray-600">CGST (9%):</span>
+                        <span className="font-semibold">₹ {(gstAmount / 2).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-gray-200">
+                        <span className="text-gray-600">SGST (9%):</span>
+                        <span className="font-semibold">₹ {(gstAmount / 2).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : null}
               {exchange > 0 && (
                 <div className="flex justify-between py-1 border-b border-gray-200">
                   <span className="text-gray-600">Exchange Discount:</span>
                   <span className="font-semibold text-gray-700">− ₹ {exchange.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
                 </div>
               )}
+              {state.extraCharges > 0 && (
+                <div className="flex justify-between py-1 border-b border-gray-200">
+                  <span className="text-gray-600">Extra Charges:</span>
+                  <span className="font-semibold text-gray-700">₹ {Number(state.extraCharges).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
               <div className="flex justify-between py-1.5 mt-1 border-t-2 border-gray-900">
-                <span className="font-black text-gray-900 text-[13px]">Total:</span>
+                <span className="font-black text-gray-900 text-[13px]">Total Payable:</span>
                 <span className="font-black text-gray-900 text-[13px]">
                   ₹ {Number(grandTotal).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
@@ -404,13 +456,19 @@ const BatteryInvoice: React.FC = () => {
                   <li>4. Goods once sold cannot be returned or exchanged.</li>
                   <li>5. All disputes subject to local jurisdiction.</li>
                 </>
+              ) : gstEnabled ? (
+                <>
+                  <li>1. Goods once sold cannot be returned or exchanged.</li>
+                  <li>2. Interest @ 18% p.a. will be charged for payments delayed beyond the due date.</li>
+                  <li>3. Warranty claims are subject to manufacturer terms and conditions.</li>
+                  <li>4. All disputes subject to local jurisdiction.</li>
+                </>
               ) : (
                 <>
-                  <li>1. Payment is due within 15 days from the invoice date.</li>
-                  <li>2. Late payments will incur a 2% monthly interest charge.</li>
-                  <li>3. Old battery exchange credit has been applied where applicable.</li>
-                  <li>4. Goods once sold cannot be returned or exchanged.</li>
-                  <li>5. All disputes subject to local jurisdiction.</li>
+                  <li>1. Please retain this cash bill for warranty claims.</li>
+                  <li>2. Goods once sold cannot be returned or exchanged.</li>
+                  <li>3. All disputes subject to local jurisdiction.</li>
+                  <li>4. Payment is due immediately or as agreed.</li>
                 </>
               )}
             </ol>

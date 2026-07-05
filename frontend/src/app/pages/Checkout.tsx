@@ -114,6 +114,7 @@ export function Checkout() {
 
     /** ── UI state ── */
     const [loading, setLoading] = useState(false);
+    const [gstEnabled, setGstEnabled] = useState(true);
 
     const serviceItem = state?.items?.find(item => item.type === "Service");
     const hasService = !!serviceItem;
@@ -225,6 +226,7 @@ export function Checkout() {
             paymentMethod,
             cashAmount: paymentMethod === "Split" ? cashPart : (paymentMethod === "Cash" ? grandTotal : 0),
             upiAmount: paymentMethod === "Split" ? (grandTotal - cashPart) : (paymentMethod === "UPI" ? grandTotal : 0),
+            gst_enabled: gstEnabled,
         };
     };
 
@@ -261,9 +263,10 @@ export function Checkout() {
                 payment_method: state.isQuotation ? "Cash" : paymentMethod,
                 cash_amount: state.isQuotation ? 0 : (paymentMethod === "Split" ? cashPart : (paymentMethod === "Cash" ? grandTotal : 0)),
                 upi_amount: state.isQuotation ? 0 : (paymentMethod === "Split" ? (grandTotal - cashPart) : (paymentMethod === "UPI" ? grandTotal : 0)),
+                gst_enabled: gstEnabled ? 1 : 0,
             };
 
-            await apiClient.post('/sales', saleData);
+            const response = await apiClient.post<any>('/sales', saleData);
             localStorage.removeItem("pending_bill_items");
 
             if (!state.isQuotation) {
@@ -275,7 +278,7 @@ export function Checkout() {
                 });
             }
 
-            navigate("/invoice", { state: { ...buildInvoiceState() } });
+            navigate("/invoice", { state: { ...buildInvoiceState(), id: response?.id, created_at: response?.created_at } });
         } catch (err: any) {
             const msg = err.message || "Failed to process. Please try again.";
             alert(msg);
@@ -641,6 +644,27 @@ export function Checkout() {
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                                 <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Confirmed</p>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Invoice Presentation Toggle */}
+                    <div className="space-y-4 relative z-10">
+                        <label className="text-[12px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-[0.15em] block ml-1">Invoice Presentation</label>
+                        <div className="flex p-1.5 bg-gray-100 dark:bg-[#161D30] rounded-2xl border border-gray-200 dark:border-[#25314D]">
+                            <button
+                                type="button"
+                                onClick={() => setGstEnabled(true)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black transition-all ${gstEnabled ? "bg-white dark:bg-[#0D121F] text-blue-600 shadow-sm border border-gray-200/50 dark:border-gray-800/50" : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"}`}
+                            >
+                                GST INVOICE
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setGstEnabled(false)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black transition-all ${!gstEnabled ? "bg-white dark:bg-[#0D121F] text-blue-600 shadow-sm border border-gray-200/50 dark:border-gray-800/50" : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"}`}
+                            >
+                                CASH BILL
+                            </button>
                         </div>
                     </div>
 
