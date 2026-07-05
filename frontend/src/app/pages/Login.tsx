@@ -57,7 +57,7 @@ export function Login() {
             PowerCell <span className="text-blue-500">Pro</span>
           </h1>
           <p className={`font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-            Next-Gen Battery Management
+            Battery Management
           </p>
         </div>
 
