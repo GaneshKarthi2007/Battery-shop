@@ -53,6 +53,7 @@ interface ServiceRequest {
         id: number;
         type: 'Sale' | 'Quotation' | 'Exchange';
         customer_name: string;
+        gst_enabled?: boolean | number;
         total_amount: string;
         payment_method: string;
         created_at: string;
@@ -675,6 +676,7 @@ export function ServiceDetails() {
                                         finalTotal: Number(doc.total_amount),
                                         isQuotation,
                                         warrantyDetails: { totalWarranty: 'N/A', totalWarrantyExpiry: 'N/A' },
+                                        gst_enabled: doc.gst_enabled,
                                     };
                                     return (
                                         <div key={doc.id} className={`flex items-center justify-between gap-3 p-4 rounded-xl border-2 ${isQuotation ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100'} transition-all hover:shadow-sm`}>

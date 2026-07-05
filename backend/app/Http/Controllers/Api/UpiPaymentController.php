@@ -88,6 +88,7 @@ class UpiPaymentController extends Controller
                 'extra_charges'        => $saleData['extra_charges'] ?? 0,
                 'discount_amount'      => $saleData['discount_amount'] ?? 0,
                 'payment_method'       => 'UPI',
+                'gst_enabled'          => $saleData['gst_enabled'] ?? true,
             ]);
 
             foreach ($saleData['items'] as $item) {

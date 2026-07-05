@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { Wrench, Clock, CheckCircle, AlertTriangle, Plus, Trash2, CheckSquare, Square, LayoutGrid, List } from "lucide-react";
+import { useDeveloper } from "../contexts/DeveloperContext";
 import { motion, AnimatePresence } from "motion/react";
 import { apiClient } from "../api/client";
 import { Button } from "../components/Button";
@@ -35,6 +36,7 @@ interface ServiceRequest {
 export function ServiceManagement() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { features } = useDeveloper();
   const [services, setServices] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -154,24 +156,24 @@ export function ServiceManagement() {
           <h1 className="text-2xl font-bold text-gray-900">Service Management</h1>
           <p className="text-gray-600 mt-1">Track and manage battery service requests</p>
         </div>
-        {user?.role === "admin" && (
-          <div className="flex items-center gap-3">
-            {filteredServices.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={toggleSelectAll}
-                className={`flex items-center gap-2 border-dashed ${selectedIds.length > 0 ? 'bg-blue-50 text-blue-600 border-blue-200' : ''}`}
-              >
-                {selectedIds.length === filteredServices.length && filteredServices.length > 0 ? (
-                  <CheckSquare className="w-4 h-4" />
-                ) : (
-                  <Square className="w-4 h-4" />
-                )}
-                {selectedIds.length === filteredServices.length && filteredServices.length > 0 ? "Deselect All" : "Select All"}
-              </Button>
-            )}
-            
+        <div className="flex items-center gap-3">
+          {user?.role === "admin" && filteredServices.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAll}
+              className={`flex items-center gap-2 border-dashed ${selectedIds.length > 0 ? 'bg-blue-50 text-blue-600 border-blue-200' : ''}`}
+            >
+              {selectedIds.length === filteredServices.length && filteredServices.length > 0 ? (
+                <CheckSquare className="w-4 h-4" />
+              ) : (
+                <Square className="w-4 h-4" />
+              )}
+              {selectedIds.length === filteredServices.length && filteredServices.length > 0 ? "Deselect All" : "Select All"}
+            </Button>
+          )}
+          
+          {features.serviceViewToggle && (
             <div className="flex items-center bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
               <button
                 onClick={() => setViewMode('grid')}
@@ -188,7 +190,9 @@ export function ServiceManagement() {
                 <List className="w-4 h-4" />
               </button>
             </div>
+          )}
 
+          {user?.role === "admin" && (
             <Button
               onClick={() => navigate('/services/new')}
               className="flex items-center gap-2"
@@ -196,8 +200,8 @@ export function ServiceManagement() {
               <Plus className="w-4 h-4" />
               New Service Request
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </motion.div>
 
       <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl w-full overflow-x-auto snap-x scrollbar-hide">

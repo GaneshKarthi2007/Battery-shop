@@ -23,6 +23,7 @@ class ProductController extends Controller
             'price' => 'required|numeric',
             'stock' => 'required|integer',
             'min_stock' => 'required|integer',
+            'supplier_name' => 'nullable|string',
         ]);
 
         $product = Product::create($validated);
@@ -44,6 +45,7 @@ class ProductController extends Controller
             'price' => 'sometimes|numeric',
             'stock' => 'sometimes|integer',
             'min_stock' => 'sometimes|integer',
+            'supplier_name' => 'nullable|string',
         ]);
 
         $product->update($validated);

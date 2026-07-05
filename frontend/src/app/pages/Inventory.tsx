@@ -15,6 +15,7 @@ interface Product {
   stock: number;
   min_stock: number;
   last_restocked?: string;
+  supplier_name?: string;
 }
 
 export function Inventory() {
@@ -33,6 +34,7 @@ export function Inventory() {
     stock: 0,
     min_stock: 0,
     price: 0,
+    supplier_name: "",
   });
 
   const fetchInventory = async () => {
@@ -69,6 +71,7 @@ export function Inventory() {
       stock: 0,
       min_stock: 0,
       price: 0,
+      supplier_name: "",
     });
   };
 
@@ -83,6 +86,7 @@ export function Inventory() {
       stock: item.stock,
       min_stock: item.min_stock,
       price: Number(item.price),
+      supplier_name: item.supplier_name || "",
     });
   };
 
@@ -219,6 +223,9 @@ export function Inventory() {
                   Battery Details
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                  Supplier
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                   Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
@@ -257,6 +264,9 @@ export function Inventory() {
                         <div className="font-medium text-gray-900">{item.brand}</div>
                         <div className="text-sm text-gray-600">{item.model}</div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-950 font-semibold dark:text-gray-100">
+                      {item.supplier_name || "—"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-md">
@@ -390,7 +400,7 @@ export function Inventory() {
                   />
                 </div>
 
-                <div className="md:col-span-2">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Price (₹)</label>
                   <Input
                     type="number"
@@ -399,6 +409,17 @@ export function Inventory() {
                       setFormData({ ...formData, price: parseInt(e.target.value) || 0 })
                     }
                     placeholder="e.g., 15000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Supplier Name</label>
+                  <Input
+                    value={formData.supplier_name || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, supplier_name: e.target.value })
+                    }
+                    placeholder="e.g., Exide Industries Ltd"
                   />
                 </div>
               </div>

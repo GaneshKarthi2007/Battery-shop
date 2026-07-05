@@ -42,6 +42,7 @@ interface SaleRecord {
   items: SaleItem[];
   type?: string;
   installation_address?: string;
+  gst_enabled?: boolean | number;
 }
 
 interface BillItem {
@@ -383,7 +384,8 @@ export function BatterySales() {
                               totalWarrantyExpiry: "N/A",
                               freeReplacement: "N/A",
                               freeReplacementExpiry: "N/A"
-                            }
+                            },
+                            gst_enabled: sale.gst_enabled
                           }
                         });
                       }}

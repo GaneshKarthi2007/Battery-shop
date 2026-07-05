@@ -120,6 +120,29 @@ export function DeveloperSettings() {
                             )}
                         </button>
                     </div>
+
+                    {/* Toggle: Service View Toggle Module */}
+                    <div className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl border border-gray-200">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
+                                <Settings className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Service View Toggle</h3>
+                                <p className="text-xs text-gray-500">Enable/disable list and grid view toggle in Service Management</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => toggleFeature('serviceViewToggle')}
+                            className="text-gray-400 hover:text-purple-600 transition-colors"
+                        >
+                            {features.serviceViewToggle ? (
+                                <ToggleRight className="w-10 h-10 text-purple-600" />
+                            ) : (
+                                <ToggleLeft className="w-10 h-10" />
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
 
