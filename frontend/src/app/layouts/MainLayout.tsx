@@ -135,15 +135,12 @@ export function MainLayout() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   // Reusable Nav Link Component
-  const NavLink = ({ item, index }: { item: NavItem; index: number }) => {
+  const NavLink = ({ item }: { item: NavItem }) => {
     const Icon = item.icon;
     const active = isActivePath(item.path);
 
     return (
       <motion.button
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: index * 0.05 }}
         whileHover={{ x: 4 }}
         onClick={() => {
           navigate(item.path);
@@ -222,7 +219,7 @@ export function MainLayout() {
               <div className="flex-1 overflow-y-auto p-4 py-6 space-y-8 custom-scrollbar">
                 {navGroups
                   .filter(group => !group.roles || group.roles.includes(user?.role || ""))
-                  .map((group, gIdx) => (
+                  .map((group) => (
                     <div key={group.title} className="space-y-2">
                       <h3 className="px-4 text-[10px] font-black text-gray-400 dark:text-gray-600 uppercase tracking-[0.25em] mb-4">
                         {group.title}
@@ -230,8 +227,8 @@ export function MainLayout() {
                       <div className="space-y-1">
                         {navItems
                           .filter(item => group.items.includes(item.name))
-                          .map((item, iIdx) => (
-                            <NavLink key={item.path} item={item} index={gIdx * 5 + iIdx} />
+                          .map((item) => (
+                            <NavLink key={item.path} item={item} />
                           ))}
                       </div>
                     </div>
@@ -262,9 +259,16 @@ export function MainLayout() {
                         {user?.role || 'Guest'}
                       </p>
                     </div>
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 group-hover:text-blue-500 dark:text-gray-700 dark:group-hover:text-blue-400 transition-colors">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowLogoutConfirm(true);
+                      }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 dark:text-gray-700 dark:hover:text-red-400 dark:hover:bg-red-950/30 transition-all duration-200 active:scale-90"
+                      title="Logout"
+                    >
                       <LogOut className="w-4 h-4" />
-                    </div>
+                    </button>
                   </div>
                 </div>
               </div>

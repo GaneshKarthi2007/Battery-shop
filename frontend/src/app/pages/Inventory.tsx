@@ -16,6 +16,7 @@ interface Product {
   min_stock: number;
   last_restocked?: string;
   supplier_name?: string;
+  warranty?: string;
 }
 
 export function Inventory() {
@@ -35,6 +36,7 @@ export function Inventory() {
     min_stock: 0,
     price: 0,
     supplier_name: "",
+    warranty: "",
   });
 
   const fetchInventory = async () => {
@@ -72,6 +74,7 @@ export function Inventory() {
       min_stock: 0,
       price: 0,
       supplier_name: "",
+      warranty: "",
     });
   };
 
@@ -87,6 +90,7 @@ export function Inventory() {
       min_stock: item.min_stock,
       price: Number(item.price),
       supplier_name: item.supplier_name || "",
+      warranty: item.warranty || "",
     });
   };
 
@@ -273,8 +277,13 @@ export function Inventory() {
                         {item.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-900">
-                      {item.ah} Ah
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">
+                      <div>{item.ah} Ah</div>
+                      {item.warranty && (
+                        <div className="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                          {item.warranty} warranty
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-medium text-gray-900">{item.stock} units</div>
@@ -420,6 +429,17 @@ export function Inventory() {
                       setFormData({ ...formData, supplier_name: e.target.value })
                     }
                     placeholder="e.g., Exide Industries Ltd"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Warranty (Months / Years)</label>
+                  <Input
+                    value={formData.warranty || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, warranty: e.target.value })
+                    }
+                    placeholder="e.g., 36 Months"
                   />
                 </div>
               </div>

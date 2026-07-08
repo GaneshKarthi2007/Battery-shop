@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { useDeveloper } from "../contexts/DeveloperContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface UserProfile {
     name: string;
@@ -20,6 +21,7 @@ export function Profile() {
     const navigate = useNavigate();
     const { features } = useDeveloper();
     const [isEditing, setIsEditing] = useState<string | null>(null);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [profile, setProfile] = useState<UserProfile>({
         name: user?.name || "User",
         role: user?.role || "Staff",
