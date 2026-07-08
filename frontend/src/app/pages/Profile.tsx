@@ -4,7 +4,6 @@ import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { useDeveloper } from "../contexts/DeveloperContext";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface UserProfile {
     name: string;
@@ -34,7 +33,6 @@ export function Profile() {
 
     const [tempValue, setTempValue] = useState("");
     const [saving, setSaving] = useState(false);
-    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     const startEditing = (field: keyof UserProfile) => {
         if (field === 'role') return; // Cannot edit role

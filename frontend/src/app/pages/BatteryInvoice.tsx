@@ -161,7 +161,7 @@ const BatteryInvoice: React.FC = () => {
         sheetRef.current.style.minHeight = originalMinHeight;
         sheetRef.current.style.padding = originalPadding;
       }
-    }).catch((err) => {
+    }).catch((err: unknown) => {
       console.error("PDF generation failed:", err);
       window.getComputedStyle = originalGetComputedStyle;
       if (sheetRef.current) {
