@@ -9,9 +9,25 @@ use Illuminate\Http\Request;
 
 class ServiceController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Service::with(['assignedStaff', 'processFlows', 'processFlows.staff'])->latest()->get());
+        $query = Service::with(['assignedStaff', 'processFlows', 'processFlows.staff'])->latest();
+
+        if ($request->has('search')) {
+            $search = $request->query('search');
+            $query->where(function($q) use ($search) {
+                $q->where('contact_number', 'like', "%{$search}%")
+                  ->orWhere('customer_name', 'like', "%{$search}%")
+                  ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->query('available') == 1) {
+            $query->where('status', 'Pending')
+                  ->whereNull('assigned_to');
+        }
+
+        return response()->json($query->get());
     }
 
     public function markAsConverted(Request $request, Service $service)
@@ -245,24 +261,37 @@ class ServiceController extends Controller
     public function pickUp(Request $request, Service $service)
     {
         $user = $request->user();
-        if ($service->assigned_to) {
-            return response()->json(['message' => 'Task already assigned'], 400);
-        }
 
-        $service->update([
-            'assigned_to' => $user->id,
-            'assigned_at' => now(),
-            'status' => 'In Progress',
-            'status_updated_at' => now()
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($service, $user) {
+            $lockedService = Service::where('id', $service->id)->lockForUpdate()->first();
 
-        ServiceProcessFlow::create([
-            'service_id' => $service->id,
-            'sub_status' => 'Task Picked Up / Commenced',
-            'staff_id' => $user->id,
-        ]);
+            if (!$lockedService) {
+                return response()->json(['message' => 'Service not found'], 404);
+            }
 
-        return response()->json($service->load('assignedStaff'));
+            if ($lockedService->assigned_to) {
+                return response()->json(['message' => 'This complaint has already been accepted by another staff member.'], 400);
+            }
+
+            if (in_array(strtolower($lockedService->status), ['completed', 'cancelled', 'closed'])) {
+                return response()->json(['message' => 'Cannot accept a closed or cancelled complaint.'], 400);
+            }
+
+            $lockedService->update([
+                'assigned_to' => $user->id,
+                'assigned_at' => now(),
+                'status' => 'In Progress',
+                'status_updated_at' => now()
+            ]);
+
+            ServiceProcessFlow::create([
+                'service_id' => $lockedService->id,
+                'sub_status' => 'Task Picked Up / Commenced',
+                'staff_id' => $user->id,
+            ]);
+
+            return response()->json($lockedService->load('assignedStaff'));
+        });
     }
 
     public function uploadVoiceNote(Request $request, Service $service)
