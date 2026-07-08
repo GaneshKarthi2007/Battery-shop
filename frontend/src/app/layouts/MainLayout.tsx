@@ -286,13 +286,15 @@ export function MainLayout() {
             className="h-16 bg-white/80 dark:bg-[#0D1B2A]/70 backdrop-blur-2xl border-b border-gray-200 dark:border-[#2E3B55] sticky top-0 z-20 px-4 sm:px-6 flex items-center justify-between print:hidden"
           >
             <div className="flex items-center gap-3">
-              <button
-                onClick={toggleSidebar}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-700 dark:text-gray-300 transition-all active:scale-95"
-              >
-                <Menu className="w-6 h-6" />
-              </button>
-              <div className="flex items-center gap-3 ml-2 lg:hidden">
+              {user?.role !== "staff" && (
+                <button
+                  onClick={toggleSidebar}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-700 dark:text-gray-300 transition-all active:scale-95"
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
+              )}
+              <div className={`flex items-center gap-3 ${user?.role === "staff" ? "" : "ml-2 lg:hidden"}`}>
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
                   <Zap className="w-5 h-5 text-white" />
                 </div>
@@ -300,7 +302,7 @@ export function MainLayout() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <div className="relative">
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
@@ -318,6 +320,25 @@ export function MainLayout() {
                   onClose={() => setShowNotifications(false)}
                 />
               </div>
+
+              {user?.role === "staff" && (
+                <>
+                  <button
+                    onClick={() => navigate('/profile')}
+                    className="p-2.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all"
+                    title="Profile"
+                  >
+                    <User className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setShowLogoutConfirm(true)}
+                    className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all"
+                    title="Logout"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </>
+              )}
             </div>
           </header>
         )}
@@ -330,14 +351,14 @@ export function MainLayout() {
         </main>
 
         {/* Global Bottom Navigation (Conditional) */}
-        {!isCheckoutPage && (
+        {!isCheckoutPage && user?.role !== "staff" && (
           <div className="print:hidden lg:hidden">
             <BottomNav onMenuClick={toggleSidebar} />
           </div>
         )}
       </div>
 
-      {/* Logout Confirmation Modal */}
+      {/* Logout Confirmation Dialog */}
       <AnimatePresence>
         {showLogoutConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -353,13 +374,17 @@ export function MainLayout() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="bg-white dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-[2rem] p-8 max-w-sm w-full relative z-10 shadow-2xl text-center"
+              className="bg-white dark:bg-[#0D1B2A] border border-gray-250 dark:border-[#2E3B55] rounded-[2rem] p-8 max-w-sm w-full relative z-10 shadow-2xl text-center"
             >
-              <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm border border-red-100 dark:border-red-900/30">
+              <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm border border-red-100 dark:border-red-900/30">
                 <LogOut className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">Confirm Logout</h3>
-              <p className="text-sm text-gray-550 dark:text-gray-400 font-medium mb-8">Are you sure you want to logout?</p>
+              <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">
+                Sign Out?
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-8">
+                Are you sure you want to sign out of your account?
+              </p>
               
               <div className="flex gap-4">
                 <button
@@ -370,12 +395,13 @@ export function MainLayout() {
                 </button>
                 <button
                   onClick={() => {
+                    setShowLogoutConfirm(false);
                     logout();
                     navigate("/login");
                   }}
-                  className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-500/20 transition-all text-sm active:scale-95"
+                  className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-600/20 transition-all text-sm active:scale-95"
                 >
-                  Logout
+                  Sign Out
                 </button>
               </div>
             </motion.div>

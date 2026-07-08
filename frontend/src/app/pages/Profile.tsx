@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { User, Mail, Phone, MapPin, Camera, Edit2, Check, X, Store, ShieldCheck, LogOut } from "lucide-react";
 import { useNavigate } from "react-router";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { useDeveloper } from "../contexts/DeveloperContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,6 +34,7 @@ export function Profile() {
 
     const [tempValue, setTempValue] = useState("");
     const [saving, setSaving] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     const startEditing = (field: keyof UserProfile) => {
         if (field === 'role') return; // Cannot edit role
@@ -185,7 +187,7 @@ export function Profile() {
                 </p>
             </div>
 
-            {/* Logout Confirmation Modal */}
+            {/* Logout Confirmation Dialog */}
             <AnimatePresence>
                 {showLogoutConfirm && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -203,11 +205,15 @@ export function Profile() {
                             transition={{ type: "spring", damping: 25, stiffness: 350 }}
                             className="bg-white dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-[2rem] p-8 max-w-sm w-full relative z-10 shadow-2xl text-center"
                         >
-                            <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm border border-red-100 dark:border-red-900/30">
+                            <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm border border-red-100 dark:border-red-900/30">
                                 <LogOut className="w-8 h-8" />
                             </div>
-                            <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">Confirm Logout</h3>
-                            <p className="text-sm text-gray-550 dark:text-gray-400 font-medium mb-8">Are you sure you want to exit your workspace session?</p>
+                            <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">
+                                Sign Out?
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-8">
+                                Are you sure you want to sign out of your account?
+                            </p>
                             
                             <div className="flex gap-4">
                                 <button
@@ -218,9 +224,9 @@ export function Profile() {
                                 </button>
                                 <button
                                     onClick={handleLogout}
-                                    className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-500/20 transition-all text-sm active:scale-95"
+                                    className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-600/20 transition-all text-sm active:scale-95"
                                 >
-                                    Logout
+                                    Sign Out
                                 </button>
                             </div>
                         </motion.div>

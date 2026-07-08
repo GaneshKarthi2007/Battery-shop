@@ -1,5 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect x="40" y="5" width="20" height="15" rx="4" fill="#f59e0b" />
-  <rect x="25" y="15" width="50" height="80" rx="10" fill="#f59e0b" />
-  <path d="M55 25 L 35 55 H 50 L 45 85 L 65 50 H 50 Z" fill="#ffffff" />
+  <!-- Dark outer circular orbit arc -->
+  <path d="M 32 18 A 38 38 0 1 1 28 72" fill="none" stroke="#0D1B2A" stroke-width="6.5" stroke-linecap="round" />
+  
+  <!-- Outer metallic battery casing container -->
+  <rect x="36" y="22" width="28" height="46" rx="6" fill="none" stroke="#0D1B2A" stroke-width="6.5" />
+  <rect x="45" y="16" width="10" height="6" rx="1.5" fill="#0D1B2A" />
+  
+  <!-- High energy green battery cells fill -->
+  <rect x="40.5" y="26.5" width="19" height="37" rx="3.5" fill="#22C55E" />
+  
+  <!-- Sleek charging indicators (inside battery) -->
+  <rect x="44" y="55" width="12" height="2.5" rx="0.5" fill="#15803D" />
+  <rect x="44" y="49" width="12" height="2.5" rx="0.5" fill="#15803D" />
+  <rect x="44" y="43" width="12" height="2.5" rx="0.5" fill="#15803D" />
+  
+  <!-- Bright white charging lightning bolt symbol -->
+  <path d="M52 28.5 L 43.5 44 H 49.5 L 48 57.5 L 57.5 42 H 51.5 Z" fill="#FFFFFF" />
+  
+  <!-- High contrast positive / negative contacts -->
+  <path d="M 70 28.5 H 78.5 M 74.25 24.25 V 32.75" stroke="#22C55E" stroke-width="3" stroke-linecap="round" />
+  <path d="M 70 51.5 H 78.5" stroke="#22C55E" stroke-width="3" stroke-linecap="round" />
 </svg>
