@@ -89,9 +89,26 @@ class SalesController extends Controller
                     $service = \App\Models\Service::find($itemData['service_id']);
                     if ($service && $service->status === 'Converted to Order') {
                         $service->update([
-                            'status' => 'In Progress',
-                            'status_updated_at' => now()
+                            'status' => 'Completed',
+                            'status_updated_at' => now(),
+                            'payment_status' => 'pending'
                         ]);
+
+                        // Automatically create a pending Receipt record for the service so it shows up on details
+                        if (!empty($itemData['product_id'])) {
+                            $product = \App\Models\Product::find($itemData['product_id']);
+                            if ($product) {
+                                \App\Models\Receipt::create([
+                                    'service_id' => $service->id,
+                                    'product_id' => $product->id,
+                                    'receipt_number' => 'RCP-' . strtoupper(uniqid()),
+                                    'quantity' => $itemData['quantity'],
+                                    'price' => $itemData['price'],
+                                    'total' => $itemData['price'] * $itemData['quantity'],
+                                    'status' => 'pending'
+                                ]);
+                            }
+                        }
                     }
                     $processedServices[] = $itemData['service_id'];
                 }

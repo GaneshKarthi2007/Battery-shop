@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, AlertTriangle, Zap, MapPin, Mic, CreditCard, ShoppingCart, ShoppingBag, RefreshCw, Activity, Trash2, CheckCheck, FileText, Download, Receipt, Phone, Car, BatteryFull, TrendingUp } from "lucide-react";
+import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, AlertTriangle, Zap, MapPin, Mic, CreditCard, ShoppingCart, ShoppingBag, RefreshCw, Activity, Trash2, CheckCheck, FileText, Download, Receipt, Phone, Car, BatteryFull, TrendingUp, Camera } from "lucide-react";
 import { Button } from "../components/Button";
 import { ContactActions } from "../components/ui/ContactActions";
 import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
@@ -152,6 +152,7 @@ export function ServiceDetails() {
             setLoading(true);
             const data = await apiClient.get<ServiceRequest>(`/services/${id}`);
             setService(data);
+            setTempCharge(data.service_charge ? data.service_charge.toString() : "0");
         } catch (err: any) {
             setError(err.message || "Failed to load service details");
         } finally {
@@ -167,6 +168,7 @@ export function ServiceDetails() {
             if (specificCharge !== undefined) payload.service_charge = specificCharge;
             const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, payload);
             setService(updated);
+            setTempCharge(updated.service_charge ? updated.service_charge.toString() : "0");
             if (newStatus === "Completed") {
                 addNotification({ type: "SERVICE", title: "Service Completed", message: `Service #${service.id} (${service.customer_name}) marked as completed by staff.`, role: "admin" });
             }
@@ -186,6 +188,7 @@ export function ServiceDetails() {
                 notes: staffNote 
             });
             setService(updated);
+            setTempCharge(updated.service_charge ? updated.service_charge.toString() : "0");
             setStaffNote("");
             addNotification({ type: "SERVICE", title: "Progress Updated", message: `Status updated to: ${subStatus}`, role: "staff" });
         } catch (err: any) {
@@ -201,6 +204,7 @@ export function ServiceDetails() {
         try {
             const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, { assigned_to: staffId });
             setService(updated);
+            setTempCharge(updated.service_charge ? updated.service_charge.toString() : "0");
             addNotification({ type: "SERVICE", title: "New Job Assigned", message: `You have been assigned to service #${service.id} (${service.customer_name}).`, role: "staff" });
         } catch (err: any) {
             alert(err.message || "Failed to assign staff");
@@ -215,6 +219,7 @@ export function ServiceDetails() {
         try {
             const updated = await apiClient.post<ServiceRequest>(`/services/${id}/pickup`);
             setService(updated);
+            setTempCharge(updated.service_charge ? updated.service_charge.toString() : "0");
             addNotification({ type: "SERVICE", title: "Task Picked Up", message: `You have successfully picked up service #${id}.`, role: "staff" });
         } catch (err: any) {
             alert(err.message || "Failed to pick up task");
@@ -232,6 +237,7 @@ export function ServiceDetails() {
         try {
             const updated = await apiClient.post<ServiceRequest>(`/services/${id}/voice-note`, formData);
             setService(updated);
+            setTempCharge(updated.service_charge ? updated.service_charge.toString() : "0");
             setStaffNote("");
             addNotification({ type: "SERVICE", title: "Update Logged", message: "Your note and voice recording have been attached successfully.", role: "staff" });
         } catch (err: any) {
@@ -241,12 +247,15 @@ export function ServiceDetails() {
         }
     };
 
-    const handleVerifyPayment = async () => {
+    const handleVerifyPayment = async (serviceCharge?: number) => {
         if (!id) return;
         setUpdating(true);
         try {
-            const updated = await apiClient.post<ServiceRequest>(`/services/${id}/verify-payment`);
+            const updated = await apiClient.post<ServiceRequest>(`/services/${id}/verify-payment`, {
+                service_charge: serviceCharge
+            });
             setService(updated);
+            setTempCharge(updated.service_charge ? updated.service_charge.toString() : "0");
             alert("Payment verified successfully");
             return true;
         } catch (err: any) {
@@ -505,6 +514,20 @@ export function ServiceDetails() {
                         </div>
                     </div>
 
+                    {/* Job Site Photos Gallery (Admin View) */}
+                    {isAdmin && (
+                        <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden mt-5">
+                            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+                                <Camera className="w-4 h-4 text-blue-600" />
+                                <h2 className="text-sm font-bold text-gray-900">Job Site Photos</h2>
+                            </div>
+                            <div className="p-6">
+                                <ServiceGpsCamera serviceId={service.id} readOnly={true} />
+                            </div>
+                        </div>
+                    )}
+
+
                     {/* Service Timeline */}
                     <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
@@ -716,8 +739,17 @@ export function ServiceDetails() {
                             <div className="p-6 space-y-4">
                                 <div className="bg-gray-50 rounded-xl border border-gray-200 divide-y divide-gray-100">
                                     <div className="flex justify-between items-center px-4 py-3 text-sm">
-                                        <span className="text-gray-600">Service Charge</span>
-                                        <span className="font-bold text-gray-900">₹{Number(service.service_charge).toLocaleString('en-IN')}</span>
+                                        <span className="text-gray-600 font-bold">Service Charge (Optional)</span>
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-gray-500 font-bold">₹</span>
+                                            <input
+                                                type="number"
+                                                className="w-20 px-2 py-1 text-right font-black text-gray-900 border border-gray-300 rounded-lg bg-white outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                                value={tempCharge}
+                                                onChange={(e) => setTempCharge(e.target.value)}
+                                                placeholder="0"
+                                            />
+                                        </div>
                                     </div>
                                     {service.receipt && (
                                         <div className="flex justify-between items-center px-4 py-3 text-sm">
@@ -727,7 +759,7 @@ export function ServiceDetails() {
                                     )}
                                     <div className="flex justify-between items-center px-4 py-3 bg-emerald-50">
                                         <span className="font-bold text-gray-900">Total Due</span>
-                                        <span className="font-black text-emerald-700 text-xl">₹{(Number(service.service_charge) + (service.receipt ? Number(service.receipt.total) : 0)).toLocaleString('en-IN')}</span>
+                                        <span className="font-black text-emerald-700 text-xl">₹{(Number(tempCharge || 0) + (service.receipt ? Number(service.receipt.total) : 0)).toLocaleString('en-IN')}</span>
                                     </div>
                                 </div>
 
@@ -742,11 +774,12 @@ export function ServiceDetails() {
 
                                 <Button
                                     onClick={async () => {
-                                        const success = await handleVerifyPayment();
+                                        const chargeVal = tempCharge ? Number(tempCharge) : 0;
+                                        const success = await handleVerifyPayment(chargeVal);
                                         if (success) {
                                             const invoiceItems: any[] = [];
-                                            if (Number(service.service_charge) > 0 || !service.receipt) {
-                                                invoiceItems.push({ id: service.id, name: service.battery_brand || "Service", model: service.battery_model || "Maintenance", price: Number(service.service_charge), quantity: 1, warranty: "N/A", type: "Service" });
+                                            if (chargeVal > 0 || !service.receipt) {
+                                                invoiceItems.push({ id: service.id, name: service.battery_brand || "Service Charge", model: service.battery_model || "Maintenance", price: chargeVal, quantity: 1, warranty: "N/A", type: "Service" });
                                             }
                                             if (service.receipt?.product) {
                                                 invoiceItems.push({ id: service.receipt.product_id, name: service.receipt.product.brand + " (From Receipt)", model: service.receipt.product.model, price: Number(service.receipt.price), quantity: service.receipt.quantity, warranty: "N/A", type: "Battery" });
@@ -758,10 +791,10 @@ export function ServiceDetails() {
                                                     vehicleNumber: service.vehicle_details || "N/A",
                                                     paymentMethod: paymentType,
                                                     productSubtotal: service.receipt ? Number(service.receipt.total) : 0,
-                                                    serviceSubtotal: Number(service.service_charge),
+                                                    serviceSubtotal: chargeVal,
                                                     productGst: 0,
                                                     exchangeDiscount: 0,
-                                                    finalTotal: Number(service.service_charge) + (service.receipt ? Number(service.receipt.total) : 0),
+                                                    finalTotal: chargeVal + (service.receipt ? Number(service.receipt.total) : 0),
                                                     warrantyDetails: { totalWarranty: "N/A", totalWarrantyExpiry: "N/A" }
                                                 }
                                             });
