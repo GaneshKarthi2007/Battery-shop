@@ -8,6 +8,7 @@ import { Button } from './Button';
 
 interface ServiceGpsCameraProps {
     serviceId: number;
+    readOnly?: boolean;
 }
 
 /**
@@ -15,7 +16,7 @@ interface ServiceGpsCameraProps {
  * Lets staff capture GPS-tagged photos tied to a specific service,
  * and displays previously captured photos in a mini gallery.
  */
-export function ServiceGpsCamera({ serviceId }: ServiceGpsCameraProps) {
+export function ServiceGpsCamera({ serviceId, readOnly = false }: ServiceGpsCameraProps) {
     // Camera state
     const { videoRef, canvasRef, isStreaming, error: camError, startCamera, stopCamera, capturePhoto } = useCamera();
     const { latitude, longitude, accuracy, error: geoError, loading: geoLoading, refresh: refreshGps } = useGeolocation();
@@ -127,7 +128,7 @@ export function ServiceGpsCamera({ serviceId }: ServiceGpsCameraProps) {
     return (
         <div className="space-y-4">
             {/* ===== Capture Button ===== */}
-            {!showCamera && (
+            {!showCamera && !readOnly && (
                 <Button
                     onClick={openCamera}
                     className="w-full flex items-center justify-center gap-2 py-4 border-dashed border-2 border-blue-200 bg-blue-50/50 text-blue-700 hover:bg-blue-100/50 rounded-xl font-bold"
@@ -259,13 +260,15 @@ export function ServiceGpsCamera({ serviceId }: ServiceGpsCameraProps) {
                                         📍 {photo.latitude.toFixed(4)}, {photo.longitude.toFixed(4)}
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => handleDelete(photo.id)}
-                                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition w-6 h-6 flex items-center justify-center rounded-full bg-red-600/80 text-white hover:bg-red-500"
-                                    aria-label="Delete"
-                                >
-                                    <Trash2 className="w-3 h-3" />
-                                </button>
+                                {!readOnly && (
+                                    <button
+                                        onClick={() => handleDelete(photo.id)}
+                                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition w-6 h-6 flex items-center justify-center rounded-full bg-red-600/80 text-white hover:bg-red-500"
+                                        aria-label="Delete"
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                    </button>
+                                )}
                             </div>
                         ))}
                     </div>
