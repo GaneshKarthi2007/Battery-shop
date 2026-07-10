@@ -201,7 +201,13 @@ export function MainLayout() {
               <div className="w-72 flex flex-col h-screen overflow-hidden">
                 {/* Sidebar Header */}
                 <div className="h-16 flex-shrink-0 flex items-center justify-between px-6 border-b border-gray-50 dark:border-[#2E3B55]">
-                <div className="flex items-center gap-3">
+                <div 
+                  onClick={() => {
+                    navigate("/");
+                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                  }}
+                  className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity"
+                >
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
                     <Zap className="w-5 h-5 text-white" />
                   </div>
@@ -294,7 +300,10 @@ export function MainLayout() {
                   <Menu className="w-6 h-6" />
                 </button>
               )}
-              <div className={`flex items-center gap-3 ${user?.role === "staff" ? "" : "ml-2 lg:hidden"}`}>
+              <div 
+                onClick={() => navigate("/")}
+                className={`flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity ${user?.role === "staff" ? "" : "ml-2 lg:hidden"}`}
+              >
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
                   <Zap className="w-5 h-5 text-white" />
                 </div>
