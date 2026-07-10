@@ -25,6 +25,7 @@ import { GpsPhotoDashboard } from "./pages/GpsPhotoDashboard";
 import { NotFound } from "./pages/NotFound";
 import { Notifications } from "./pages/Notifications";
 
+import { MotionConfig } from "framer-motion";
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 
@@ -32,7 +33,9 @@ function RootLayout() {
   return (
     <AuthProvider>
       <NotificationProvider>
-        <Outlet />
+        <MotionConfig transition={{ duration: 0 }}>
+          <Outlet />
+        </MotionConfig>
       </NotificationProvider>
     </AuthProvider>
   );

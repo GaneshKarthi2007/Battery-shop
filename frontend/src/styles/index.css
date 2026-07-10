@@ -2,6 +2,16 @@
 @import './tailwind.css';
 @import './theme.css';
 
+*, *::before, *::after {
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    transition-property: none !important;
+    animation-name: none !important;
+}
+
 @layer base {
     .dark {
         color-scheme: dark;

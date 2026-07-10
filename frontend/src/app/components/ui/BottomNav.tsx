@@ -1,13 +1,13 @@
 import { useNavigate, useLocation } from "react-router";
 import { motion } from "framer-motion";
-import { LayoutDashboard, ShoppingCart, Wrench, Menu, ClipboardList, History, Settings as SettingsIcon } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Wrench, ClipboardList, History, Settings as SettingsIcon, Package } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
 interface BottomNavProps {
     onMenuClick: () => void;
 }
 
-export function BottomNav({ onMenuClick }: BottomNavProps) {
+export function BottomNav(_props: BottomNavProps) {
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useAuth();
@@ -18,6 +18,7 @@ export function BottomNav({ onMenuClick }: BottomNavProps) {
             { name: "Home", path: "/", icon: LayoutDashboard },
             { name: "Billing", path: "/sales", icon: ShoppingCart },
             { name: "Service", path: "/service", icon: Wrench },
+            { name: "Inventory", path: "/inventory", icon: Package },
         ]
         : [
             { name: "My Jobs", path: "/assigned-jobs", icon: Wrench },
@@ -68,20 +69,6 @@ export function BottomNav({ onMenuClick }: BottomNavProps) {
                         </button>
                     );
                 })}
-
-                <button
-                    onClick={onMenuClick}
-                    className="relative flex-1 py-1 px-1 h-full flex flex-col items-center justify-center outline-none transition-colors group z-10 hover:bg-gray-100 rounded-2xl"
-                >
-                    <div className="flex flex-col items-center gap-1 relative z-10 w-full text-center">
-                        <motion.div whileTap={{ scale: 0.9 }} className="text-gray-500 group-hover:text-gray-800 transition-colors">
-                            <Menu className="w-5 h-5" />
-                        </motion.div>
-                        <span className="text-[9px] font-bold tracking-tight text-gray-500">
-                            Menu
-                        </span>
-                    </div>
-                </button>
             </div>
         </div>
     );
