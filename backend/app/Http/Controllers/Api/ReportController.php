@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Sale;
 use App\Models\Service;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportController extends Controller
@@ -71,15 +70,18 @@ class ReportController extends Controller
         $type = $request->query('type', 'All');
         $search = $request->query('search');
 
+        // Map "Bills" filter alias to "Sale"
+        $effectiveType = $type === 'Bills' ? 'Sale' : $type;
+
         $invoices = collect();
 
-        // 1. Fetch Sales (Sale & Exchange)
-        if ($type === 'All' || $type === 'Sale' || $type === 'Exchange') {
+        // 1. Fetch Sales (Sale, Exchange, Quotation)
+        if ($effectiveType === 'All' || in_array($effectiveType, ['Sale', 'Exchange', 'Quotation'])) {
             $salesQuery = Sale::with('items.product');
 
             if ($from) $salesQuery->whereDate('created_at', '>=', $from);
             if ($to) $salesQuery->whereDate('created_at', '<=', $to);
-            if ($type !== 'All') $salesQuery->where('type', $type);
+            if ($effectiveType !== 'All') $salesQuery->where('type', $effectiveType);
             
             if ($search) {
                 $salesQuery->where(function($q) use ($search) {
@@ -92,28 +94,41 @@ class ReportController extends Controller
 
             foreach ($sales as $sale) {
                 $itemsSummary = $sale->items->map(function($item) {
-                    return "{$item->quantity}x {$item->product->brand} {$item->product->model}";
+                    $brand = $item->product ? $item->product->brand : 'Product';
+                    $model = $item->product ? $item->product->model : '';
+                    return "{$item->quantity}x {$brand} {$model}";
                 })->implode(', ');
 
-                $amount = $sale->total_amount / 1.18; // Reverse GST calculation if total_amount is gross
+                $amount = $sale->total_amount / 1.18;
                 $gst = $sale->total_amount - $amount;
+
+                $prefix = match($sale->type) {
+                    'Quotation' => 'QTN-',
+                    'Exchange' => 'EXC-',
+                    default => 'INV-',
+                };
 
                 $invoices->push([
                     'id' => 'sale-' . $sale->id,
-                    'invoice_number' => 'INV-' . str_pad($sale->id, 5, '0', STR_PAD_LEFT),
+                    'raw_id' => $sale->id,
+                    'invoice_number' => $prefix . str_pad($sale->id, 5, '0', STR_PAD_LEFT),
                     'date' => $sale->created_at->toISOString(),
                     'customer_name' => $sale->customer_name,
-                    'type' => $sale->type,
+                    'customer_phone' => $sale->customer_phone,
+                    'vehicle_details' => $sale->vehicle_details,
+                    'payment_method' => $sale->payment_method,
+                    'type' => $sale->type ?: 'Sale',
                     'items_summary' => $itemsSummary,
                     'amount' => round($amount, 2),
                     'gst' => round($gst, 2),
                     'total' => round($sale->total_amount, 2),
+                    'items' => $sale->items,
                 ]);
             }
         }
 
         // 2. Fetch Services
-        if ($type === 'All' || $type === 'Service') {
+        if ($effectiveType === 'All' || $effectiveType === 'Service') {
             $servicesQuery = Service::query();
 
             if ($from) $servicesQuery->whereDate('created_at', '>=', $from);
@@ -134,14 +149,19 @@ class ReportController extends Controller
 
                 $invoices->push([
                     'id' => 'service-' . $service->id,
+                    'raw_id' => $service->id,
                     'invoice_number' => 'SRV-' . str_pad($service->id, 5, '0', STR_PAD_LEFT),
                     'date' => $service->created_at->toISOString(),
                     'customer_name' => $service->customer_name,
+                    'customer_phone' => $service->contact_number,
+                    'vehicle_details' => $service->vehicle_details,
+                    'payment_method' => 'Service',
                     'type' => 'Service',
-                    'items_summary' => $service->vehicle_details,
+                    'items_summary' => $service->complaint_type ?: $service->vehicle_details,
                     'amount' => round($amount, 2),
                     'gst' => round($gst, 2),
                     'total' => round($service->service_charge, 2),
+                    'items' => [],
                 ]);
             }
         }
@@ -159,6 +179,7 @@ class ReportController extends Controller
                 'Sale' => $invoices->where('type', 'Sale')->sum('total'),
                 'Exchange' => $invoices->where('type', 'Exchange')->sum('total'),
                 'Service' => $invoices->where('type', 'Service')->sum('total'),
+                'Quotation' => $invoices->where('type', 'Quotation')->sum('total'),
             ],
         ];
 

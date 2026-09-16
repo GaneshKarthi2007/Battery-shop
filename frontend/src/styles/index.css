@@ -2,6 +2,25 @@
 @import './tailwind.css';
 @import './theme.css';
 
+html, body, #root {
+    overscroll-behavior-y: contain;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-overflow-scrolling: touch;
+}
+
+.overflow-y-auto, .overflow-y-scroll, .overflow-auto, main {
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+}
+
+button, a, [role="button"] {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+
 @layer base {
     .dark {
         color-scheme: dark;

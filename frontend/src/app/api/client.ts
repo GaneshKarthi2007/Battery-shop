@@ -1,4 +1,5 @@
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { reportApiLatency } from '../hooks/useNetworkSpeed';
 
 interface RequestOptions extends RequestInit {
     params?: Record<string, string>;
@@ -23,10 +24,12 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
         headers.set('Authorization', `Bearer ${token}`);
     }
 
+    const startTime = performance.now();
     const response = await fetch(url, {
         ...init,
         headers,
     });
+    reportApiLatency(performance.now() - startTime);
 
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: 'An error occurred' }));
