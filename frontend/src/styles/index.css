@@ -2,15 +2,24 @@
 @import './tailwind.css';
 @import './theme.css';
 
-*, *::before, *::after {
-    animation-delay: 0s !important;
-    animation-duration: 0s !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0s !important;
-    transition-delay: 0s !important;
-    transition-property: none !important;
-    animation-name: none !important;
+html, body, #root {
+    overscroll-behavior-y: contain;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-overflow-scrolling: touch;
 }
+
+.overflow-y-auto, .overflow-y-scroll, .overflow-auto, main {
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+}
+
+button, a, [role="button"] {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
 
 @layer base {
     .dark {

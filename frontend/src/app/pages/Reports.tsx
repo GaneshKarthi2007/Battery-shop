@@ -1,424 +1,583 @@
-import { useState, useEffect } from "react";
-import { FileText, Download, DollarSign, TrendingUp, Filter, Search, ChevronDown, Calendar, X } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router";
+import {
+    FileText,
+    Download,
+    DollarSign,
+    TrendingUp,
+    Filter,
+    Search,
+    ArrowUpDown,
+    CreditCard,
+    Wrench,
+    RefreshCw,
+    Receipt,
+    Eye,
+} from "lucide-react";
 import { Button } from "../components/Button";
 import { apiClient, BASE_URL } from "../api/client";
 import { CircleLoader } from "../components/ui/CircleLoader";
 
-interface Invoice {
-  id: string;
-  invoice_number: string;
-  date: string;
-  customer_name: string;
-  type: "Sale" | "Exchange" | "Service";
-  items_summary: string;
-  amount: number;
-  gst: number;
-  total: number;
+export interface InvoiceRecord {
+    id: string;
+    raw_id?: number | string;
+    invoice_number: string;
+    date: string;
+    customer_name: string;
+    customer_phone?: string;
+    vehicle_details?: string;
+    payment_method?: string;
+    type: "Sale" | "Exchange" | "Service" | "Quotation" | string;
+    items_summary: string;
+    amount: number;
+    gst: number;
+    total: number;
+    items?: any[];
 }
 
-interface ReportSummary {
-  totalSales: number;
-  totalGST: number;
-  totalProfit: number;
-  invoiceCount: number;
-  salesByType: {
-    Sale: number;
-    Exchange: number;
-    Service: number;
-  };
+export interface ReportSummary {
+    totalSales: number;
+    totalGST: number;
+    totalProfit: number;
+    invoiceCount: number;
+    salesByType: {
+        Sale: number;
+        Exchange: number;
+        Service: number;
+        Quotation?: number;
+    };
 }
+
+export type SortOption = "date_desc" | "date_asc" | "amount_desc" | "amount_asc" | "name_asc";
 
 export function Reports() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [summary, setSummary] = useState<ReportSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showFilters, setShowFilters] = useState(false);
+    const navigate = useNavigate();
+    const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+    const [summary, setSummary] = useState<ReportSummary | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [showFilters, setShowFilters] = useState(false);
 
-  const [dateRange, setDateRange] = useState({
-    from: "",
-    to: new Date().toISOString().split('T')[0]
-  });
-  const [filterType, setFilterType] = useState<string>("All");
-  const [searchTerm, setSearchTerm] = useState("");
+    const [dateRange, setDateRange] = useState({
+        from: "",
+        to: new Date().toISOString().split("T")[0],
+    });
+    const [filterType, setFilterType] = useState<string>("All");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [sortBy, setSortBy] = useState<SortOption>("date_desc");
 
-  const fetchReports = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams({
-        from: dateRange.from,
-        to: dateRange.to,
-        type: filterType,
-        search: searchTerm
-      });
-      const data = await apiClient.get<{ invoices: Invoice[], summary: ReportSummary }>(`/reports?${params.toString()}`);
-      setInvoices(data.invoices);
-      setSummary(data.summary);
-    } catch (err: any) {
-      console.error(err.message || "Failed to load reports");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchReports();
-  }, [dateRange, filterType]);
-
-  const handleDownloadInvoice = (invoiceId: string) => {
-    window.open(`${BASE_URL}/invoices/${invoiceId}/download`, '_blank');
-  };
-
-  const handleDownloadReport = async () => {
-    try {
-      const params = new URLSearchParams({
-        from: dateRange.from,
-        to: dateRange.to,
-        type: filterType
-      });
-
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${BASE_URL}/reports/download?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+    const fetchReports = async () => {
+        try {
+            setLoading(true);
+            const params = new URLSearchParams({
+                from: dateRange.from,
+                to: dateRange.to,
+                type: filterType,
+                search: searchTerm,
+            });
+            const data = await apiClient.get<{ invoices: InvoiceRecord[]; summary: ReportSummary }>(
+                `/reports?${params.toString()}`
+            );
+            setInvoices(data.invoices);
+            setSummary(data.summary);
+        } catch (err: any) {
+            console.error(err.message || "Failed to load reports");
+        } finally {
+            setLoading(false);
         }
-      });
+    };
 
-      if (!response.ok) throw new Error('Download failed');
+    useEffect(() => {
+        fetchReports();
+    }, [dateRange, filterType]);
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err: any) {
-      console.error(err.message || "Failed to download report");
-      alert("Failed to download report. Please try again.");
-    }
-  };
+    // Client-side sorting and additional live filtering
+    const sortedAndFilteredInvoices = useMemo(() => {
+        let result = [...invoices];
 
-  const handleDownloadPdf = async () => {
-    try {
-      const params = new URLSearchParams({
-        from: dateRange.from,
-        to: dateRange.to,
-        type: filterType
-      });
-
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${BASE_URL}/reports/download/pdf?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+        if (searchTerm.trim()) {
+            const query = searchTerm.toLowerCase();
+            result = result.filter(
+                (inv) =>
+                    inv.invoice_number.toLowerCase().includes(query) ||
+                    inv.customer_name.toLowerCase().includes(query) ||
+                    (inv.customer_phone && inv.customer_phone.toLowerCase().includes(query)) ||
+                    (inv.items_summary && inv.items_summary.toLowerCase().includes(query))
+            );
         }
-      });
 
-      if (!response.ok) throw new Error('Download failed');
+        result.sort((a, b) => {
+            if (sortBy === "date_desc") {
+                return new Date(b.date).getTime() - new Date(a.date).getTime();
+            }
+            if (sortBy === "date_asc") {
+                return new Date(a.date).getTime() - new Date(b.date).getTime();
+            }
+            if (sortBy === "amount_desc") {
+                return b.total - a.total;
+            }
+            if (sortBy === "amount_asc") {
+                return a.total - b.total;
+            }
+            if (sortBy === "name_asc") {
+                return a.customer_name.localeCompare(b.customer_name);
+            }
+            return 0;
+        });
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report_${new Date().toISOString().split('T')[0]}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err: any) {
-      console.error(err.message || "Failed to download PDF report");
-      alert("Failed to download PDF report. Please try again.");
-    }
-  };
+        return result;
+    }, [invoices, searchTerm, sortBy]);
 
-  const typeConfig = {
-    Sale: { color: "bg-blue-100 text-blue-700", label: "Sale" },
-    Exchange: { color: "bg-green-100 text-green-700", label: "Exchange" },
-    Service: { color: "bg-purple-100 text-purple-700", label: "Service" },
-  };
+    const handleViewInvoiceDetails = (invoice: InvoiceRecord) => {
+        const isQuotation = invoice.type === "Quotation";
 
+        navigate("/invoice", {
+            state: {
+                id: invoice.raw_id || invoice.id,
+                created_at: invoice.date,
+                isQuotation,
+                fromHistory: true,
+                items:
+                    invoice.items && invoice.items.length > 0
+                        ? invoice.items.map((si: any) => ({
+                              type: si.product_id ? "Product" : "Service",
+                              id: si.product_id || si.service_id,
+                              name: si.product?.brand || (si.service?.complaint_type ? "Service" : "Item"),
+                              model: si.product?.model || "",
+                              price: Number(si.price),
+                              quantity: si.quantity,
+                              warranty: si.product?.warranty || "N/A",
+                          }))
+                        : [
+                              {
+                                  type: invoice.type === "Service" ? "Service" : "Product",
+                                  id: invoice.id,
+                                  name: invoice.items_summary || invoice.customer_name,
+                                  model: "",
+                                  price: invoice.total,
+                                  quantity: 1,
+                                  warranty: "N/A",
+                              },
+                          ],
+                customerInfo: {
+                    name: invoice.customer_name,
+                    phone: invoice.customer_phone || "",
+                    billingAddress: invoice.vehicle_details || "",
+                },
+                productSubtotal: invoice.amount,
+                productGst: invoice.gst,
+                finalTotal: invoice.total,
+                paymentMethod: invoice.payment_method || invoice.type,
+                vehicleNumber: invoice.vehicle_details || "",
+            },
+        });
+    };
 
-  return (
-    <div className="space-y-6 relative">
-      {loading && (
-        <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-50 flex items-center justify-center min-h-[400px]">
-          <CircleLoader size="lg" />
-        </div>
-      )}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports & Billing</h1>
-          <p className="text-gray-600 mt-1">View sales reports and download records</p>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            onClick={handleDownloadReport}
-            variant="outline"
-            className="border-blue-200 text-blue-700 hover:bg-blue-50 flex items-center gap-2"
-          >
-            <Download className="w-5 h-5" />
-            CSV Report
-          </Button>
-          <Button
-            onClick={handleDownloadPdf}
-            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white flex items-center gap-2"
-          >
-            <FileText className="w-5 h-5" />
-            PDF Report
-          </Button>
-        </div>
-      </div>
+    const handleDownloadInvoice = (invoiceId: string) => {
+        window.open(`${BASE_URL}/invoices/${invoiceId}/download`, "_blank");
+    };
 
-      {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-white" />
-              </div>
-            </div>
-            <p className="text-sm text-gray-600 mb-1">Total Sales</p>
-            <h3 className="text-2xl font-bold text-gray-900">₹{summary.totalSales.toLocaleString()}</h3>
-          </div>
+    const handleDownloadReport = async () => {
+        try {
+            const params = new URLSearchParams({
+                from: dateRange.from,
+                to: dateRange.to,
+                type: filterType,
+            });
 
-          <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-white" />
-              </div>
-            </div>
-            <p className="text-sm text-gray-600 mb-1">Est. Profit</p>
-            <h3 className="text-2xl font-bold text-gray-900">₹{summary.totalProfit.toLocaleString()}</h3>
-          </div>
+            const token = localStorage.getItem("auth_token");
+            const response = await fetch(`${BASE_URL}/reports/download?${params.toString()}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
 
-          <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-600 to-orange-700 rounded-lg flex items-center justify-center">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-            </div>
-            <p className="text-sm text-gray-600 mb-1">Total GST</p>
-            <h3 className="text-2xl font-bold text-gray-900">₹{summary.totalGST.toLocaleString()}</h3>
-          </div>
+            if (!response.ok) throw new Error("Download failed");
 
-          <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg flex items-center justify-center">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-            </div>
-            <p className="text-sm text-gray-600 mb-1">Invoices</p>
-            <h3 className="text-2xl font-bold text-gray-900">{summary.invoiceCount}</h3>
-          </div>
-        </div>
-      )}
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `report_${new Date().toISOString().split("T")[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err: any) {
+            console.error(err.message || "Failed to download report");
+            alert("Failed to download report. Please try again.");
+        }
+    };
 
-      {summary && (
-        <div className="bg-white dark:bg-[#1B263B] rounded-xl p-6 border border-gray-200 dark:border-[#2E3B55]">
-          <h2 className="font-bold text-gray-900 mb-4">Sales Breakdown by Type</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-gray-600 mb-1">Battery Sales</p>
-              <p className="text-xl font-bold text-blue-700">₹{summary.salesByType.Sale.toLocaleString()}</p>
-            </div>
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-sm text-gray-600 mb-1">Exchange Sales</p>
-              <p className="text-xl font-bold text-green-700">₹{summary.salesByType.Exchange.toLocaleString()}</p>
-            </div>
-            <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <p className="text-sm text-gray-600 mb-1">Service Revenue</p>
-              <p className="text-xl font-bold text-purple-700">₹{summary.salesByType.Service.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-      )}
+    const handleDownloadPdf = async () => {
+        try {
+            const params = new URLSearchParams({
+                from: dateRange.from,
+                to: dateRange.to,
+                type: filterType,
+            });
 
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-[#1B263B] p-4 rounded-2xl border border-gray-200 dark:border-[#2E3B55]">
-        <div className="relative w-full md:max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search customer or invoice..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && fetchReports()}
-            className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none"
-          />
-        </div>
+            const token = localStorage.getItem("auth_token");
+            const response = await fetch(`${BASE_URL}/reports/download/pdf?${params.toString()}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
 
-        <div className="relative w-full md:w-auto">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`w-full md:w-auto flex items-center justify-between gap-3 px-6 py-3 rounded-xl border-2 transition-all font-bold text-sm ${
-              showFilters 
-                ? "border-blue-600 bg-blue-50 text-blue-700" 
-                : "border-gray-100 bg-white text-gray-600 hover:border-gray-200"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              <span>Filters</span>
-              {(filterType !== 'All' || searchTerm) && (
-                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-              )}
-            </div>
-            <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showFilters ? 'rotate-180' : ''}`} />
-          </button>
+            if (!response.ok) throw new Error("Download failed");
 
-          {showFilters && (
-            <>
-              <div 
-                className="fixed inset-0 z-10" 
-                onClick={() => setShowFilters(false)}
-              ></div>
-              <div className="absolute right-0 top-full mt-3 w-full md:w-[480px] bg-white dark:bg-[#0D1B2A] rounded-2xl border border-gray-100 dark:border-[#2E3B55] p-6 z-20 animate-in fade-in slide-in-from-top-4">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs flex items-center gap-2">
-                    <Filter className="w-3.5 h-3.5 text-blue-600" />
-                    Refine Results
-                  </h3>
-                  <button onClick={() => setShowFilters(false)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400">
-                    <X className="w-4 h-4" />
-                  </button>
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `report_${new Date().toISOString().split("T")[0]}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err: any) {
+            console.error(err.message || "Failed to download PDF report");
+            alert("Failed to download PDF report. Please try again.");
+        }
+    };
+
+    const typeBadges: Record<string, { color: string; icon: any; label: string }> = {
+        Sale: { color: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400", icon: CreditCard, label: "Bill" },
+        Exchange: { color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400", icon: RefreshCw, label: "Exchange" },
+        Service: { color: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400", icon: Wrench, label: "Service" },
+        Quotation: { color: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400", icon: FileText, label: "Quotation" },
+    };
+
+    return (
+        <div className="space-y-6 relative">
+            {loading && (
+                <div className="absolute inset-0 bg-white/40 dark:bg-slate-950/40 backdrop-blur-[1px] z-50 flex items-center justify-center min-h-[400px]">
+                    <CircleLoader size="lg" text="Fetching Reports..." />
                 </div>
+            )}
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5 px-1">
-                      <Calendar className="w-3 h-3" />
-                      From Date
-                    </label>
-                    <input
-                      type="date"
-                      value={dateRange.from}
-                      onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5 px-1">
-                      <Calendar className="w-3 h-3" />
-                      To Date
-                    </label>
-                    <input
-                      type="date"
-                      value={dateRange.to}
-                      onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none"
-                    />
-                  </div>
+            {/* Top Bar Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports & History Central</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">
+                        All bills, quotations, services, and exchange records stored in one hub
+                    </p>
+                </div>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <Button
+                        onClick={handleDownloadReport}
+                        variant="outline"
+                        className="border-gray-200 dark:border-[#2E3B55] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 text-xs py-2"
+                    >
+                        <Download className="w-4 h-4 text-blue-600" />
+                        CSV
+                    </Button>
+                    <Button
+                        onClick={handleDownloadPdf}
+                        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 text-xs py-2 shadow-sm"
+                    >
+                        <FileText className="w-4 h-4" />
+                        PDF Report
+                    </Button>
+                </div>
+            </div>
 
-                  <div className="col-span-2 space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1">Invoice Type</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {["All", "Sale", "Exchange", "Service"].map((type) => (
-                        <button
-                          key={type}
-                          onClick={() => setFilterType(type)}
-                          className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border-2 ${
-                            filterType === type 
-                              ? "bg-blue-600 border-blue-600 text-white" 
-                              : "bg-gray-50 border-gray-50 text-gray-500 hover:border-gray-200"
-                          }`}
-                        >
-                          {type === 'All' ? 'All Types' : type}
-                        </button>
-                      ))}
+            {/* Summary Analytics Cards */}
+            {summary && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white dark:bg-[#1B263B] rounded-xl p-5 border border-gray-200 dark:border-[#2E3B55] shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="w-9 h-9 bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center">
+                                <DollarSign className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Total Revenue</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                            ₹{summary.totalSales.toLocaleString()}
+                        </h3>
                     </div>
-                  </div>
+
+                    <div className="bg-white dark:bg-[#1B263B] rounded-xl p-5 border border-gray-200 dark:border-[#2E3B55] shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="w-9 h-9 bg-emerald-600/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center">
+                                <TrendingUp className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Est. Profit Margin</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                            ₹{summary.totalProfit.toLocaleString()}
+                        </h3>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#1B263B] rounded-xl p-5 border border-gray-200 dark:border-[#2E3B55] shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="w-9 h-9 bg-purple-600/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-lg flex items-center justify-center">
+                                <Receipt className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Total GST Collected</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                            ₹{summary.totalGST.toLocaleString()}
+                        </h3>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#1B263B] rounded-xl p-5 border border-gray-200 dark:border-[#2E3B55] shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="w-9 h-9 bg-amber-600/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center">
+                                <FileText className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Total Records</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{summary.invoiceCount}</h3>
+                    </div>
+                </div>
+            )}
+
+            {/* Filter Pills & Sorting Control Bar */}
+            <div className="bg-white dark:bg-[#1B263B] p-4 rounded-2xl border border-gray-200 dark:border-[#2E3B55] space-y-4 shadow-sm">
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                    {/* Minimal Type Filter Pills */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+                        {[
+                            { id: "All", label: "All" },
+                            { id: "Sale", label: "Bills" },
+                            { id: "Quotation", label: "Quotations" },
+                            { id: "Service", label: "Services" },
+                            { id: "Exchange", label: "Exchanges" },
+                        ].map((type) => (
+                            <button
+                                key={type.id}
+                                onClick={() => setFilterType(type.id)}
+                                className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap border ${
+                                    filterType === type.id
+                                        ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                                        : "bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-[#2E3B55] text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10"
+                                }`}
+                            >
+                                {type.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Controls: Search, Sort Dropdown, Filters Toggle */}
+                    <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                        {/* Search Bar */}
+                        <div className="relative flex-1 md:w-64">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search customer, invoice..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-9 pr-3 py-1.5 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs focus:ring-2 focus:ring-blue-500 dark:text-white outline-none"
+                            />
+                        </div>
+
+                        {/* Minimal Sort Dropdown */}
+                        <div className="relative">
+                            <div className="flex items-center bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl px-2.5 py-1.5 gap-1.5">
+                                <ArrowUpDown className="w-3.5 h-3.5 text-blue-600" />
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                                    className="bg-transparent text-xs font-bold text-gray-700 dark:text-gray-200 outline-none cursor-pointer pr-1"
+                                    aria-label="Sort History"
+                                >
+                                    <option value="date_desc">Newest First</option>
+                                    <option value="date_asc">Oldest First</option>
+                                    <option value="amount_desc">Highest Amount</option>
+                                    <option value="amount_asc">Lowest Amount</option>
+                                    <option value="name_asc">Customer Name A-Z</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Date Filter Toggle */}
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`p-2 rounded-xl border transition-all text-xs font-bold flex items-center gap-1.5 ${
+                                showFilters || dateRange.from
+                                    ? "border-blue-600 bg-blue-50 dark:bg-blue-950/30 text-blue-600"
+                                    : "border-gray-200 dark:border-[#2E3B55] bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-100"
+                            }`}
+                            title="Date Filters"
+                        >
+                            <Filter className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-gray-50 flex gap-3">
-                  <Button
-                    onClick={() => {
-                      setFilterType("All");
-                      setDateRange({
-                        from: "",
-                        to: new Date().toISOString().split('T')[0]
-                      });
-                    }}
-                    variant="outline"
-                    className="flex-1 py-3 rounded-xl font-bold text-gray-500"
-                  >
-                    Reset
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      fetchReports();
-                      setShowFilters(false);
-                    }}
-                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold"
-                  >
-                    Apply Filters
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+                {/* Collapsible Date Filter Popup */}
+                {showFilters && (
+                    <div className="pt-4 border-t border-gray-100 dark:border-[#2E3B55] grid grid-cols-1 sm:grid-cols-3 gap-4 items-end animate-in fade-in slide-in-from-top-2">
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">
+                                From Date
+                            </label>
+                            <input
+                                type="date"
+                                value={dateRange.from}
+                                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                                className="w-full px-3 py-1.5 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs dark:text-white outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">
+                                To Date
+                            </label>
+                            <input
+                                type="date"
+                                value={dateRange.to}
+                                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                                className="w-full px-3 py-1.5 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs dark:text-white outline-none"
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={() => {
+                                    setDateRange({ from: "", to: new Date().toISOString().split("T")[0] });
+                                    setFilterType("All");
+                                    setSearchTerm("");
+                                }}
+                                variant="outline"
+                                className="flex-1 text-xs py-1.5"
+                            >
+                                Reset
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    fetchReports();
+                                    setShowFilters(false);
+                                }}
+                                className="flex-1 bg-blue-600 text-white text-xs py-1.5"
+                            >
+                                Apply
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </div>
 
-      <div className="bg-white dark:bg-[#1B263B] rounded-xl border border-gray-200 dark:border-[#2E3B55] overflow-hidden min-h-[400px] relative">
-        <div className="p-6 border-b border-gray-200 bg-gray-50">
-          <h2 className="font-bold text-gray-900">Invoice History</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Showing {invoices.length} invoices
-          </p>
+            {/* Invoices & History Table */}
+            <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] overflow-hidden shadow-sm">
+                <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-[#2E3B55] bg-gradient-to-r from-gray-50 to-white dark:from-[#1B263B] dark:to-[#0D1B2A] flex justify-between items-center">
+                    <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-blue-600" />
+                        History Records
+                    </h2>
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#0D1B2A] px-3 py-1 rounded-full border border-gray-200 dark:border-[#2E3B55]">
+                        {sortedAndFilteredInvoices.length} Records Found
+                    </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-50/80 dark:bg-[#0D1B2A]/80 border-b border-gray-100 dark:border-[#2E3B55]">
+                            <tr>
+                                <th className="px-5 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                    Record #
+                                </th>
+                                <th className="px-5 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                    Date
+                                </th>
+                                <th className="px-5 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                    Customer
+                                </th>
+                                <th className="px-5 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                    Type
+                                </th>
+                                <th className="px-5 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                    Items Summary
+                                </th>
+                                <th className="px-5 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                    Total Amount
+                                </th>
+                                <th className="px-5 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">
+                                    Action
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                            {sortedAndFilteredInvoices.map((invoice) => {
+                                const badge = typeBadges[invoice.type] || typeBadges.Sale;
+                                const Icon = badge.icon;
+
+                                return (
+                                    <tr
+                                        key={invoice.id}
+                                        onClick={() => handleViewInvoiceDetails(invoice)}
+                                        className="hover:bg-blue-50/50 dark:hover:bg-white/5 transition-colors cursor-pointer group"
+                                    >
+                                        <td className="px-5 py-4 whitespace-nowrap">
+                                            <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-md border border-blue-100 dark:border-blue-900/40">
+                                                {invoice.invoice_number}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-4 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400 font-medium">
+                                            {new Date(invoice.date).toLocaleDateString()}{" "}
+                                            <span className="text-[10px] opacity-70">
+                                                {new Date(invoice.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-4 whitespace-nowrap">
+                                            <p className="text-xs font-bold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                                                {invoice.customer_name}
+                                            </p>
+                                            {invoice.customer_phone && (
+                                                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                                                    {invoice.customer_phone}
+                                                </p>
+                                            )}
+                                        </td>
+                                        <td className="px-5 py-4 whitespace-nowrap">
+                                            <span
+                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${badge.color}`}
+                                            >
+                                                <Icon className="w-3 h-3" />
+                                                {badge.label}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-4 text-xs text-gray-600 dark:text-gray-300 max-w-xs truncate">
+                                            {invoice.items_summary || "N/A"}
+                                        </td>
+                                        <td className="px-5 py-4 whitespace-nowrap">
+                                            <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                                ₹{invoice.total.toLocaleString()}
+                                            </p>
+                                        </td>
+                                        <td className="px-5 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <button
+                                                    onClick={() => handleViewInvoiceDetails(invoice)}
+                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
+                                                    title="View Details"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDownloadInvoice(invoice.id)}
+                                                    className="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                                                    title="Download Invoice"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+
+                            {sortedAndFilteredInvoices.length === 0 && !loading && (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-16 text-center text-gray-500 dark:text-gray-400 font-medium text-xs">
+                                        No matching history records found. Try adjusting your search or filters.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Invoice #</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Customer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Items</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Total</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {invoices.map((invoice) => {
-                const config = typeConfig[invoice.type as keyof typeof typeConfig] || typeConfig.Sale;
-                return (
-                  <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap font-medium text-blue-600">{invoice.invoice_number}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">{new Date(invoice.date).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-900">{invoice.customer_name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.color}`}>
-                        {config.label}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600 max-w-xs truncate">{invoice.items_summary}</td>
-                    <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900">₹{invoice.total.toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Button
-                        onClick={() => handleDownloadInvoice(invoice.id)}
-                        variant="ghost"
-                        size="sm"
-                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {invoices.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center text-gray-500 font-medium italic">
-                    No invoices found for the selected criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
+    );
 }
