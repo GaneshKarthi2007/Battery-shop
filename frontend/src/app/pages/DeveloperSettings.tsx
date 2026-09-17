@@ -1,6 +1,6 @@
 import { useDeveloper } from "../contexts/DeveloperContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { Settings, Edit2, ShieldCheck, ToggleLeft, ToggleRight, Moon, Sun, Users, ChevronRight } from "lucide-react";
+import { Settings, Edit2, ShieldCheck, ToggleLeft, ToggleRight, Moon, Sun, Users, ChevronRight, FileText } from "lucide-react";
 import { useNavigate } from "react-router";
 
 export function DeveloperSettings() {
@@ -137,6 +137,29 @@ export function DeveloperSettings() {
                             className="text-gray-400 hover:text-purple-600 transition-colors"
                         >
                             {features.serviceViewToggle ? (
+                                <ToggleRight className="w-10 h-10 text-purple-600" />
+                            ) : (
+                                <ToggleLeft className="w-10 h-10" />
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Toggle: PDF & CSV Report Export Module */}
+                    <div className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl border border-gray-200">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600">
+                                <FileText className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">PDF & CSV Report Export</h3>
+                                <p className="text-xs text-gray-500">Enable/disable PDF & CSV report download buttons at bottom of Reports page</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => toggleFeature('reportExport')}
+                            className="text-gray-400 hover:text-purple-600 transition-colors"
+                        >
+                            {features.reportExport ? (
                                 <ToggleRight className="w-10 h-10 text-purple-600" />
                             ) : (
                                 <ToggleLeft className="w-10 h-10" />

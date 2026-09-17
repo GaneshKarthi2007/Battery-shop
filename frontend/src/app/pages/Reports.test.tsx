@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router";
 import { Reports } from "./Reports";
 import { apiClient } from "../api/client";
+import { DeveloperProvider } from "../contexts/DeveloperContext";
 
 vi.mock("../api/client", () => ({
     apiClient: {
@@ -55,6 +56,15 @@ const mockReportData = {
     },
 };
 
+const renderComponent = () =>
+    render(
+        <BrowserRouter>
+            <DeveloperProvider>
+                <Reports />
+            </DeveloperProvider>
+        </BrowserRouter>
+    );
+
 describe("Reports Component", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -62,11 +72,7 @@ describe("Reports Component", () => {
     });
 
     it("renders page header, summary analytics, and filter pills", async () => {
-        render(
-            <BrowserRouter>
-                <Reports />
-            </BrowserRouter>
-        );
+        renderComponent();
 
         expect(screen.getByText("Reports & History Central")).toBeInTheDocument();
 
@@ -79,11 +85,7 @@ describe("Reports Component", () => {
     });
 
     it("filters records by type when filter pills are clicked", async () => {
-        render(
-            <BrowserRouter>
-                <Reports />
-            </BrowserRouter>
-        );
+        renderComponent();
 
         await waitFor(() => {
             expect(screen.getByText("Alice Smith")).toBeInTheDocument();
@@ -99,22 +101,41 @@ describe("Reports Component", () => {
         });
     });
 
-    it("allows sorting by customer name or total amount", async () => {
-        render(
-            <BrowserRouter>
-                <Reports />
-            </BrowserRouter>
-        );
+    it("opens Filter & Sort modal and applies custom sorting option", async () => {
+        renderComponent();
 
         await waitFor(() => {
             expect(screen.getByText("Alice Smith")).toBeInTheDocument();
         });
 
-        const sortSelect = screen.getByLabelText("Sort History");
+        const filterBtn = screen.getByRole("button", { name: /Filter and Sort Records/i });
         await act(async () => {
-            fireEvent.change(sortSelect, { target: { value: "amount_desc" } });
+            fireEvent.click(filterBtn);
         });
 
-        expect(sortSelect).toHaveValue("amount_desc");
+        expect(screen.getByText("Filter & Sort Records")).toBeInTheDocument();
+
+        const highestAmountOption = screen.getByRole("button", { name: /Highest Amount/i });
+        await act(async () => {
+            fireEvent.click(highestAmountOption);
+        });
+
+        const applyBtn = screen.getByRole("button", { name: "Apply" });
+        await act(async () => {
+            fireEvent.click(applyBtn);
+        });
+
+        // Modal closed
+        expect(screen.queryByText("Filter & Sort Records")).not.toBeInTheDocument();
+    });
+
+    it("renders export section at the bottom of the page when reportExport is enabled", async () => {
+        renderComponent();
+
+        await waitFor(() => {
+            expect(screen.getByText("Export Report Data")).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Export CSV" })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Export PDF Report" })).toBeInTheDocument();
+        });
     });
 });

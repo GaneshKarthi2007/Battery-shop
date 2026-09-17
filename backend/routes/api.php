@@ -56,7 +56,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/download', [\App\Http\Controllers\Api\ReportController::class, 'download']);
     Route::get('/reports/download/pdf', [\App\Http\Controllers\Api\ReportController::class, 'downloadPdf']);
 
-    // Staff & Notifications
+    // Users, Staff & Notifications
+    Route::apiResource('users', \App\Http\Controllers\Api\UserController::class);
     Route::get('/staff', [\App\Http\Controllers\Api\UserController::class, 'getStaff']);
     Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
     Route::put('/notifications/{notification}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);

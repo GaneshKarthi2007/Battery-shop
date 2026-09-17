@@ -6,6 +6,7 @@ interface DeveloperFeatures {
     salesHistory: boolean;
     enableContactActions: boolean;
     serviceViewToggle: boolean;
+    reportExport: boolean;
 }
 
 export interface ShopConfig {
@@ -29,6 +30,7 @@ const defaultFeatures: DeveloperFeatures = {
     salesHistory: true,
     enableContactActions: false, // Default to Copy behavior
     serviceViewToggle: true,
+    reportExport: true, // Enabled by default
 };
 
 const defaultShopConfig: ShopConfig = {
