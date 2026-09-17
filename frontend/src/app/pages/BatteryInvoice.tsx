@@ -266,6 +266,18 @@ const BatteryInvoice: React.FC = () => {
         </div>
 
         <div className="flex gap-2">
+          {state.customerInfo?.phone && (
+            <a
+              href={`https://api.whatsapp.com/send?phone=91${state.customerInfo.phone.replace(/[^0-9]/g, '')}&text=${encodeURIComponent(
+                `Hello ${state.customerInfo.name || 'Customer'},\nThank you for choosing SMR Battery Shop!\nInvoice #: ${invoiceNo}\nTotal Amount: ₹${grandTotal.toLocaleString('en-IN')}\nPowering Your Journey!`
+              )}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded text-sm font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              WhatsApp Share
+            </a>
+          )}
           <button
             onClick={() => window.print()}
             className="flex items-center gap-2 px-4 py-2 border border-gray-500 rounded text-sm font-semibold text-gray-700 hover:bg-gray-100"
@@ -290,12 +302,15 @@ const BatteryInvoice: React.FC = () => {
 
           {/* ── HEADER ── */}
           <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-[22px] font-black text-gray-900 leading-tight">{shopConfig.name}</h1>
-              <p className="text-gray-600 text-[11px] mt-0.5">{shopConfig.address}</p>
-              <p className="text-gray-600 text-[11px]">Phone: {shopConfig.phone}</p>
-              {shopConfig.email && <p className="text-gray-600 text-[11px]">Email: {shopConfig.email}</p>}
-              {gstEnabled && <p className="text-gray-700 text-[11px] font-bold mt-0.5">GSTIN: {shopConfig.gst}</p>}
+            <div className="flex items-start gap-4">
+              <img src="/logo.png" alt="SMR Logo" className="w-14 h-14 rounded-xl object-contain border border-gray-200 shrink-0" />
+              <div>
+                <h1 className="text-[22px] font-black text-gray-900 leading-tight">SMR <span className="text-emerald-600">BATTERY SHOP</span></h1>
+                <p className="text-gray-600 text-[11px] mt-0.5">{shopConfig.address}</p>
+                <p className="text-gray-600 text-[11px]">Phone: {shopConfig.phone}</p>
+                {shopConfig.email && <p className="text-gray-600 text-[11px]">Email: {shopConfig.email}</p>}
+                {gstEnabled && <p className="text-gray-700 text-[11px] font-bold mt-0.5">GSTIN: {shopConfig.gst}</p>}
+              </div>
             </div>
             <div className="text-right">
               <h2 className="text-[22px] font-black tracking-widest text-gray-900">
