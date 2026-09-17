@@ -23,6 +23,8 @@ import { UPIPayment } from "./pages/UPIPayment";
 import { GpsCamera } from "./pages/GpsCamera";
 import { GpsPhotoDashboard } from "./pages/GpsPhotoDashboard";
 import { NotFound } from "./pages/NotFound";
+import { WarrantyManagement } from "./pages/WarrantyManagement";
+import { CustomerHistory } from "./pages/CustomerHistory";
 import { Notifications } from "./pages/Notifications";
 
 import { MotionConfig } from "framer-motion";
@@ -124,6 +126,22 @@ export const router = createBrowserRouter([
             element: (
               <ProtectedRoute allowedRoles={["admin"]}>
                 <Reports />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "warranty",
+            element: (
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <WarrantyManagement />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "customers",
+            element: (
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <CustomerHistory />
               </ProtectedRoute>
             ),
           },
