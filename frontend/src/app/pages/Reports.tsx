@@ -5,18 +5,22 @@ import {
     Download,
     DollarSign,
     TrendingUp,
-    Filter,
     Search,
-    ArrowUpDown,
     CreditCard,
     Wrench,
     RefreshCw,
     Receipt,
     Eye,
+    X,
+    SlidersHorizontal,
+    Calendar,
+    ArrowUpDown,
+    Check,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { apiClient, BASE_URL } from "../api/client";
 import { CircleLoader } from "../components/ui/CircleLoader";
+import { useDeveloper } from "../contexts/DeveloperContext";
 
 export interface InvoiceRecord {
     id: string;
@@ -50,13 +54,20 @@ export interface ReportSummary {
 
 export type SortOption = "date_desc" | "date_asc" | "amount_desc" | "amount_asc" | "name_asc";
 
+type FilterTab = "sort" | "date" | "type";
+
 export function Reports() {
     const navigate = useNavigate();
+    const { features } = useDeveloper();
     const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
     const [summary, setSummary] = useState<ReportSummary | null>(null);
     const [loading, setLoading] = useState(true);
-    const [showFilters, setShowFilters] = useState(false);
 
+    // Filter Modal state
+    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<FilterTab>("sort");
+
+    // Filter values
     const [dateRange, setDateRange] = useState({
         from: "",
         to: new Date().toISOString().split("T")[0],
@@ -64,6 +75,11 @@ export function Reports() {
     const [filterType, setFilterType] = useState<string>("All");
     const [searchTerm, setSearchTerm] = useState("");
     const [sortBy, setSortBy] = useState<SortOption>("date_desc");
+
+    // Temp state inside filter modal before Apply
+    const [tempDateRange, setTempDateRange] = useState({ from: "", to: "" });
+    const [tempFilterType, setTempFilterType] = useState<string>("All");
+    const [tempSortBy, setTempSortBy] = useState<SortOption>("date_desc");
 
     const fetchReports = async () => {
         try {
@@ -89,6 +105,29 @@ export function Reports() {
     useEffect(() => {
         fetchReports();
     }, [dateRange, filterType]);
+
+    // Open filter modal and copy current filters to temp state
+    const openFilterModal = () => {
+        setTempDateRange(dateRange);
+        setTempFilterType(filterType);
+        setTempSortBy(sortBy);
+        setIsFilterModalOpen(true);
+    };
+
+    // Apply modal filters
+    const handleApplyFilters = () => {
+        setDateRange(tempDateRange);
+        setFilterType(tempFilterType);
+        setSortBy(tempSortBy);
+        setIsFilterModalOpen(false);
+    };
+
+    // Clear modal filters
+    const handleClearFilters = () => {
+        setTempDateRange({ from: "", to: new Date().toISOString().split("T")[0] });
+        setTempFilterType("All");
+        setTempSortBy("date_desc");
+    };
 
     // Client-side sorting and additional live filtering
     const sortedAndFilteredInvoices = useMemo(() => {
@@ -247,8 +286,26 @@ export function Reports() {
         Quotation: { color: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400", icon: FileText, label: "Quotation" },
     };
 
+    const sortOptions = [
+        { value: "date_desc", label: "Newest First" },
+        { value: "date_asc", label: "Oldest First" },
+        { value: "amount_desc", label: "Highest Amount" },
+        { value: "amount_asc", label: "Lowest Amount" },
+        { value: "name_asc", label: "Customer Name (A-Z)" },
+    ];
+
+    const typeOptions = [
+        { id: "All", label: "All Records" },
+        { id: "Sale", label: "Bills / Sales" },
+        { id: "Quotation", label: "Quotations" },
+        { id: "Service", label: "Services" },
+        { id: "Exchange", label: "Exchanges" },
+    ];
+
+    const activeFilterCount = (dateRange.from ? 1 : 0) + (filterType !== "All" ? 1 : 0) + (sortBy !== "date_desc" ? 1 : 0);
+
     return (
-        <div className="space-y-6 relative">
+        <div className="space-y-6 relative pb-32">
             {loading && (
                 <div className="absolute inset-0 bg-white/40 dark:bg-slate-950/40 backdrop-blur-[1px] z-50 flex items-center justify-center min-h-[400px]">
                     <CircleLoader size="lg" text="Fetching Reports..." />
@@ -256,30 +313,11 @@ export function Reports() {
             )}
 
             {/* Top Bar Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports & History Central</h1>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">
-                        All bills, quotations, services, and exchange records stored in one hub
-                    </p>
-                </div>
-                <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <Button
-                        onClick={handleDownloadReport}
-                        variant="outline"
-                        className="border-gray-200 dark:border-[#2E3B55] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 text-xs py-2"
-                    >
-                        <Download className="w-4 h-4 text-blue-600" />
-                        CSV
-                    </Button>
-                    <Button
-                        onClick={handleDownloadPdf}
-                        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 text-xs py-2 shadow-sm"
-                    >
-                        <FileText className="w-4 h-4" />
-                        PDF Report
-                    </Button>
-                </div>
+            <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports & History Central</h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                    All bills, quotations, services, and exchange records stored in one hub
+                </p>
             </div>
 
             {/* Summary Analytics Cards */}
@@ -333,11 +371,31 @@ export function Reports() {
                 </div>
             )}
 
-            {/* Filter Pills & Sorting Control Bar */}
-            <div className="bg-white dark:bg-[#1B263B] p-4 rounded-2xl border border-gray-200 dark:border-[#2E3B55] space-y-4 shadow-sm">
-                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                    {/* Minimal Type Filter Pills */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+            {/* Filter Pills, Filter & Sort Trigger, and Search Bar */}
+            <div className="bg-white dark:bg-[#1B263B] p-4 rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm">
+                <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+                    {/* Left: Filter & Sort button + Type Filter Pills */}
+                    <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-hide">
+                        <button
+                            onClick={openFilterModal}
+                            aria-label="Filter and Sort Records"
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 ${
+                                activeFilterCount > 0
+                                    ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 border-blue-300 dark:border-blue-700"
+                                    : "bg-white dark:bg-[#0D1B2A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2E3B55] hover:bg-gray-50 dark:hover:bg-white/5"
+                            }`}
+                        >
+                            <SlidersHorizontal className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                            <span>Filter & Sort</span>
+                            {activeFilterCount > 0 && (
+                                <span className="bg-blue-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold">
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </button>
+
+                        <div className="h-6 w-px bg-gray-200 dark:bg-[#2E3B55] mx-1 shrink-0" />
+
                         {[
                             { id: "All", label: "All" },
                             { id: "Sale", label: "Bills" },
@@ -348,7 +406,7 @@ export function Reports() {
                             <button
                                 key={type.id}
                                 onClick={() => setFilterType(type.id)}
-                                className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap border ${
+                                className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap border shrink-0 ${
                                     filterType === type.id
                                         ? "bg-blue-600 border-blue-600 text-white shadow-sm"
                                         : "bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-[#2E3B55] text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10"
@@ -359,103 +417,18 @@ export function Reports() {
                         ))}
                     </div>
 
-                    {/* Controls: Search, Sort Dropdown, Filters Toggle */}
-                    <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                        {/* Search Bar */}
-                        <div className="relative flex-1 md:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Search customer, invoice..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-9 pr-3 py-1.5 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs focus:ring-2 focus:ring-blue-500 dark:text-white outline-none"
-                            />
-                        </div>
-
-                        {/* Minimal Sort Dropdown */}
-                        <div className="relative">
-                            <div className="flex items-center bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl px-2.5 py-1.5 gap-1.5">
-                                <ArrowUpDown className="w-3.5 h-3.5 text-blue-600" />
-                                <select
-                                    value={sortBy}
-                                    onChange={(e) => setSortBy(e.target.value as SortOption)}
-                                    className="bg-transparent text-xs font-bold text-gray-700 dark:text-gray-200 outline-none cursor-pointer pr-1"
-                                    aria-label="Sort History"
-                                >
-                                    <option value="date_desc">Newest First</option>
-                                    <option value="date_asc">Oldest First</option>
-                                    <option value="amount_desc">Highest Amount</option>
-                                    <option value="amount_asc">Lowest Amount</option>
-                                    <option value="name_asc">Customer Name A-Z</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Date Filter Toggle */}
-                        <button
-                            onClick={() => setShowFilters(!showFilters)}
-                            className={`p-2 rounded-xl border transition-all text-xs font-bold flex items-center gap-1.5 ${
-                                showFilters || dateRange.from
-                                    ? "border-blue-600 bg-blue-50 dark:bg-blue-950/30 text-blue-600"
-                                    : "border-gray-200 dark:border-[#2E3B55] bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-100"
-                            }`}
-                            title="Date Filters"
-                        >
-                            <Filter className="w-4 h-4" />
-                        </button>
+                    {/* Right: Search Bar at Right End */}
+                    <div className="relative w-full md:w-64 shrink-0">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search customer, invoice..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs focus:ring-2 focus:ring-blue-500 dark:text-white outline-none"
+                        />
                     </div>
                 </div>
-
-                {/* Collapsible Date Filter Popup */}
-                {showFilters && (
-                    <div className="pt-4 border-t border-gray-100 dark:border-[#2E3B55] grid grid-cols-1 sm:grid-cols-3 gap-4 items-end animate-in fade-in slide-in-from-top-2">
-                        <div>
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">
-                                From Date
-                            </label>
-                            <input
-                                type="date"
-                                value={dateRange.from}
-                                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                                className="w-full px-3 py-1.5 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs dark:text-white outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">
-                                To Date
-                            </label>
-                            <input
-                                type="date"
-                                value={dateRange.to}
-                                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                                className="w-full px-3 py-1.5 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs dark:text-white outline-none"
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                onClick={() => {
-                                    setDateRange({ from: "", to: new Date().toISOString().split("T")[0] });
-                                    setFilterType("All");
-                                    setSearchTerm("");
-                                }}
-                                variant="outline"
-                                className="flex-1 text-xs py-1.5"
-                            >
-                                Reset
-                            </Button>
-                            <Button
-                                onClick={() => {
-                                    fetchReports();
-                                    setShowFilters(false);
-                                }}
-                                className="flex-1 bg-blue-600 text-white text-xs py-1.5"
-                            >
-                                Apply
-                            </Button>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Invoices & History Table */}
@@ -578,6 +551,174 @@ export function Reports() {
                     </table>
                 </div>
             </div>
+
+            {/* Feature-controlled PDF & CSV Export section at bottom of page */}
+            {features.reportExport && (
+                <div className="p-5 bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                    <div>
+                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">Export Report Data</h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Download formatted business activity report as CSV spreadsheet or PDF document</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button
+                            onClick={handleDownloadReport}
+                            variant="outline"
+                            className="border-gray-200 dark:border-[#2E3B55] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 text-xs py-2 px-4 font-bold"
+                        >
+                            <Download className="w-4 h-4 text-blue-600" />
+                            Export CSV
+                        </Button>
+                        <Button
+                            onClick={handleDownloadPdf}
+                            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 text-xs py-2 px-4 font-bold shadow-sm"
+                        >
+                            <FileText className="w-4 h-4" />
+                            Export PDF Report
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Filter & Sort Drawer Modal (Matching Reference Image) */}
+            {isFilterModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-[#1B263B] w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-[#2E3B55] flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="p-4 px-6 border-b border-gray-100 dark:border-[#2E3B55] flex items-center justify-between bg-gray-50/50 dark:bg-[#0D1B2A]/50">
+                            <h3 className="font-bold text-lg text-gray-900 dark:text-white">Filter & Sort Records</h3>
+                            <button
+                                onClick={() => setIsFilterModalOpen(false)}
+                                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body: Left Tabs + Right Content */}
+                        <div className="flex-1 flex overflow-hidden min-h-[320px]">
+                            {/* Left Sidebar Navigation */}
+                            <div className="w-44 bg-gray-50/80 dark:bg-[#0D1B2A]/80 border-r border-gray-100 dark:border-[#2E3B55] p-2 space-y-1 shrink-0">
+                                <button
+                                    onClick={() => setActiveTab("sort")}
+                                    className={`w-full text-left px-3.5 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                                        activeTab === "sort"
+                                            ? "bg-white dark:bg-[#1B263B] text-blue-600 dark:text-blue-400 shadow-sm border border-gray-100 dark:border-[#2E3B55]"
+                                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5"
+                                    }`}
+                                >
+                                    <ArrowUpDown className="w-4 h-4" />
+                                    Sort by
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab("date")}
+                                    className={`w-full text-left px-3.5 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                                        activeTab === "date"
+                                            ? "bg-white dark:bg-[#1B263B] text-blue-600 dark:text-blue-400 shadow-sm border border-gray-100 dark:border-[#2E3B55]"
+                                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5"
+                                    }`}
+                                >
+                                    <Calendar className="w-4 h-4" />
+                                    Date Range
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab("type")}
+                                    className={`w-full text-left px-3.5 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                                        activeTab === "type"
+                                            ? "bg-white dark:bg-[#1B263B] text-blue-600 dark:text-blue-400 shadow-sm border border-gray-100 dark:border-[#2E3B55]"
+                                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5"
+                                    }`}
+                                >
+                                    <Receipt className="w-4 h-4" />
+                                    Record Type
+                                </button>
+                            </div>
+
+                            {/* Right Content Panel */}
+                            <div className="flex-1 p-5 overflow-y-auto">
+                                {activeTab === "sort" && (
+                                    <div className="space-y-2">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Sort Order</h4>
+                                        {sortOptions.map((opt) => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => setTempSortBy(opt.value as SortOption)}
+                                                className={`w-full text-left p-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between border ${
+                                                    tempSortBy === opt.value
+                                                        ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-300"
+                                                        : "border-gray-100 dark:border-[#2E3B55] hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-200"
+                                                }`}
+                                            >
+                                                <span>{opt.label}</span>
+                                                {tempSortBy === opt.value && <Check className="w-4 h-4 text-blue-600" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {activeTab === "date" && (
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Filter by Date Range</h4>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">From Date</label>
+                                            <input
+                                                type="date"
+                                                value={tempDateRange.from}
+                                                onChange={(e) => setTempDateRange({ ...tempDateRange, from: e.target.value })}
+                                                className="w-full px-3.5 py-2 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">To Date</label>
+                                            <input
+                                                type="date"
+                                                value={tempDateRange.to}
+                                                onChange={(e) => setTempDateRange({ ...tempDateRange, to: e.target.value })}
+                                                className="w-full px-3.5 py-2 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === "type" && (
+                                    <div className="space-y-2">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Record Category</h4>
+                                        {typeOptions.map((opt) => (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => setTempFilterType(opt.id)}
+                                                className={`w-full text-left p-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between border ${
+                                                    tempFilterType === opt.id
+                                                        ? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-300"
+                                                        : "border-gray-100 dark:border-[#2E3B55] hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-200"
+                                                }`}
+                                            >
+                                                <span>{opt.label}</span>
+                                                {tempFilterType === opt.id && <Check className="w-4 h-4 text-blue-600" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 px-6 border-t border-gray-100 dark:border-[#2E3B55] flex items-center justify-between bg-gray-50/50 dark:bg-[#0D1B2A]/50 gap-3">
+                            <button
+                                onClick={handleClearFilters}
+                                className="px-5 py-2.5 rounded-full border border-gray-300 dark:border-[#2E3B55] text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                            >
+                                Clear all
+                            </button>
+                            <button
+                                onClick={handleApplyFilters}
+                                className="px-8 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+                            >
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

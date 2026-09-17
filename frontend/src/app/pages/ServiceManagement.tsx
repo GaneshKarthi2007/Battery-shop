@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
-import { Wrench, Clock, CheckCircle, AlertTriangle, Plus, Trash2, CheckSquare, Square, LayoutGrid, List } from "lucide-react";
-import { useDeveloper } from "../contexts/DeveloperContext";
+import { Wrench, Clock, CheckCircle, AlertTriangle, Plus, Trash2, ChevronDown, ChevronUp, ExternalLink, Car, BatteryCharging } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { apiClient } from "../api/client";
 import { Button } from "../components/Button";
@@ -36,15 +35,12 @@ interface ServiceRequest {
 export function ServiceManagement() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { features } = useDeveloper();
   const [services, setServices] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [serviceToDelete, setServiceToDelete] = useState<number | null>(null);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'minimal'>('grid');
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchServices();
@@ -68,41 +64,20 @@ export function ServiceManagement() {
   };
 
   const confirmDelete = async () => {
-    if (!serviceToDelete && selectedIds.length === 0) return;
+    if (!serviceToDelete) return;
 
     try {
-      if (serviceToDelete) {
-        await apiClient.delete(`/services/${serviceToDelete}`);
-        setServices(services.filter(s => s.id !== serviceToDelete));
-        setServiceToDelete(null);
-      } else {
-        setIsBulkDeleting(true);
-        // Delete all selected sequential or concurrently. Concurrently is faster.
-        await Promise.all(selectedIds.map(id => apiClient.delete(`/services/${id}`)));
-        setServices(services.filter(s => !selectedIds.includes(s.id)));
-        setSelectedIds([]);
-      }
+      await apiClient.delete(`/services/${serviceToDelete}`);
+      setServices(services.filter(s => s.id !== serviceToDelete));
+      setServiceToDelete(null);
     } catch (err: any) {
-      alert(err.message || "Failed to delete service(s)");
-    } finally {
-      setIsBulkDeleting(false);
+      alert(err.message || "Failed to delete service");
     }
   };
 
-  const toggleSelect = (e: React.MouseEvent, id: number) => {
+  const toggleExpand = (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
-  };
-
-  const toggleSelectAll = () => {
-    const visibleIds = filteredServices.map(s => s.id);
-    if (selectedIds.length === visibleIds.length && visibleIds.length > 0) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(visibleIds);
-    }
+    setExpandedId(prev => (prev === id ? null : id));
   };
 
   const filteredServices = services.filter(
@@ -112,9 +87,9 @@ export function ServiceManagement() {
   );
 
   const statusConfig = {
-    Pending: { color: "bg-yellow-100 text-yellow-700", icon: Clock },
-    "In Progress": { color: "bg-blue-100 text-blue-700", icon: Wrench },
-    Completed: { color: "bg-green-100 text-green-700", icon: CheckCircle },
+    Pending: { color: "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800", icon: Clock },
+    "In Progress": { color: "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800", icon: Wrench },
+    Completed: { color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle },
   };
 
   const activeServices = services.filter(s => s.payment_status !== "verified");
@@ -125,10 +100,6 @@ export function ServiceManagement() {
     "In Progress": activeServices.filter((s) => s.status === "In Progress").length,
     Completed: activeServices.filter((s) => s.status === "Completed").length,
   };
-
-  if (loading) {
-    // Page loader removed for smoother page transitions
-  }
 
   if (error) {
     return (
@@ -146,81 +117,49 @@ export function ServiceManagement() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Header Row */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+        className="flex items-center justify-between gap-4"
       >
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Service Management</h1>
-          <p className="text-gray-600 mt-1">Track and manage battery service requests</p>
+          <h1 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Service Management</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Track and manage battery service requests</p>
         </div>
-        <div className="flex items-center gap-3">
-          {user?.role === "admin" && filteredServices.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleSelectAll}
-              className={`flex items-center gap-2 border-dashed ${selectedIds.length > 0 ? 'bg-blue-50 text-blue-600 border-blue-200' : ''}`}
-            >
-              {selectedIds.length === filteredServices.length && filteredServices.length > 0 ? (
-                <CheckSquare className="w-4 h-4" />
-              ) : (
-                <Square className="w-4 h-4" />
-              )}
-              {selectedIds.length === filteredServices.length && filteredServices.length > 0 ? "Deselect All" : "Select All"}
-            </Button>
-          )}
-          
-          {features.serviceViewToggle && (
-            <div className="flex items-center bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
-                title="Grid View"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('minimal')}
-                className={`p-2 rounded-xl transition-all ${viewMode === 'minimal' ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
-                title="Minimal View"
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
+        <div>
           {user?.role === "admin" && (
-            <Button
+            <button
               onClick={() => navigate('/services/new')}
-              className="flex items-center gap-2"
+              aria-label="New Service Request"
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition-all active:scale-95"
             >
-              <Plus className="w-4 h-4" />
-              New Service Request
-            </Button>
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Request</span>
+            </button>
           )}
         </div>
       </motion.div>
 
-      <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl w-full overflow-x-auto snap-x scrollbar-hide">
+      {/* Filter Pills */}
+      <div className="flex gap-2 p-1.5 bg-gray-100 dark:bg-[#1B263B] rounded-2xl w-full overflow-x-auto snap-x scrollbar-hide">
         {(["All", "Pending", "In Progress", "Completed"] as const).map((status) => (
           <button
             key={status}
             onClick={() => setFilterStatus(status)}
-            className={`relative px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex justify-center items-center gap-2 whitespace-nowrap shrink-0 snap-center z-0 ${filterStatus === status ? "text-blue-700" : "text-gray-500 hover:text-gray-700"
+            className={`relative px-4 py-2 rounded-xl text-xs font-bold transition-all flex justify-center items-center gap-2 whitespace-nowrap shrink-0 snap-center z-0 ${filterStatus === status ? "text-blue-700 dark:text-blue-300" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               }`}
           >
             {filterStatus === status && (
               <motion.div
                 layoutId="activeFilter"
-                className="absolute inset-0 bg-white rounded-xl -z-10 border border-gray-100"
+                className="absolute inset-0 bg-white dark:bg-[#0D1B2A] rounded-xl -z-10 border border-gray-200 dark:border-[#2E3B55] shadow-xs"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}
             {status}
-            <span className={`px-2 py-0.5 rounded-full text-[10px] transition-colors ${filterStatus === status ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-500"
+            <span className={`px-2 py-0.5 rounded-full text-[10px] transition-colors ${filterStatus === status ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300" : "bg-gray-200 dark:bg-[#25334D] text-gray-500 dark:text-gray-400"
               }`}>
               {statusCounts[status]}
             </span>
@@ -228,13 +167,8 @@ export function ServiceManagement() {
         ))}
       </div>
 
-      <motion.div
-        layout
-        className={viewMode === 'grid' 
-          ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px]"
-          : "grid grid-cols-1 gap-3 min-h-[400px]"
-        }
-      >
+      {/* Minimal Records List */}
+      <motion.div layout className="flex flex-col gap-2.5">
         <AnimatePresence mode="popLayout" initial={false}>
           {loading ? (
             <motion.div
@@ -242,7 +176,7 @@ export function ServiceManagement() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="col-span-full flex flex-col items-center justify-center min-h-[400px]"
+              className="flex flex-col items-center justify-center min-h-[200px]"
             >
               <CircleLoader size="lg" />
             </motion.div>
@@ -250,170 +184,155 @@ export function ServiceManagement() {
             <motion.div
               layout
               key="empty"
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="col-span-full bg-white rounded-3xl p-20 text-center border-2 border-dashed border-gray-100"
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-[#1B263B] rounded-2xl p-10 text-center border border-dashed border-gray-200 dark:border-[#2E3B55]"
             >
-              <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Wrench className="w-8 h-8 text-gray-300" />
+              <div className="w-10 h-10 bg-gray-50 dark:bg-[#0D1B2A] rounded-xl flex items-center justify-center mx-auto mb-2">
+                <Wrench className="w-5 h-5 text-gray-400" />
               </div>
-              <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No entries found</p>
+              <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No service records found</p>
             </motion.div>
           ) : (
             filteredServices.map((service, index) => {
               const normalizedStatus = (service.status.charAt(0).toUpperCase() + service.status.slice(1).toLowerCase()) as keyof typeof statusConfig;
               const config = statusConfig[normalizedStatus] || {
-                color: "bg-gray-100 text-gray-700",
+                color: "bg-gray-100 text-gray-700 border-gray-200",
                 icon: AlertTriangle
               };
 
-              if (viewMode === 'minimal') {
-                return (
-                  <motion.div
-                    layout
-                    key={service.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ delay: index * 0.02 }}
-                    onClick={() => navigate(`/service/${service.id}`)}
-                    className="bg-white rounded-2xl p-4 border border-gray-100 hover:border-blue-200 transition-all cursor-pointer group flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${config.color.split(' ')[0]}`}>
-                        <Wrench className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors uppercase text-sm truncate">
-                            {service.customer_name}
-                          </h3>
-                          <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider ${config.color} border border-white/20 whitespace-nowrap`}>
-                            {service.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                          <span>{service.contact_number}</span>
-                          <span>·</span>
-                          <span>{service.battery_brand || 'No Battery'}</span>
-                          <span>·</span>
-                          <span className="text-blue-600">₹{Number(service.service_charge).toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="flex items-center gap-1.5 text-gray-400 text-[10px] font-bold">
-                        <Clock className="w-3 h-3" />
-                        {new Date(service.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                      </div>
-                      {user?.role === "admin" && (
-                        <div className="flex items-center gap-1 ml-2">
-                          <button
-                            onClick={(e) => toggleSelect(e, service.id)}
-                            className={`p-1.5 rounded-lg transition-all ${selectedIds.includes(service.id) ? 'bg-blue-600 text-white' : 'hover:bg-blue-50 text-gray-400'}`}
-                          >
-                            <CheckSquare className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              }
+              const isExpanded = expandedId === service.id;
 
               return (
                 <motion.div
                   layout
                   key={service.id}
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                  transition={{
-                    duration: 0.4,
-                    delay: index * 0.05,
-                    layout: { type: "spring", bounce: 0.2, duration: 0.6 }
-                  }}
-                  onClick={() => navigate(`/service/${service.id}`)}
-                  className="bg-white dark:bg-[#1B263B] rounded-3xl p-6 border border-gray-100 dark:border-[#2E3B55] transition-shadow cursor-pointer group relative overflow-hidden"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ delay: index * 0.02 }}
+                  className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-100 dark:border-[#2E3B55] hover:border-blue-300 dark:hover:border-blue-600/50 transition-all shadow-xs hover:shadow-sm overflow-hidden"
                 >
-                  <div className="flex items-start justify-between mb-5">
-                    <div className="flex items-center gap-3">
-                      {user?.role === "admin" && (
-                        <button
-                          onClick={(e) => toggleSelect(e, service.id)}
-                          className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${
-                            selectedIds.includes(service.id) 
-                            ? 'bg-blue-600 text-white' 
-                            : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                          }`}
-                        >
-                          <Wrench className="w-6 h-6" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] ${config.color} border border-white/20 flex items-center gap-2`}>
-                        {service.status}
-                        {service.sub_status && (
-                          <>
-                            <span className="w-1 h-1 bg-current opacity-30 rounded-full"></span>
-                            <span className="opacity-80">{service.sub_status}</span>
-                          </>
-                        )}
-                      </span>
-                      {user?.role === "admin" && (
-                        <button
-                          onClick={(e) => handleDelete(e, service.id)}
-                          className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all duration-300 border border-red-100"
-                          title="Delete Service"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-black text-gray-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight leading-tight">
-                        {service.customer_name}
-                      </h3>
-                      <div className="flex items-center justify-between mt-1">
-                        <p className="text-sm text-gray-400 font-medium flex items-center gap-2">
-                          <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                          {service.contact_number}
-                        </p>
-                        <ContactActions phoneNumber={service.contact_number} />
+                  {/* Minimal Header Card (Center click opens record detail) */}
+                  <div
+                    onClick={() => navigate(`/service/${service.id}`)}
+                    className="p-3.5 flex items-center justify-between gap-3 cursor-pointer group hover:bg-blue-50/20 dark:hover:bg-blue-950/20 transition-colors"
+                  >
+                    {/* Left Details */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${config.color}`}>
+                        <Wrench className="w-4 h-4" />
                       </div>
-                    </div>
-
-                    <div className="py-4 px-5 bg-gray-50/50 group-hover:bg-blue-50/30 rounded-2xl space-y-3 transition-colors duration-500">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-gray-400 uppercase font-black tracking-widest text-[10px]">Battery</span>
-                        <span className="text-gray-900 font-bold">{service.battery_brand || 'N/A'} {service.battery_model || ''}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-gray-400 uppercase font-black tracking-widest text-[10px]">Service Charge</span>
-                        <span className="text-blue-600 font-black text-sm">₹{Number(service.service_charge).toLocaleString()}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center">
-                          <Clock className="w-3.5 h-3.5" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors uppercase text-sm truncate">
+                            {service.customer_name}
+                          </h3>
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${config.color} whitespace-nowrap`}>
+                            {service.status}
+                          </span>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest">{new Date(service.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                      </div>
-                      <div className="h-8 w-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center translate-x-4 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                        </svg>
+                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                          <span>{service.contact_number}</span>
+                          {service.battery_brand && (
+                            <>
+                              <span>·</span>
+                              <span className="truncate">{service.battery_brand} {service.battery_model}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {/* Right Details & Dropdown Toggle */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <div className="text-xs font-black text-blue-600 dark:text-blue-400">
+                          ₹{Number(service.service_charge).toLocaleString()}
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-bold uppercase">
+                          {new Date(service.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+
+                      {/* Dropdown Icon at Right End */}
+                      <button
+                        onClick={(e) => toggleExpand(e, service.id)}
+                        aria-label={`Toggle details for ${service.customer_name}`}
+                        className={`p-1.5 rounded-lg border transition-all ${
+                          isExpanded 
+                            ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700" 
+                            : "bg-gray-50 dark:bg-[#0D1B2A] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border-gray-200 dark:border-[#2E3B55]"
+                        }`}
+                      >
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Expandable Details Panel */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="overflow-hidden border-t border-gray-100 dark:border-[#2E3B55] bg-gray-50/70 dark:bg-[#0D1B2A]/60"
+                      >
+                        <div className="p-4 space-y-3">
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="flex items-start gap-2 bg-white dark:bg-[#1B263B] p-2.5 rounded-xl border border-gray-100 dark:border-[#2E3B55]">
+                              <Car className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-gray-400 block">Vehicle</span>
+                                <span className="font-bold text-gray-800 dark:text-gray-200">{service.vehicle_details || 'N/A'}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-start gap-2 bg-white dark:bg-[#1B263B] p-2.5 rounded-xl border border-gray-100 dark:border-[#2E3B55]">
+                              <BatteryCharging className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-gray-400 block">Battery Spec</span>
+                                <span className="font-bold text-gray-800 dark:text-gray-200">{service.battery_brand ? `${service.battery_brand} ${service.battery_model || ''}` : 'Not Specified'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {service.sub_status && (
+                            <div className="text-xs bg-white dark:bg-[#1B263B] p-2.5 rounded-xl border border-gray-100 dark:border-[#2E3B55] flex justify-between items-center">
+                              <span className="text-[10px] uppercase font-bold text-gray-400">Current Phase</span>
+                              <span className="font-bold text-blue-600 dark:text-blue-400">{service.sub_status}</span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-1">
+                            <ContactActions phoneNumber={service.contact_number} />
+
+                            <div className="flex items-center gap-2">
+                              {user?.role === "admin" && (
+                                <button
+                                  onClick={(e) => handleDelete(e, service.id)}
+                                  className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 dark:bg-red-950/40 px-2.5 py-1.5 rounded-xl border border-red-100 dark:border-red-900 transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => navigate(`/service/${service.id}`)}
+                                className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 rounded-xl border border-blue-100 dark:border-blue-900 transition-colors"
+                              >
+                                <span>Open Details</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               );
             })
@@ -421,67 +340,27 @@ export function ServiceManagement() {
         </AnimatePresence>
       </motion.div>
 
-      {/* Floating Action Bar */}
-      <AnimatePresence>
-        {selectedIds.length > 0 && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-6 py-4 rounded-3xl flex items-center gap-8 border border-white/10 backdrop-blur-xl"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center font-black text-white">
-                {selectedIds.length}
-              </div>
-              <p className="text-sm font-bold uppercase tracking-widest text-gray-400">Selected</p>
-            </div>
-            <div className="h-8 w-px bg-white/10" />
-            <button
-              onClick={() => setSelectedIds([])}
-              className="text-xs font-bold text-gray-400 hover:text-white transition-colors uppercase tracking-widest"
-            >
-              Clear
-            </button>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => setServiceToDelete(null)} // Trigger dialog by opening without specific ID
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 border-none"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete Selected
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AlertDialog open={serviceToDelete !== null || selectedIds.length > 0 && serviceToDelete === null} onOpenChange={(open) => {
-        if (!open) {
-          setServiceToDelete(null);
-        }
+      {/* Delete Confirmation Alert */}
+      <AlertDialog open={serviceToDelete !== null} onOpenChange={(open) => {
+        if (!open) setServiceToDelete(null);
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Service Record?</AlertDialogTitle>
             <AlertDialogDescription>
-              {serviceToDelete 
-                ? "This action cannot be undone. This will permanently delete the service record for this customer."
-                : `This action cannot be undone. This will permanently delete ${selectedIds.length} selected service records.`
-              }
+              This action cannot be undone. This will permanently delete the service record for this customer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isBulkDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={(e) => {
                 e.preventDefault();
                 confirmDelete();
               }} 
-              disabled={isBulkDeleting}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isBulkDeleting ? "Deleting..." : "Delete Record(s)"}
+              Delete Record
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -489,4 +368,3 @@ export function ServiceManagement() {
     </div>
   );
 }
-
