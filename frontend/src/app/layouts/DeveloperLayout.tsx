@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router";
-import { LogOut, Code2 } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -19,10 +19,10 @@ export function DeveloperLayout() {
             {/* Developer Header */}
             <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-20 px-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-indigo-700 rounded-lg flex items-center justify-center">
-                        <Code2 className="w-5 h-5 text-white" />
+                    <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 border border-gray-200 shadow-sm flex items-center justify-center bg-black">
+                        <img src="/logo.png" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
                     </div>
-                    <span className="font-bold text-gray-900 text-lg">PowerCell Pro - Developer Console</span>
+                    <span className="font-bold text-gray-900 text-base">SMR Battery Shop - Developer Console</span>
                 </div>
 
                 {/* Right Side Actions */}

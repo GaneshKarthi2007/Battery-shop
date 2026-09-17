@@ -11,7 +11,6 @@ import {
   User,
   Menu,
   X,
-  Zap,
   ClipboardList,
   History,
   Settings as SettingsIcon,
@@ -134,41 +133,6 @@ export function MainLayout() {
   // Toggle Sidebar Wrapper
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // Reusable Nav Link Component
-  const NavLink = ({ item }: { item: NavItem }) => {
-    const Icon = item.icon;
-    const active = isActivePath(item.path);
-
-    return (
-      <motion.button
-        whileHover={{ x: 4 }}
-        onClick={() => {
-          navigate(item.path);
-          if (window.innerWidth < 1024) setIsSidebarOpen(false);
-        }}
-        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all relative group ${
-          active ? "bg-blue-600/5 dark:bg-blue-500/[0.08] text-blue-700 dark:text-blue-400" : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-white/[0.03]"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg transition-all duration-300 ${active ? "bg-white dark:bg-blue-900/40 shadow-sm text-blue-600 ring-1 ring-blue-100 dark:ring-blue-800" : "text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300"}`}>
-            <Icon className="w-4.5 h-4.5" />
-          </div>
-          <span className={`text-sm font-bold tracking-tight ${active ? "opacity-100" : "opacity-80 group-hover:opacity-100"}`}>{item.name}</span>
-        </div>
-
-        {active && (
-          <motion.div
-            layoutId="navIndicator"
-            className="absolute left-0 w-1 h-6 bg-blue-600 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.8)]"
-          />
-        )}
-
-        <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${active ? "opacity-100 scale-100 translate-x-0" : "opacity-0 scale-50 -translate-x-2 group-hover:opacity-40 group-hover:scale-100 group-hover:translate-x-0"}`} />
-      </motion.button>
-    );
-  };
-
   return (
     <div
       className="flex min-h-screen bg-[#f8f9fc] dark:bg-[#05050a] transition-colors duration-500"
@@ -208,10 +172,10 @@ export function MainLayout() {
                   }}
                   className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <Zap className="w-5 h-5 text-white" />
+                  <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-center bg-black">
+                    <img src="/logo.png" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
                   </div>
-                  <h1 className="font-black text-gray-900 dark:text-gray-100 uppercase tracking-tighter">PowerCell <span className="text-blue-600">Pro</span></h1>
+                  <h1 className="font-black text-gray-900 dark:text-gray-100 uppercase tracking-tighter text-base">SMR <span className="text-green-500">BATTERY</span></h1>
                 </div>
                 <button
                   onClick={() => setIsSidebarOpen(false)}
@@ -233,9 +197,35 @@ export function MainLayout() {
                       <div className="space-y-1">
                         {navItems
                           .filter(item => group.items.includes(item.name))
-                          .map((item) => (
-                            <NavLink key={item.path} item={item} />
-                          ))}
+                          .map((item) => {
+                            const Icon = item.icon;
+                            const isActive = location.pathname === item.path;
+                            return (
+                              <button
+                                key={item.name}
+                                onClick={() => {
+                                  navigate(item.path);
+                                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-300 ${
+                                  isActive
+                                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25 font-black translate-x-1"
+                                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25334D] hover:text-gray-900 dark:hover:text-white"
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-400"}`} />
+                                  <span>{item.name}</span>
+                                </div>
+                                {isActive && (
+                                  <motion.div
+                                    layoutId="activeIndicator"
+                                    className="w-1.5 h-1.5 rounded-full bg-white"
+                                  />
+                                )}
+                              </button>
+                            );
+                          })}
                       </div>
                     </div>
                   ))}
@@ -304,10 +294,10 @@ export function MainLayout() {
                 onClick={() => navigate("/")}
                 className={`flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity ${user?.role === "staff" ? "" : "ml-2 lg:hidden"}`}
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
-                  <Zap className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-center bg-black">
+                  <img src="/logo.png" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
                 </div>
-                <span className="font-black text-gray-900 dark:text-gray-100 text-lg sm:block uppercase tracking-tighter">PowerCell <span className="text-blue-600">Pro</span></span>
+                <span className="font-black text-gray-900 dark:text-gray-100 text-base sm:block uppercase tracking-tighter">SMR <span className="text-green-500">BATTERY</span></span>
               </div>
             </div>
 
