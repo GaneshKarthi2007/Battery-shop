@@ -55,7 +55,7 @@
                     </div>
                 </td>
                 <td width="40%" class="inv-title">
-                    <div class="inv-badge">TAX INVOICE</div>
+                    <div class="inv-badge">{{ $sale->type === 'Quotation' ? 'QUOTATION' : ($sale->gst_enabled ? 'TAX INVOICE' : 'CASH BILL') }}</div>
                     <div class="inv-meta">Invoice #: <strong>INV-{{ str_pad($sale->id, 5, '0', STR_PAD_LEFT) }}</strong></div>
                     <div class="inv-meta">Date: <strong>{{ $sale->created_at->format('d/m/Y h:i A') }}</strong></div>
                     <div class="inv-meta">Payment Mode: <strong>{{ strtoupper($sale->payment_method ?: 'CASH') }}</strong></div>
@@ -71,12 +71,14 @@
                     <div><strong>Customer Name:</strong> {{ $sale->customer_name }}</div>
                     <div><strong>Mobile Number:</strong> {{ $sale->customer_phone ?: 'N/A' }}</div>
                     @if($sale->installation_address)
-                    <div><strong>Address:</strong> {{ $sale->installation_address }}</div>
+                    <div><strong>Address / Installation:</strong> {!! nl2br(e($sale->installation_address)) !!}</div>
                     @endif
                 </td>
                 <td width="50%">
-                    <div class="customer-title">Vehicle & Service Details</div>
-                    <div><strong>Vehicle Number:</strong> {{ $sale->vehicle_details ?: 'N/A' }}</div>
+                    <div class="customer-title">Vehicle & Usage Details</div>
+                    @if($sale->vehicle_details)
+                    <div><strong>Vehicle Info:</strong> {{ $sale->vehicle_details }}</div>
+                    @endif
                     <div><strong>Category:</strong> {{ $sale->product_category ?: 'Automotive / Power' }}</div>
                     <div><strong>Sale Type:</strong> {{ $sale->type ?: 'Sale' }}</div>
                 </td>

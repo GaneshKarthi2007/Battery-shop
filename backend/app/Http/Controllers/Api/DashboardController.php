@@ -26,6 +26,7 @@ class DashboardController extends Controller
             'today' => Carbon::today(),
             '7days' => Carbon::now()->subDays(7)->startOfDay(),
             'month' => Carbon::now()->startOfMonth(),
+            'all_time' => Carbon::create(2000, 1, 1)->startOfDay(),
             'custom' => $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->subDays(30)->startOfDay(),
             default => Carbon::now()->subDays(7)->startOfDay(),
         };
@@ -102,17 +103,13 @@ class DashboardController extends Controller
 
         // GST vs Non-GST Breakdown
         $gstSales = Sale::whereBetween('created_at', [$queryStartDate, $queryEndDate])
-            ->where(function ($q) {
-                $q->where('gst_enabled', true)->orWhere('gst_amount', '>', 0);
-            });
+            ->where('gst_enabled', true);
         $gstSalesCount = (clone $gstSales)->count();
         $gstTotalAmount = (clone $gstSales)->sum('total_amount');
-        $gstTaxAmount = (clone $gstSales)->sum('gst_amount');
+        $gstTaxAmount = $gstTotalAmount - ($gstTotalAmount / 1.18);
 
         $nonGstSales = Sale::whereBetween('created_at', [$queryStartDate, $queryEndDate])
-            ->where(function ($q) {
-                $q->where('gst_enabled', false)->where('gst_amount', 0);
-            });
+            ->where('gst_enabled', false);
         $nonGstSalesCount = (clone $nonGstSales)->count();
         $nonGstTotalAmount = (clone $nonGstSales)->sum('total_amount');
 

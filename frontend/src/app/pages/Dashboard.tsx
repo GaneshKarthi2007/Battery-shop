@@ -8,10 +8,10 @@ import {
   AlertTriangle,
   RefreshCcw,
   Clock,
-  Users,
   PieChart,
   Calendar,
-  Layers
+  Filter,
+  Users
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useDeveloper } from "../contexts/DeveloperContext";
@@ -65,7 +65,14 @@ export function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [timeframe, setTimeframe] = useState<"today" | "7days" | "month" | "custom">("7days");
+  const [timeframe, setTimeframe] = useState<string>(() => {
+    return localStorage.getItem("sales_analytics_timeframe") || "7days";
+  });
+
+  const handleTimeframeChange = (newTf: string) => {
+    setTimeframe(newTf);
+    localStorage.setItem("sales_analytics_timeframe", newTf);
+  };
 
   const fetchDashboardData = async (tf: string) => {
     setLoading(true);
@@ -87,7 +94,7 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
-      {/* 1. Header & Greetings */}
+      {/* Header & Greetings with Compact Timeframe Filter */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#15161E] p-6 rounded-2xl border border-gray-100 dark:border-[#2E3B55] shadow-sm">
         <div>
           <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 uppercase tracking-tight">
@@ -99,41 +106,22 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/customers')}
-            className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all flex items-center gap-2 border border-blue-100 dark:border-blue-800"
-          >
-            <Users className="w-4 h-4" /> Customer Directory
-          </button>
+          <div className="flex items-center gap-2 bg-gray-50 dark:bg-[#1E293B] border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-xl">
+            <Filter className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" />
+            <select
+              value={timeframe}
+              onChange={(e) => handleTimeframeChange(e.target.value)}
+              className="bg-transparent text-xs font-black text-gray-900 dark:text-gray-100 focus:outline-none cursor-pointer"
+            >
+              <option value="today">Today</option>
+              <option value="7days">7 Days</option>
+              <option value="month">This Month</option>
+              <option value="all_time">All Time</option>
+            </select>
+          </div>
           <div className="text-xs text-gray-500 font-bold bg-gray-100 dark:bg-[#1E293B] px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
             {shopConfig.name}
           </div>
-        </div>
-      </div>
-
-      {/* 2. Timeframe Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 dark:bg-[#0D1B2A] p-2 rounded-2xl border border-gray-200 dark:border-[#2E3B55]">
-        <div className="text-xs font-black uppercase tracking-wider text-gray-500 px-3 flex items-center gap-2">
-          <Layers className="w-4 h-4 text-blue-500" /> Sales Analytics Period:
-        </div>
-        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
-          {[
-            { key: "today", label: "Today" },
-            { key: "7days", label: "7 Days" },
-            { key: "month", label: "This Month" },
-          ].map((tf) => (
-            <button
-              key={tf.key}
-              onClick={() => setTimeframe(tf.key as any)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                timeframe === tf.key
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 font-black"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-[#15161E]"
-              }`}
-            >
-              {tf.label}
-            </button>
-          ))}
         </div>
       </div>
 
