@@ -4,6 +4,7 @@ import { useNotifications, NotificationType } from "../contexts/NotificationCont
 import { useAuth } from "../contexts/AuthContext";
 import { Bell, ShoppingBag, Package, Wrench, FileText, Check, Inbox, ArrowLeft } from "lucide-react";
 import { Button } from "../components/Button";
+import { PushNotificationManager } from "../components/PushNotificationManager";
 
 export function Notifications() {
     const { notifications, markAsRead, markAllAsRead, clearAll } = useNotifications();
@@ -81,6 +82,9 @@ export function Notifications() {
                     </Button>
                 </div>
             </div>
+
+            {/* Push Notification PWA Manager */}
+            <PushNotificationManager className="mb-6" />
 
             {/* Main Container Card */}
             <div className="bg-white dark:bg-[#1B263B] border border-gray-150 dark:border-[#2E3B55] rounded-[2rem] overflow-hidden shadow-sm">

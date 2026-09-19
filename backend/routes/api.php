@@ -82,6 +82,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/notifications/{notification}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
 
+    // WebPush Subscriptions
+    Route::get('/push-subscriptions/vapid-public-key', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'vapidPublicKey']);
+    Route::post('/push-subscriptions', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'store']);
+    Route::delete('/push-subscriptions', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'destroy']);
+    Route::post('/push-subscriptions/test', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'sendTestNotification']);
+
+
     // Exchange records
     Route::get('/exchanges/pending', [\App\Http\Controllers\Api\ExchangeController::class, 'pendingExchanges']);
     Route::apiResource('exchanges', \App\Http\Controllers\Api\ExchangeController::class);

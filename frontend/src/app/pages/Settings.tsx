@@ -2,6 +2,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useDeveloper } from "../contexts/DeveloperContext";
 import { useAuth } from "../contexts/AuthContext";
 import { Settings as SettingsIcon, Moon, Sun } from "lucide-react";
+import { PushNotificationManager } from "../components/PushNotificationManager";
 
 export function Settings() {
     const { isDarkMode, toggleDarkMode } = useTheme();
@@ -49,6 +50,10 @@ export function Settings() {
                         </div>
                     </div>
                 )}
+            </div>
+
+            <div className="mt-6">
+                <PushNotificationManager />
             </div>
 
             <div className="mt-8 space-y-4">
