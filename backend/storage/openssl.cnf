@@ -1,0 +1,4 @@
+[ req ]
+default_bits = 2048
+default_md = sha256
+[ v3_ca ]
