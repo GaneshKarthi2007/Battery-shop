@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { apiClient } from "../api/client";
 import { AudioPlayer } from "../components/ui/AudioPlayer";
 import { useAuth } from "../contexts/AuthContext";
+import { getMediaUrl } from "../utils/media";
 import { useNavigate } from "react-router";
 import {
   ClipboardList, Search, Clock, Phone,
@@ -556,7 +557,7 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                         Admin Voice Attachment
                       </p>
                       <AudioPlayer
-                        src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/storage/${selectedJob.voice_note}`}
+                        src={getMediaUrl(selectedJob.voice_note)}
                         label="Voice Instruction"
                       />
                     </div>

@@ -197,6 +197,34 @@ class ServiceController extends Controller
 
     public function update(Request $request, Service $service)
     {
+        $user = $request->user();
+
+        // Rule 1: Once assigned to a staff member, assigned_to cannot be changed
+        if ($request->has('assigned_to') && $service->assigned_to && (int)$request->input('assigned_to') !== (int)$service->assigned_to) {
+            return response()->json(['message' => 'Assigned staff cannot be changed once assigned to a job.'], 400);
+        }
+
+        // Rule 2: Staff restrictions on completed/converted jobs and status transitions
+        if ($user && $user->role !== 'admin') {
+            if (in_array($service->status, ['Completed', 'Converted to Order'])) {
+                return response()->json(['message' => 'Completed jobs cannot be modified by staff.'], 403);
+            }
+
+            if ($request->has('status')) {
+                $newStatus = $request->input('status');
+                $allowedTransitions = [
+                    'Pending' => ['Pending', 'In Progress', 'Completed', 'Converted to Order'],
+                    'In Progress' => ['In Progress', 'Completed', 'Converted to Order'],
+                    'Completed' => ['Completed'],
+                    'Converted to Order' => ['Converted to Order'],
+                ];
+                $allowed = $allowedTransitions[$service->status] ?? [];
+                if (!in_array($newStatus, $allowed)) {
+                    return response()->json(['message' => 'Cannot revert job status to a previous state.'], 400);
+                }
+            }
+        }
+
         $validated = $request->validate([
             'customer_name' => 'sometimes|string',
             'contact_number' => 'sometimes|string',
@@ -229,7 +257,7 @@ class ServiceController extends Controller
             ServiceProcessFlow::create([
                 'service_id' => $service->id,
                 'sub_status' => $validated['sub_status'],
-                'staff_id' => $request->user()?->id,
+                'staff_id' => $user?->id,
                 'notes' => $request->input('notes') // Optional notes if provided
             ]);
         }
