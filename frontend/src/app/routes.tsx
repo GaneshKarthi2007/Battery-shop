@@ -79,7 +79,14 @@ export const router = createBrowserRouter([
               </ProtectedRoute>
             ),
           },
-          { path: "service", Component: ServiceManagement },
+          {
+            path: "service",
+            element: (
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <ServiceManagement />
+              </ProtectedRoute>
+            ),
+          },
           {
             path: "services/new",
             element: (

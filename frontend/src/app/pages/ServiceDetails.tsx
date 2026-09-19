@@ -9,6 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { apiClient } from "../api/client";
 import { ServiceGpsCamera } from "../components/ServiceGpsCamera";
+import { getMediaUrl } from "../utils/media";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -369,7 +370,15 @@ export function ServiceDetails() {
             {/* ── Top Nav Bar ── */}
             <div className="flex items-center justify-between">
                 <button
-                    onClick={() => navigate("/service")}
+                    onClick={() => {
+                        if (isAdmin) {
+                            navigate("/service");
+                        } else if (service?.status === 'Completed' || service?.status === 'Converted to Order') {
+                            navigate("/completed-jobs");
+                        } else {
+                            navigate("/assigned-jobs");
+                        }
+                    }}
                     className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group"
                 >
                     <div className="p-2 bg-white rounded-xl border border-gray-200 shadow-sm group-hover:border-blue-200 group-hover:shadow-md transition-all">
@@ -506,7 +515,7 @@ export function ServiceDetails() {
                             {service.voice_note && (
                                 <div className="mt-4 animate-in fade-in slide-in-from-top-2">
                                     <AudioPlayer
-                                        src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/storage/${service.voice_note}`}
+                                        src={getMediaUrl(service.voice_note)}
                                         label="Initial Complaint Voice Note"
                                     />
                                 </div>
@@ -617,7 +626,7 @@ export function ServiceDetails() {
                                                                 {flow.voice_note && (
                                                                     <div className="mt-2">
                                                                         <AudioPlayer
-                                                                            src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/storage/${flow.voice_note}`}
+                                                                            src={getMediaUrl(flow.voice_note)}
                                                                             label="Status Update Audio"
                                                                             className="!p-2 border-amber-200/50 bg-white/50"
                                                                         />
@@ -833,7 +842,7 @@ export function ServiceDetails() {
                             )}
 
                             {/* Staff Toolbox */}
-                            {service.assigned_to === user?.id && !isAdmin && (
+                            {service.assigned_to === user?.id && !isAdmin && service.status !== 'Completed' && service.status !== 'Converted to Order' && (
                                 <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 border-dashed rounded-xl">
                                     <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1.5">
                                         <Wrench className="w-3 h-3" /> Staff Toolbox
@@ -959,24 +968,36 @@ export function ServiceDetails() {
                                 <h2 className="text-sm font-bold text-gray-900">Assign Staff</h2>
                             </div>
                             <div className="p-4 space-y-2">
-                                {staffList.map(staff => (
-                                    <button
-                                        key={staff.id}
-                                        onClick={() => handleAssignStaff(staff.id)}
-                                        className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center justify-between ${service.assigned_to === staff.id
-                                            ? "border-blue-600 bg-blue-50 text-blue-800 shadow-sm"
-                                            : "border-gray-100 hover:border-blue-200 text-gray-700 hover:bg-gray-50"
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-2.5">
-                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${service.assigned_to === staff.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                                                {staff.name.charAt(0).toUpperCase()}
-                                            </div>
-                                            <span className="font-semibold text-sm">{staff.name}</span>
+                                {service.assigned_to ? (
+                                    <div className="p-4 bg-blue-50/80 border border-blue-200 rounded-xl space-y-1">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Assigned Staff</span>
+                                            <span className="px-2 py-0.5 text-[10px] font-black bg-blue-600 text-white rounded-md">Assigned</span>
                                         </div>
-                                        {service.assigned_to === staff.id && <CheckCircle className="w-4 h-4 text-blue-600" />}
-                                    </button>
-                                ))}
+                                        <p className="text-sm font-black text-gray-900 flex items-center gap-2 pt-1">
+                                            <User className="w-4 h-4 text-blue-600" />
+                                            {service.assigned_staff?.name || "Staff Member"}
+                                        </p>
+                                        <p className="text-[10px] text-gray-500 pt-1">
+                                            Assigned staff cannot be changed once job is commenced.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    staffList.map(staff => (
+                                        <button
+                                            key={staff.id}
+                                            onClick={() => handleAssignStaff(staff.id)}
+                                            className="w-full text-left px-4 py-3 rounded-xl border-2 border-gray-100 hover:border-blue-200 text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-between"
+                                        >
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-black">
+                                                    {staff.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <span className="font-semibold text-sm">{staff.name}</span>
+                                            </div>
+                                        </button>
+                                    ))
+                                )}
                             </div>
                         </div>
                     )}
@@ -989,71 +1010,79 @@ export function ServiceDetails() {
                                 <h2 className="text-sm font-bold text-gray-900">Update Status</h2>
                             </div>
                             <div className="p-4 space-y-2">
-                                {(["Pending", "In Progress", "Completed"] as const).map((status) => {
-                                    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.Pending;
-                                    const Icon = config.icon;
-                                    const isActive = service.status === status || (status === 'In Progress' && service.status === 'Converted to Order');
+                                {service.status === 'Completed' || service.status === 'Converted to Order' ? (
+                                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1">
+                                        <CheckCircle className="w-6 h-6 text-emerald-600 mx-auto" />
+                                        <p className="text-xs font-black text-emerald-900 uppercase">Job {service.status}</p>
+                                        <p className="text-[11px] text-emerald-700 font-medium">This task is complete. Status cannot be modified or reverted.</p>
+                                    </div>
+                                ) : (
+                                    (["Pending", "In Progress", "Completed"] as const).map((status) => {
+                                        const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.Pending;
+                                        const Icon = config.icon;
+                                        const isActive = service.status === status || (status === 'In Progress' && service.status === 'Converted to Order');
 
-                                    return (
-                                        <div key={status} className="space-y-2">
-                                            {status === "Completed" && service.status === "Converted to Order" && (!service.sales || service.sales.length === 0) ? (
-                                                <div className="p-3 bg-amber-50 border-2 border-amber-200 rounded-xl">
-                                                    <div className="flex items-center gap-2">
-                                                        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                                                        <p className="text-xs font-bold text-amber-800">Waiting for Bill / Quotation</p>
+                                        return (
+                                            <div key={status} className="space-y-2">
+                                                {status === "Completed" && service.status === "Converted to Order" && (!service.sales || service.sales.length === 0) ? (
+                                                    <div className="p-3 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                                                        <div className="flex items-center gap-2">
+                                                            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                                                            <p className="text-xs font-bold text-amber-800">Waiting for Bill / Quotation</p>
+                                                        </div>
+                                                        <p className="text-[11px] text-amber-700 mt-1 leading-relaxed">Admin must process billing or quotation first.</p>
                                                     </div>
-                                                    <p className="text-[11px] text-amber-700 mt-1 leading-relaxed">Admin must process billing or quotation first.</p>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (status === "Completed" && service.status !== "Completed") {
-                                                                setShowChargeInput(true);
-                                                            } else {
-                                                                handleUpdateStatus(status);
-                                                                setShowChargeInput(false);
-                                                            }
-                                                        }}
-                                                        className={`w-full p-3.5 rounded-xl border-2 transition-all flex items-center gap-3 ${isActive ? "border-blue-600 bg-blue-50 text-blue-800 shadow-sm" : "border-gray-100 hover:border-gray-200 text-gray-600 hover:bg-gray-50"}`}
-                                                    >
-                                                        <div className={`p-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-400"}`}>
-                                                            <Icon className="w-4 h-4" />
-                                                        </div>
-                                                        <span className="font-bold text-sm">{status}</span>
-                                                        {isActive && <CheckCircle className="ml-auto w-4 h-4 text-blue-600" />}
-                                                    </button>
-
-                                                    {status === "Completed" && showChargeInput && !isActive && (
-                                                        <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3 animate-in slide-in-from-top-2">
-                                                            <label className="text-xs font-bold text-gray-500 uppercase">Final Service Charge (₹)</label>
-                                                            <input
-                                                                type="number"
-                                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-sm font-bold text-gray-900"
-                                                                value={tempCharge}
-                                                                onChange={(e) => setTempCharge(e.target.value)}
-                                                                placeholder="e.g. 500"
-                                                            />
-                                                            <div className="flex gap-2">
-                                                                <Button variant="outline" className="flex-1 text-sm" onClick={() => { setShowChargeInput(false); setTempCharge(""); }}>Cancel</Button>
-                                                                <Button
-                                                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm"
-                                                                    onClick={() => {
-                                                                        if (!tempCharge || isNaN(Number(tempCharge))) { alert("Please enter a valid service charge."); return; }
-                                                                        handleUpdateStatus(status, Number(tempCharge));
-                                                                        setShowChargeInput(false);
-                                                                    }}
-                                                                >
-                                                                    Confirm
-                                                                </Button>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (status === "Completed" && service.status !== "Completed") {
+                                                                    setShowChargeInput(true);
+                                                                } else {
+                                                                    handleUpdateStatus(status);
+                                                                    setShowChargeInput(false);
+                                                                }
+                                                            }}
+                                                            className={`w-full p-3.5 rounded-xl border-2 transition-all flex items-center gap-3 ${isActive ? "border-blue-600 bg-blue-50 text-blue-800 shadow-sm" : "border-gray-100 hover:border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                                                        >
+                                                            <div className={`p-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-400"}`}>
+                                                                <Icon className="w-4 h-4" />
                                                             </div>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                                                            <span className="font-bold text-sm">{status}</span>
+                                                            {isActive && <CheckCircle className="ml-auto w-4 h-4 text-blue-600" />}
+                                                        </button>
+
+                                                        {status === "Completed" && showChargeInput && !isActive && (
+                                                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3 animate-in slide-in-from-top-2">
+                                                                <label className="text-xs font-bold text-gray-500 uppercase">Final Service Charge (₹)</label>
+                                                                <input
+                                                                    type="number"
+                                                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-sm font-bold text-gray-900"
+                                                                    value={tempCharge}
+                                                                    onChange={(e) => setTempCharge(e.target.value)}
+                                                                    placeholder="e.g. 500"
+                                                                />
+                                                                <div className="flex gap-2">
+                                                                    <Button variant="outline" className="flex-1 text-sm" onClick={() => { setShowChargeInput(false); setTempCharge(""); }}>Cancel</Button>
+                                                                    <Button
+                                                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                                                                        onClick={() => {
+                                                                            if (!tempCharge || isNaN(Number(tempCharge))) { alert("Please enter a valid service charge."); return; }
+                                                                            handleUpdateStatus(status, Number(tempCharge));
+                                                                            setShowChargeInput(false);
+                                                                        }}
+                                                                    >
+                                                                        Confirm
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
                     )}

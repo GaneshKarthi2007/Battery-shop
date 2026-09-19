@@ -203,4 +203,75 @@ class ServiceTest extends TestCase
             'message' => 'Cannot accept a closed or cancelled complaint.'
         ]);
     }
+
+    public function test_cannot_change_assigned_staff_once_assigned()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $staff1 = User::factory()->create(['role' => 'staff']);
+        $staff2 = User::factory()->create(['role' => 'staff']);
+        Sanctum::actingAs($admin);
+
+        $service = Service::create([
+            'customer_name' => 'Karthi',
+            'contact_number' => '9894127692',
+            'vehicle_details' => 'TN-38-AB-1234',
+            'status' => 'In Progress',
+            'assigned_to' => $staff1->id,
+        ]);
+
+        $response = $this->putJson("/api/services/{$service->id}", [
+            'assigned_to' => $staff2->id,
+        ]);
+
+        $response->assertStatus(400);
+        $response->assertJsonFragment([
+            'message' => 'Assigned staff cannot be changed once assigned to a job.'
+        ]);
+    }
+
+    public function test_staff_cannot_modify_completed_job()
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        Sanctum::actingAs($staff);
+
+        $service = Service::create([
+            'customer_name' => 'Karthi',
+            'contact_number' => '9894127692',
+            'vehicle_details' => 'TN-38-AB-1234',
+            'status' => 'Completed',
+            'assigned_to' => $staff->id,
+        ]);
+
+        $response = $this->putJson("/api/services/{$service->id}", [
+            'status' => 'In Progress',
+        ]);
+
+        $response->assertStatus(403);
+        $response->assertJsonFragment([
+            'message' => 'Completed jobs cannot be modified by staff.'
+        ]);
+    }
+
+    public function test_admin_can_view_and_delete_staff_gps_photo()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        
+        $photo = \App\Models\GpsPhoto::create([
+            'user_id' => $staff->id,
+            'image_path' => 'gps_photos/test.jpg',
+            'latitude' => 12.9716,
+            'longitude' => 77.5946,
+            'captured_at' => now(),
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson("/api/gps-photos/{$photo->id}");
+        $response->assertStatus(200);
+
+        $deleteResponse = $this->deleteJson("/api/gps-photos/{$photo->id}");
+        $deleteResponse->assertStatus(204);
+    }
 }
+

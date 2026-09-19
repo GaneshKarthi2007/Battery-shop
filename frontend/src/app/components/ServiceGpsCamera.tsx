@@ -5,6 +5,7 @@ import { useGeolocation } from '../hooks/useGeolocation';
 import { uploadGpsPhoto, fetchGpsPhotos, deleteGpsPhoto, type GpsPhotoRecord } from '../api/gpsPhotoApi';
 import imageCompression from 'browser-image-compression';
 import { Button } from './Button';
+import { getMediaUrl } from '../utils/media';
 
 interface ServiceGpsCameraProps {
     serviceId: number;
@@ -243,34 +244,37 @@ export function ServiceGpsCamera({ serviceId, readOnly = false }: ServiceGpsCame
                         GPS Photos ({photos.length})
                     </h4>
                     <div className="grid grid-cols-2 gap-2">
-                        {photos.map((photo) => (
-                            <div
-                                key={photo.id}
-                                className="group relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50"
-                            >
-                                <img
-                                    src={photo.image_url}
-                                    alt={`GPS Photo ${photo.id}`}
-                                    className="w-full aspect-[4/3] object-cover cursor-pointer hover:opacity-90 transition"
-                                    onClick={() => setExpandedPhoto(photo.image_url)}
-                                    loading="lazy"
-                                />
-                                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
-                                    <p className="text-[9px] text-white/80 truncate">
-                                        📍 {photo.latitude.toFixed(4)}, {photo.longitude.toFixed(4)}
-                                    </p>
+                        {photos.map((photo) => {
+                            const photoSrc = getMediaUrl(photo.image_url || photo.image_path);
+                            return (
+                                <div
+                                    key={photo.id}
+                                    className="group relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50"
+                                >
+                                    <img
+                                        src={photoSrc}
+                                        alt={`GPS Photo ${photo.id}`}
+                                        className="w-full aspect-[4/3] object-cover cursor-pointer hover:opacity-90 transition"
+                                        onClick={() => setExpandedPhoto(photoSrc)}
+                                        loading="lazy"
+                                    />
+                                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
+                                        <p className="text-[9px] text-white/80 truncate">
+                                            📍 {photo.latitude.toFixed(4)}, {photo.longitude.toFixed(4)}
+                                        </p>
+                                    </div>
+                                    {!readOnly && (
+                                        <button
+                                            onClick={() => handleDelete(photo.id)}
+                                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition w-6 h-6 flex items-center justify-center rounded-full bg-red-600/80 text-white hover:bg-red-500"
+                                            aria-label="Delete"
+                                        >
+                                            <Trash2 className="w-3 h-3" />
+                                        </button>
+                                    )}
                                 </div>
-                                {!readOnly && (
-                                    <button
-                                        onClick={() => handleDelete(photo.id)}
-                                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition w-6 h-6 flex items-center justify-center rounded-full bg-red-600/80 text-white hover:bg-red-500"
-                                        aria-label="Delete"
-                                    >
-                                        <Trash2 className="w-3 h-3" />
-                                    </button>
-                                )}
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             ) : null}
