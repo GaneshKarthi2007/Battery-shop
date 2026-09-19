@@ -23,8 +23,11 @@ import { UPIPayment } from "./pages/UPIPayment";
 import { GpsCamera } from "./pages/GpsCamera";
 import { GpsPhotoDashboard } from "./pages/GpsPhotoDashboard";
 import { NotFound } from "./pages/NotFound";
+import { WarrantyManagement } from "./pages/WarrantyManagement";
+import { CustomerHistory } from "./pages/CustomerHistory";
 import { Notifications } from "./pages/Notifications";
 
+import { MotionConfig } from "framer-motion";
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 
@@ -32,7 +35,9 @@ function RootLayout() {
   return (
     <AuthProvider>
       <NotificationProvider>
-        <Outlet />
+        <MotionConfig transition={{ duration: 0 }}>
+          <Outlet />
+        </MotionConfig>
       </NotificationProvider>
     </AuthProvider>
   );
@@ -121,6 +126,22 @@ export const router = createBrowserRouter([
             element: (
               <ProtectedRoute allowedRoles={["admin"]}>
                 <Reports />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "warranty",
+            element: (
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <WarrantyManagement />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "customers",
+            element: (
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <CustomerHistory />
               </ProtectedRoute>
             ),
           },

@@ -11,11 +11,11 @@ import {
   User,
   Menu,
   X,
-  Zap,
   ClipboardList,
   History,
   Settings as SettingsIcon,
-  ChevronRight,
+  ShieldCheck,
+  Users,
   LogOut,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,6 +40,8 @@ const navItems: NavItem[] = [
   { name: "Battery Exchange", path: "/exchange", icon: RefreshCcw, roles: ["admin"] },
   { name: "Service Management", path: "/service", icon: Wrench, roles: ["admin"] },
   { name: "Inventory", path: "/inventory", icon: Package, roles: ["admin"] },
+  { name: "Warranty Claims", path: "/warranty", icon: ShieldCheck, roles: ["admin"] },
+  { name: "Customer Profiles", path: "/customers", icon: Users, roles: ["admin"] },
   { name: "Reports & Billing", path: "/reports", icon: FileText, roles: ["admin"] },
   { name: "Settings", path: "/settings", icon: SettingsIcon },
 ];
@@ -47,17 +49,18 @@ const navItems: NavItem[] = [
 const navGroups = [
   { title: "Overview", items: ["Dashboard"], roles: ["admin"] },
   { title: "Tasks", items: ["My Jobs", "Available Tasks", "Job History"], roles: ["staff"] },
-  { title: "Management", items: ["Battery Sales", "Battery Exchange", "Service Management", "Inventory", "Reports & Billing"], roles: ["admin"] },
+  { title: "Management", items: ["Battery Sales", "Battery Exchange", "Service Management", "Inventory", "Warranty Claims", "Customer Profiles", "Reports & Billing"], roles: ["admin"] },
   { title: "System", items: ["Settings"] },
 ];
 
 export function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { notifications } = useNotifications();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default to open on desktop
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Auto-close sidebar on mobile by default
   useEffect(() => {
@@ -120,56 +123,11 @@ export function MainLayout() {
     }
   };
 
-  const isActivePath = (path: string) => {
-    if (path === "/") {
-      return location.pathname === "/";
-    }
-    return location.pathname.startsWith(path);
-  };
-
   const roleUnreadCount = notifications.filter(n => n.role === user?.role && !n.isRead).length;
   const isCheckoutPage = location.pathname === "/checkout" || location.pathname === "/upi-payment";
 
   // Toggle Sidebar Wrapper
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-
-  // Reusable Nav Link Component
-  const NavLink = ({ item, index }: { item: NavItem; index: number }) => {
-    const Icon = item.icon;
-    const active = isActivePath(item.path);
-
-    return (
-      <motion.button
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: index * 0.05 }}
-        whileHover={{ x: 4 }}
-        onClick={() => {
-          navigate(item.path);
-          if (window.innerWidth < 1024) setIsSidebarOpen(false);
-        }}
-        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all relative group ${
-          active ? "bg-blue-600/5 dark:bg-blue-500/[0.08] text-blue-700 dark:text-blue-400" : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-white/[0.03]"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg transition-all duration-300 ${active ? "bg-white dark:bg-blue-900/40 shadow-sm text-blue-600 ring-1 ring-blue-100 dark:ring-blue-800" : "text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300"}`}>
-            <Icon className="w-4.5 h-4.5" />
-          </div>
-          <span className={`text-sm font-bold tracking-tight ${active ? "opacity-100" : "opacity-80 group-hover:opacity-100"}`}>{item.name}</span>
-        </div>
-
-        {active && (
-          <motion.div
-            layoutId="navIndicator"
-            className="absolute left-0 w-1 h-6 bg-blue-600 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.8)]"
-          />
-        )}
-
-        <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${active ? "opacity-100 scale-100 translate-x-0" : "opacity-0 scale-50 -translate-x-2 group-hover:opacity-40 group-hover:scale-100 group-hover:translate-x-0"}`} />
-      </motion.button>
-    );
-  };
 
   return (
     <div
@@ -203,11 +161,17 @@ export function MainLayout() {
               <div className="w-72 flex flex-col h-screen overflow-hidden">
                 {/* Sidebar Header */}
                 <div className="h-16 flex-shrink-0 flex items-center justify-between px-6 border-b border-gray-50 dark:border-[#2E3B55]">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <Zap className="w-5 h-5 text-white" />
+                <div 
+                  onClick={() => {
+                    navigate("/");
+                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                  }}
+                  className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity"
+                >
+                  <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-center bg-black">
+                    <img src="/logo.png" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
                   </div>
-                  <h1 className="font-black text-gray-900 dark:text-gray-100 uppercase tracking-tighter">PowerCell <span className="text-blue-600">Pro</span></h1>
+                  <h1 className="font-black text-gray-900 dark:text-gray-100 uppercase tracking-tighter text-base">SMR <span className="text-green-500">BATTERY</span></h1>
                 </div>
                 <button
                   onClick={() => setIsSidebarOpen(false)}
@@ -221,7 +185,7 @@ export function MainLayout() {
               <div className="flex-1 overflow-y-auto p-4 py-6 space-y-8 custom-scrollbar">
                 {navGroups
                   .filter(group => !group.roles || group.roles.includes(user?.role || ""))
-                  .map((group, gIdx) => (
+                  .map((group) => (
                     <div key={group.title} className="space-y-2">
                       <h3 className="px-4 text-[10px] font-black text-gray-400 dark:text-gray-600 uppercase tracking-[0.25em] mb-4">
                         {group.title}
@@ -229,9 +193,35 @@ export function MainLayout() {
                       <div className="space-y-1">
                         {navItems
                           .filter(item => group.items.includes(item.name))
-                          .map((item, iIdx) => (
-                            <NavLink key={item.path} item={item} index={gIdx * 5 + iIdx} />
-                          ))}
+                          .map((item) => {
+                            const Icon = item.icon;
+                            const isActive = location.pathname === item.path;
+                            return (
+                              <button
+                                key={item.name}
+                                onClick={() => {
+                                  navigate(item.path);
+                                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-300 ${
+                                  isActive
+                                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25 font-black translate-x-1"
+                                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25334D] hover:text-gray-900 dark:hover:text-white"
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-400"}`} />
+                                  <span>{item.name}</span>
+                                </div>
+                                {isActive && (
+                                  <motion.div
+                                    layoutId="activeIndicator"
+                                    className="w-1.5 h-1.5 rounded-full bg-white"
+                                  />
+                                )}
+                              </button>
+                            );
+                          })}
                       </div>
                     </div>
                   ))}
@@ -261,9 +251,16 @@ export function MainLayout() {
                         {user?.role || 'Guest'}
                       </p>
                     </div>
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 group-hover:text-blue-500 dark:text-gray-700 dark:group-hover:text-blue-400 transition-colors">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowLogoutConfirm(true);
+                      }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 dark:text-gray-700 dark:hover:text-red-400 dark:hover:bg-red-950/30 transition-all duration-200 active:scale-90"
+                      title="Logout"
+                    >
                       <LogOut className="w-4 h-4" />
-                    </div>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -281,21 +278,26 @@ export function MainLayout() {
             className="h-16 bg-white/80 dark:bg-[#0D1B2A]/70 backdrop-blur-2xl border-b border-gray-200 dark:border-[#2E3B55] sticky top-0 z-20 px-4 sm:px-6 flex items-center justify-between print:hidden"
           >
             <div className="flex items-center gap-3">
-              <button
-                onClick={toggleSidebar}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-700 dark:text-gray-300 transition-all active:scale-95"
+              {user?.role !== "staff" && (
+                <button
+                  onClick={toggleSidebar}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-700 dark:text-gray-300 transition-all active:scale-95"
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
+              )}
+              <div 
+                onClick={() => navigate("/")}
+                className={`flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity ${user?.role === "staff" ? "" : "ml-2 lg:hidden"}`}
               >
-                <Menu className="w-6 h-6" />
-              </button>
-              <div className="flex items-center gap-3 ml-2 lg:hidden">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
-                  <Zap className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-center bg-black">
+                  <img src="/logo.png" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
                 </div>
-                <span className="font-black text-gray-900 dark:text-gray-100 text-lg sm:block uppercase tracking-tighter">PowerCell <span className="text-blue-600">Pro</span></span>
+                <span className="font-black text-gray-900 dark:text-gray-100 text-base sm:block uppercase tracking-tighter">SMR <span className="text-green-500">BATTERY</span></span>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <div className="relative">
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
@@ -313,6 +315,25 @@ export function MainLayout() {
                   onClose={() => setShowNotifications(false)}
                 />
               </div>
+
+              {user?.role === "staff" && (
+                <>
+                  <button
+                    onClick={() => navigate('/profile')}
+                    className="p-2.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all"
+                    title="Profile"
+                  >
+                    <User className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setShowLogoutConfirm(true)}
+                    className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all"
+                    title="Logout"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </>
+              )}
             </div>
           </header>
         )}
@@ -325,12 +346,63 @@ export function MainLayout() {
         </main>
 
         {/* Global Bottom Navigation (Conditional) */}
-        {!isCheckoutPage && (
+        {!isCheckoutPage && user?.role !== "staff" && (
           <div className="print:hidden lg:hidden">
             <BottomNav onMenuClick={toggleSidebar} />
           </div>
         )}
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLogoutConfirm(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="bg-white dark:bg-[#0D1B2A] border border-gray-250 dark:border-[#2E3B55] rounded-[2rem] p-8 max-w-sm w-full relative z-10 shadow-2xl text-center"
+            >
+              <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm border border-red-100 dark:border-red-900/30">
+                <LogOut className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">
+                Sign Out?
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-8">
+                Are you sure you want to sign out of your account?
+              </p>
+              
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#161D30] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold rounded-2xl transition-all text-sm active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLogoutConfirm(false);
+                    logout();
+                    navigate("/login");
+                  }}
+                  className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-600/20 transition-all text-sm active:scale-95"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

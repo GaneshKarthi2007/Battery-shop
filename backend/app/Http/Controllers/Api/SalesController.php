@@ -3,16 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BatterySerial;
 use App\Models\Sale;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SalesController extends Controller
 {
     public function index()
     {
-        return response()->json(Sale::with(['items.product', 'items.service'])->latest()->get());
+        return response()->json(Sale::with(['items.product', 'items.service', 'batterySerials'])->latest()->get());
     }
 
     public function store(Request $request)
@@ -29,6 +31,8 @@ class SalesController extends Controller
             'items.*.service_id' => 'nullable|required_without:items.*.product_id|exists:services,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric',
+            'items.*.serial_numbers' => 'nullable|array',
+            'items.*.serial_numbers.*' => 'string',
             'total_amount' => 'required|numeric',
             'extra_charges' => 'nullable|numeric',
             'discount_amount' => 'nullable|numeric',
@@ -58,7 +62,7 @@ class SalesController extends Controller
                 'gst_enabled' => $validated['gst_enabled'] ?? true,
             ]);
 
-            // Handle exchange record consumption (only for real sales)
+            // Handle exchange record consumption
             if (!$isQuotation && !empty($validated['exchange_record_id'])) {
                 \App\Models\ExchangeRecord::where('id', $validated['exchange_record_id'])
                     ->update(['status' => 'consumed']);
@@ -66,7 +70,7 @@ class SalesController extends Controller
 
             $processedServices = [];
             foreach ($validated['items'] as $itemData) {
-                // Only deduct stock for actual sales, not for quotations
+                // Stock deduction for products
                 if (!$isQuotation && !empty($itemData['product_id'])) {
                     $product = Product::lockForUpdate()->find($itemData['product_id']);
                     
@@ -75,6 +79,34 @@ class SalesController extends Controller
                     }
 
                     $product->decrement('stock', $itemData['quantity']);
+                    $product->update([
+                        'stock_status' => $product->stock == 0 ? 'out_of_stock' : ($product->stock <= $product->min_stock ? 'low_stock' : 'in_stock')
+                    ]);
+
+                    // Handle serial numbers
+                    $serialNumbers = $itemData['serial_numbers'] ?? [];
+                    $warrantyMonths = $product->warranty_months ?: 24;
+                    $warrantyExpiryDate = now()->addMonths($warrantyMonths)->toDateString();
+
+                    foreach ($serialNumbers as $sn) {
+                        if (!empty($sn)) {
+                            BatterySerial::updateOrCreate(
+                                ['serial_number' => trim($sn)],
+                                [
+                                    'product_id' => $product->id,
+                                    'purchase_price' => $product->purchase_price ?? 0,
+                                    'selling_price' => $itemData['price'],
+                                    'status' => 'sold',
+                                    'purchase_date' => now()->toDateString(),
+                                    'sale_id' => $sale->id,
+                                    'customer_name' => $sale->customer_name,
+                                    'customer_phone' => $sale->customer_phone,
+                                    'vehicle_number' => $sale->vehicle_details,
+                                    'warranty_expiry_date' => $warrantyExpiryDate,
+                                ]
+                            );
+                        }
+                    }
                 }
 
                 $sale->items()->create([
@@ -84,26 +116,27 @@ class SalesController extends Controller
                     'price' => $itemData['price'],
                 ]);
 
-                // If this item is linked to a service, check if we need to reset its status
+                // Linked service resets
                 if (!empty($itemData['service_id']) && !in_array($itemData['service_id'], $processedServices)) {
                     $service = \App\Models\Service::find($itemData['service_id']);
                     if ($service && $service->status === 'Converted to Order') {
                         $service->update([
-                            'status' => 'In Progress',
-                            'status_updated_at' => now()
+                            'status' => 'Completed',
+                            'status_updated_at' => now(),
+                            'payment_status' => 'pending'
                         ]);
                     }
                     $processedServices[] = $itemData['service_id'];
                 }
             }
 
-            return response()->json($sale->load('items.product', 'items.service'), 201);
+            return response()->json($sale->load('items.product', 'items.service', 'batterySerials'), 201);
         });
     }
 
     public function show(Sale $sale)
     {
-        return response()->json($sale->load('items.product'));
+        return response()->json($sale->load('items.product', 'items.service', 'batterySerials'));
     }
 
     public function update(Request $request, Sale $sale)
@@ -117,5 +150,22 @@ class SalesController extends Controller
         ]);
 
         return response()->json($sale);
+    }
+
+    public function downloadPdf(Sale $sale)
+    {
+        $sale->load(['items.product', 'items.service', 'batterySerials']);
+        
+        $serialsByProduct = [];
+        foreach ($sale->batterySerials as $ser) {
+            $serialsByProduct[$ser->product_id][] = $ser;
+        }
+
+        $pdf = Pdf::loadView('reports.invoice', [
+            'sale' => $sale,
+            'serialsByProduct' => $serialsByProduct,
+        ]);
+
+        return $pdf->download('invoice_INV-'.str_pad($sale->id, 5, '0', STR_PAD_LEFT).'.pdf');
     }
 }

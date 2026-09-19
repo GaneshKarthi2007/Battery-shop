@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\SalesController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\WarrantyClaimController;
+use App\Http\Controllers\Api\CustomerController;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -40,8 +42,16 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    
+    // Products & Battery Serial Numbers
     Route::apiResource('products', ProductController::class);
+    Route::post('/products/{product}/serials', [ProductController::class, 'addSerial']);
+
+    // Sales & Invoice Downloads
     Route::apiResource('sales', SalesController::class)->only(['index', 'store', 'show', 'update']);
+    Route::get('/sales/{sale}/pdf', [SalesController::class, 'downloadPdf']);
+
+    // Services
     Route::apiResource('services', ServiceController::class);
     Route::post('/services/{service}/pickup', [ServiceController::class, 'pickUp']);
     Route::post('/services/{service}/voice-note', [ServiceController::class, 'uploadVoiceNote']);
@@ -52,11 +62,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/services/{service}/process-converted-order', [ServiceController::class, 'processConvertedOrder']);
     Route::delete('/service-flows/{flow}', [ServiceController::class, 'deleteProcessFlow']);
 
+    // Reports
     Route::get('/reports', [\App\Http\Controllers\Api\ReportController::class, 'index']);
     Route::get('/reports/download', [\App\Http\Controllers\Api\ReportController::class, 'download']);
     Route::get('/reports/download/pdf', [\App\Http\Controllers\Api\ReportController::class, 'downloadPdf']);
 
-    // Staff & Notifications
+    // Warranty Claims
+    Route::get('/warranty-claims/check/status', [WarrantyClaimController::class, 'checkWarranty']);
+    Route::apiResource('warranty-claims', WarrantyClaimController::class);
+
+    // Customer Profiles & Ledger
+    Route::get('/customers', [CustomerController::class, 'index']);
+    Route::get('/customers/{identifier}', [CustomerController::class, 'show']);
+
+    // Users, Staff & Notifications
+    Route::apiResource('users', \App\Http\Controllers\Api\UserController::class);
     Route::get('/staff', [\App\Http\Controllers\Api\UserController::class, 'getStaff']);
     Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
     Route::put('/notifications/{notification}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);

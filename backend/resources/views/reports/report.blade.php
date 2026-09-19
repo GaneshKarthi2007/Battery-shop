@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Battery Shop Report</title>
     <style>
-        body { font-family: 'Helvetica', sans-serif; color: #333; margin: 0; padding: 20px; }
+        body { font-family: 'DejaVu Sans', sans-serif; color: #333; margin: 0; padding: 20px; }
         .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #2563eb; padding-bottom: 15px; }
         .header h1 { margin: 0; color: #2563eb; font-size: 24px; }
         .header p { margin: 5px 0; color: #666; font-size: 14px; }
@@ -32,34 +32,34 @@
     </style>
 </head>
 <body>
-    <div className="header">
+    <div class="header">
         <h1>Battery Shop Management</h1>
         <p>Business Activity Report</p>
         <p>Generated on: {{ date('F d, Y h:i A') }}</p>
     </div>
 
-    <table className="summary-grid">
+    <table class="summary-grid">
         <tr>
             <td width="25%">
-                <div className="summary-card">
+                <div class="summary-card">
                     <p>Total Revenue</p>
-                    <h3>₹{{ number_format($summary['totalSales'], 2) }}</h3>
+                    <h3>&#8377;{{ number_format($summary['totalSales'], 2) }}</h3>
                 </div>
             </td>
             <td width="25%">
-                <div className="summary-card">
+                <div class="summary-card">
                     <p>Total GST</p>
-                    <h3>₹{{ number_format($summary['totalGST'], 2) }}</h3>
+                    <h3>&#8377;{{ number_format($summary['totalGST'], 2) }}</h3>
                 </div>
             </td>
             <td width="25%">
-                <div className="summary-card">
+                <div class="summary-card">
                     <p>Est. Profit</p>
-                    <h3>₹{{ number_format($summary['totalProfit'], 2) }}</h3>
+                    <h3>&#8377;{{ number_format($summary['totalProfit'], 2) }}</h3>
                 </div>
             </td>
             <td width="25%">
-                <div className="summary-card">
+                <div class="summary-card">
                     <p>Total Invoices</p>
                     <h3>{{ $summary['invoiceCount'] }}</h3>
                 </div>
@@ -67,7 +67,7 @@
         </tr>
     </table>
 
-    <div className="section-title">Invoice History</div>
+    <div class="section-title">Invoice History</div>
     <table>
         <thead>
             <tr>
@@ -76,28 +76,28 @@
                 <th width="20%">Customer</th>
                 <th width="10%">Type</th>
                 <th width="25%">Items Summary</th>
-                <th width="15%" className="amount">Total</th>
+                <th width="15%" class="amount">Total</th>
             </tr>
         </thead>
         <tbody>
             @foreach($invoices as $index => $invoice)
-            <tr className="{{ $index % 2 == 0 ? 'row-even' : 'row-odd' }}">
+            <tr class="{{ $index % 2 == 0 ? 'row-even' : 'row-odd' }}">
                 <td style="color: #2563eb; font-weight: bold;">{{ $invoice['invoice_number'] }}</td>
                 <td>{{ date('d M, Y', strtotime($invoice['date'])) }}</td>
                 <td>{{ $invoice['customer_name'] }}</td>
                 <td>
-                    <span className="badge badge-{{ strtolower($invoice['type']) === 'sale' ? 'sale' : (strtolower($invoice['type']) === 'exchange' ? 'exchange' : 'service') }}">
+                    <span class="badge badge-{{ strtolower($invoice['type']) === 'sale' ? 'sale' : (strtolower($invoice['type']) === 'exchange' ? 'exchange' : 'service') }}">
                         {{ $invoice['type'] }}
                     </span>
                 </td>
                 <td>{{ $invoice['items_summary'] }}</td>
-                <td className="amount">₹{{ number_format($invoice['total'], 2) }}</td>
+                <td class="amount">&#8377;{{ number_format($invoice['total'], 2) }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
 
-    <div className="footer">
+    <div class="footer">
         © {{ date('Y') }} Battery Shop Management System. This is a computer-generated report.
     </div>
 </body>

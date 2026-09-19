@@ -25,6 +25,16 @@ class WatermarkService
         float $longitude,
         string $capturedAt
     ): string {
+        // Fallback: If GD functions are not available on the server, store the file directly
+        if (!function_exists('imagecreatefromjpeg') || 
+            !function_exists('imagecreatefrompng') || 
+            !function_exists('imagecreatefromwebp') || 
+            !function_exists('imagejpeg')) {
+            $filename = 'gps_photos/' . \Illuminate\Support\Str::uuid() . '.' . ($file->getClientOriginalExtension() ?: 'jpg');
+            Storage::disk('public')->put($filename, file_get_contents($file->getRealPath()));
+            return $filename;
+        }
+
         // --- 1. Create GD image from upload ---
         $mime = $file->getMimeType();
         $source = match ($mime) {

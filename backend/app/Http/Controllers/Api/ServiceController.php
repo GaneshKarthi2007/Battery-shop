@@ -9,9 +9,25 @@ use Illuminate\Http\Request;
 
 class ServiceController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Service::with(['assignedStaff', 'processFlows', 'processFlows.staff'])->latest()->get());
+        $query = Service::with(['assignedStaff', 'processFlows', 'processFlows.staff'])->latest();
+
+        if ($request->has('search')) {
+            $search = $request->query('search');
+            $query->where(function($q) use ($search) {
+                $q->where('contact_number', 'like', "%{$search}%")
+                  ->orWhere('customer_name', 'like', "%{$search}%")
+                  ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->query('available') == 1) {
+            $query->where('status', 'Pending')
+                  ->whereNull('assigned_to');
+        }
+
+        return response()->json($query->get());
     }
 
     public function markAsConverted(Request $request, Service $service)
@@ -245,30 +261,43 @@ class ServiceController extends Controller
     public function pickUp(Request $request, Service $service)
     {
         $user = $request->user();
-        if ($service->assigned_to) {
-            return response()->json(['message' => 'Task already assigned'], 400);
-        }
 
-        $service->update([
-            'assigned_to' => $user->id,
-            'assigned_at' => now(),
-            'status' => 'In Progress',
-            'status_updated_at' => now()
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($service, $user) {
+            $lockedService = Service::where('id', $service->id)->lockForUpdate()->first();
 
-        ServiceProcessFlow::create([
-            'service_id' => $service->id,
-            'sub_status' => 'Task Picked Up / Commenced',
-            'staff_id' => $user->id,
-        ]);
+            if (!$lockedService) {
+                return response()->json(['message' => 'Service not found'], 404);
+            }
 
-        return response()->json($service->load('assignedStaff'));
+            if ($lockedService->assigned_to) {
+                return response()->json(['message' => 'This complaint has already been accepted by another staff member.'], 400);
+            }
+
+            if (in_array(strtolower($lockedService->status), ['completed', 'cancelled', 'closed'])) {
+                return response()->json(['message' => 'Cannot accept a closed or cancelled complaint.'], 400);
+            }
+
+            $lockedService->update([
+                'assigned_to' => $user->id,
+                'assigned_at' => now(),
+                'status' => 'In Progress',
+                'status_updated_at' => now()
+            ]);
+
+            ServiceProcessFlow::create([
+                'service_id' => $lockedService->id,
+                'sub_status' => 'Task Picked Up / Commenced',
+                'staff_id' => $user->id,
+            ]);
+
+            return response()->json($lockedService->load('assignedStaff'));
+        });
     }
 
     public function uploadVoiceNote(Request $request, Service $service)
     {
         $request->validate([
-            'voice_note' => 'required|file|mimes:audio/mpeg,mp3,wav,ogg,m4a,webm,application/octet-stream',
+            'voice_note' => 'required|file|max:20480',
             'notes' => 'nullable|string',
         ]);
 
@@ -332,7 +361,11 @@ class ServiceController extends Controller
 
     public function verifyPayment(Request $request, Service $service)
     {
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($service) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($service, $request) {
+            if ($request->has('service_charge')) {
+                $service->update(['service_charge' => $request->input('service_charge')]);
+            }
+
             $service->update([
                 'payment_status' => 'verified',
                 'payment_confirmed_at' => now(),
@@ -349,32 +382,51 @@ class ServiceController extends Controller
                 $receipt->update(['status' => 'paid']);
             }
 
-            // Auto-generate a sale record for the reports
-            $sale = \App\Models\Sale::create([
-                'customer_name' => $service->customer_name,
-                'customer_phone' => $service->contact_number,
-                'vehicle_details' => $service->vehicle_details,
-                'installation_address' => $service->address,
-                'product_category' => 'Service',
-                'total_amount' => $totalAmount,
-                'type' => 'Service',
-                'extra_charges' => 0,
-                'discount_amount' => 0,
-                'payment_method' => 'Cash', // Defaulting to Cash as per UI flow
-            ]);
+            // Check if a sale is already linked to this service via sale items
+            $hasExistingSale = \App\Models\SaleItem::where('service_id', $service->id)->exists();
 
-            $sale->items()->create([
-                'service_id' => $service->id,
-                'quantity' => 1,
-                'price' => $service->service_charge,
-            ]);
-
-            if ($receipt && $receipt->product_id) {
-                $sale->items()->create([
-                    'product_id' => $receipt->product_id,
-                    'quantity' => $receipt->quantity,
-                    'price' => $receipt->total, // price here usually refers to total for the item, or price per unit. The DB for SaleItem uses 'price' as total line price in this logic. 
+            if (!$hasExistingSale) {
+                // Auto-generate a sale record for the reports
+                $sale = \App\Models\Sale::create([
+                    'customer_name' => $service->customer_name,
+                    'customer_phone' => $service->contact_number,
+                    'vehicle_details' => $service->vehicle_details,
+                    'installation_address' => $service->address,
+                    'product_category' => 'Service',
+                    'total_amount' => $totalAmount,
+                    'type' => 'Service',
+                    'extra_charges' => 0,
+                    'discount_amount' => 0,
+                    'payment_method' => 'Cash', // Defaulting to Cash as per UI flow
                 ]);
+
+                $sale->items()->create([
+                    'service_id' => $service->id,
+                    'quantity' => 1,
+                    'price' => $service->service_charge,
+                ]);
+
+                if ($receipt && $receipt->product_id) {
+                    $sale->items()->create([
+                        'product_id' => $receipt->product_id,
+                        'quantity' => $receipt->quantity,
+                        'price' => $receipt->total, // price here usually refers to total for the item, or price per unit. The DB for SaleItem uses 'price' as total line price in this logic. 
+                    ]);
+                }
+            } else {
+                // If a sale already exists, find it and optionally update its total and add the service charge item
+                $saleItem = \App\Models\SaleItem::where('service_id', $service->id)->first();
+                if ($saleItem) {
+                    $sale = $saleItem->sale;
+                    if ($sale && $service->service_charge > 0) {
+                        $sale->increment('total_amount', $service->service_charge);
+                        $sale->items()->create([
+                            'service_id' => $service->id,
+                            'quantity' => 1,
+                            'price' => $service->service_charge,
+                        ]);
+                    }
+                }
             }
 
             return response()->json($service->load('sale'));
