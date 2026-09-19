@@ -14,6 +14,41 @@ class WebPushService
     protected ?WebPush $webPush = null;
 
     /**
+     * Retrieve or auto-generate valid VAPID keypair.
+     */
+    public function getOrGenerateVapidKeys(): array
+    {
+        $pub = config('webpush.vapid.public_key');
+        $priv = config('webpush.vapid.private_key');
+
+        if (!empty($pub) && !empty($priv)) {
+            return [
+                'publicKey' => $pub,
+                'privateKey' => $priv,
+            ];
+        }
+
+        // Check persistent file cache
+        $storageFile = storage_path('app/vapid.json');
+        if (file_exists($storageFile)) {
+            $data = json_decode(file_get_contents($storageFile), true);
+            if (!empty($data['publicKey']) && !empty($data['privateKey'])) {
+                config(['webpush.vapid.public_key' => $data['publicKey']]);
+                config(['webpush.vapid.private_key' => $data['privateKey']]);
+                return $data;
+            }
+        }
+
+        // Generate VAPID keypair fallback
+        $keys = self::createVapidKeysFallback();
+        file_put_contents($storageFile, json_encode($keys));
+        config(['webpush.vapid.public_key' => $keys['publicKey']]);
+        config(['webpush.vapid.private_key' => $keys['privateKey']]);
+
+        return $keys;
+    }
+
+    /**
      * Get or initialize WebPush client.
      */
     public function getWebPush(): WebPush
@@ -22,11 +57,13 @@ class WebPushService
             return $this->webPush;
         }
 
+        $keys = $this->getOrGenerateVapidKeys();
+
         $auth = [
             'VAPID' => [
                 'subject' => config('webpush.vapid.subject', 'mailto:admin@batteryshop.com'),
-                'publicKey' => config('webpush.vapid.public_key'),
-                'privateKey' => config('webpush.vapid.private_key'),
+                'publicKey' => $keys['publicKey'],
+                'privateKey' => $keys['privateKey'],
             ],
         ];
 

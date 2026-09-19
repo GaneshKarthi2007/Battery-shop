@@ -12,12 +12,12 @@ class PushSubscriptionController extends Controller
     /**
      * Get the VAPID Public Key for WebPush subscriptions.
      */
-    public function vapidPublicKey()
+    public function vapidPublicKey(WebPushService $webPushService)
     {
-        $publicKey = config('webpush.vapid.public_key');
+        $keys = $webPushService->getOrGenerateVapidKeys();
 
         return response()->json([
-            'public_key' => $publicKey,
+            'public_key' => $keys['publicKey'] ?? null,
         ]);
     }
 
