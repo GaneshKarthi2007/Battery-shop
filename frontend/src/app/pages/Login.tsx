@@ -51,7 +51,7 @@ export function Login() {
         {/* Logo and Title */}
         <div className="text-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl mb-4 p-1 overflow-hidden bg-black shadow-xl ring-4 ring-white/10">
-            <img src="/logo.png" alt="SMR Battery Shop Logo" className="w-full h-full object-cover rounded-2xl" />
+            <img src="smr.jpeg" alt="SMR Battery Shop Logo" className="w-full h-full object-cover rounded-2xl" />
           </div>
           <h1 className={`text-3xl font-black tracking-tight mb-1 uppercase ${isDarkMode ? "text-[#ffffff]" : "text-gray-900"}`}>
             SMR <span className="text-green-500">BATTERY SHOP</span>
