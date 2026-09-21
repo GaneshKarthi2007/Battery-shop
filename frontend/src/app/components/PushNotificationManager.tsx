@@ -1,6 +1,7 @@
 import React from 'react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
-import { Bell, BellOff, BellRing, Send, CheckCircle2, AlertTriangle, Loader2, ShieldCheck } from 'lucide-react';
+import { useDeveloper } from '../contexts/DeveloperContext';
+import { Bell, BellOff, BellRing, Send, CheckCircle2, AlertTriangle, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PushNotificationManagerProps {
@@ -12,6 +13,7 @@ export const PushNotificationManager: React.FC<PushNotificationManagerProps> = (
   className = '',
   showTitle = true,
 }) => {
+  const { features } = useDeveloper();
   const {
     isSupported,
     permission,
@@ -22,6 +24,32 @@ export const PushNotificationManager: React.FC<PushNotificationManagerProps> = (
     unsubscribe,
     sendTestNotification,
   } = usePushNotifications();
+
+  // Developer Toggle Off -> Show "Coming Soon"
+  if (features && !features.pushNotifications) {
+    return (
+      <div className={`p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-purple-500/20 text-purple-950 dark:text-purple-200 ${className}`}>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-purple-600 text-white font-bold shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm text-gray-900 dark:text-white">Push Notifications</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-xs">
+                  Coming Soon
+                </span>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
+                Real-time Web Push notification system is currently under development. Stay tuned for future updates!
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleToggle = async () => {
     if (isSubscribed) {

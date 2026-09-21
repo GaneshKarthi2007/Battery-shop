@@ -9,6 +9,18 @@ html, body, #root {
     -webkit-overflow-scrolling: touch;
 }
 
+/* Hide scrollbars globally across all browsers */
+::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+* {
+    -ms-overflow-style: none !important;  /* IE and Edge */
+    scrollbar-width: none !important;  /* Firefox */
+}
+
 .overflow-y-auto, .overflow-y-scroll, .overflow-auto, main {
     overscroll-behavior-y: contain;
     touch-action: pan-y;

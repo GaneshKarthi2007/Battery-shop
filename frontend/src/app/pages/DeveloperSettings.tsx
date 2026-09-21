@@ -1,6 +1,6 @@
 import { useDeveloper } from "../contexts/DeveloperContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { Settings, Edit2, ShieldCheck, ToggleLeft, ToggleRight, Moon, Sun, Users, ChevronRight, FileText } from "lucide-react";
+import { Settings, Edit2, ShieldCheck, ToggleLeft, ToggleRight, Moon, Sun, Users, ChevronRight, FileText, Bell } from "lucide-react";
 import { useNavigate } from "react-router";
 
 export function DeveloperSettings() {
@@ -160,6 +160,37 @@ export function DeveloperSettings() {
                             className="text-gray-400 hover:text-purple-600 transition-colors"
                         >
                             {features.reportExport ? (
+                                <ToggleRight className="w-10 h-10 text-purple-600" />
+                            ) : (
+                                <ToggleLeft className="w-10 h-10" />
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Toggle: Push Notifications Module */}
+                    <div className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl border border-gray-200">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600">
+                                <Bell className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-bold text-gray-900">Push Notifications Module</h3>
+                                    {!features.pushNotifications && (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-xs">
+                                            Coming Soon
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500">Master toggle for system-wide Push Notifications. When OFF, shows 'Coming Soon'</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => toggleFeature('pushNotifications')}
+                            className="text-gray-400 hover:text-purple-600 transition-colors"
+                            title="Toggle Push Notifications Module"
+                        >
+                            {features.pushNotifications ? (
                                 <ToggleRight className="w-10 h-10 text-purple-600" />
                             ) : (
                                 <ToggleLeft className="w-10 h-10" />
