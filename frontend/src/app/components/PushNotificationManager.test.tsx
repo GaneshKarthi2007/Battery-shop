@@ -12,6 +12,15 @@ vi.mock('sonner', () => ({
   },
 }));
 
+vi.mock('../contexts/DeveloperContext', () => ({
+  useDeveloper: () => ({
+    features: { pushNotifications: true },
+    toggleFeature: vi.fn(),
+    shopConfig: { name: 'SMR Battery Shop', phone: '7092706484', address: '', gst: '' },
+    updateShopConfig: vi.fn(),
+  }),
+}));
+
 describe('PushNotificationManager Component', () => {
   const mockSubscribe = vi.fn();
   const mockUnsubscribe = vi.fn();

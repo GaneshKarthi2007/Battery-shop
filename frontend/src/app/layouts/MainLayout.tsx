@@ -10,13 +10,13 @@ import {
   Bell,
   User,
   Menu,
-  X,
   ClipboardList,
   History,
   Settings as SettingsIcon,
   ShieldCheck,
   Users,
   LogOut,
+  Sliders,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
@@ -43,6 +43,7 @@ const navItems: NavItem[] = [
   { name: "Warranty Claims", path: "/warranty", icon: ShieldCheck, roles: ["admin"] },
   { name: "Customer Profiles", path: "/customers", icon: Users, roles: ["admin"] },
   { name: "Reports & Billing", path: "/reports", icon: FileText, roles: ["admin"] },
+  { name: "Notification Control", path: "/notification-management", icon: Bell },
   { name: "Settings", path: "/settings", icon: SettingsIcon },
 ];
 
@@ -50,7 +51,7 @@ const navGroups = [
   { title: "Overview", items: ["Dashboard"], roles: ["admin"] },
   { title: "Tasks", items: ["My Jobs", "Available Tasks", "Job History"], roles: ["staff"] },
   { title: "Management", items: ["Battery Sales", "Battery Exchange", "Service Management", "Inventory", "Warranty Claims", "Customer Profiles", "Reports & Billing"], roles: ["admin"] },
-  { title: "System", items: ["Settings"] },
+  { title: "System", items: ["Notification Control", "Settings"] },
 ];
 
 export function MainLayout() {
@@ -125,6 +126,8 @@ export function MainLayout() {
 
   const roleUnreadCount = notifications.filter(n => n.role === user?.role && !n.isRead).length;
   const isCheckoutPage = location.pathname === "/checkout" || location.pathname === "/upi-payment";
+  const isNotificationPage = location.pathname === "/notifications";
+  const isNotificationManagePage = location.pathname === "/notification-management" || location.pathname === "/notifications/manage";
 
   // Toggle Sidebar Wrapper
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -155,10 +158,10 @@ export function MainLayout() {
               animate={{ x: 0, width: 288, opacity: 1 }}
               exit={{ x: -288, width: 0, opacity: 0.5 }}
               transition={{ type: "spring", damping: 28, stiffness: 250 }}
-              className={`fixed lg:sticky top-0 h-screen inset-y-0 left-0 bg-white dark:bg-[#0D1B2A] border-r border-gray-100 dark:border-[#2E3B55] z-50 flex flex-col shadow-2xl lg:shadow-none print:hidden overflow-hidden`}
+              className={`fixed lg:sticky top-0 h-screen inset-y-0 left-0 bg-white dark:bg-[#0D1B2A] border-r border-gray-100 dark:border-[#2E3B55] z-50 flex flex-col rounded-r-3xl shadow-2xl lg:shadow-none print:hidden overflow-hidden`}
             >
               {/* Inner fixed-width container prevents content squishing during animation */}
-              <div className="w-72 flex flex-col h-screen overflow-hidden">
+              <div className="w-72 flex flex-col h-screen overflow-hidden rounded-r-3xl">
                 {/* Sidebar Header */}
                 <div className="h-16 flex-shrink-0 flex items-center justify-between px-6 border-b border-gray-50 dark:border-[#2E3B55]">
                 <div 
@@ -173,12 +176,6 @@ export function MainLayout() {
                   </div>
                   <h1 className="font-black text-gray-900 dark:text-gray-100 uppercase tracking-tighter text-base">SMR <span className="text-green-500">BATTERY</span></h1>
                 </div>
-                <button
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors lg:hidden text-gray-500"
-                >
-                  <X className="w-6 h-6" />
-                </button>
               </div>
 
               {/* Sidebar Links */}
@@ -297,19 +294,51 @@ export function MainLayout() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="relative">
+            <div className="flex items-center gap-3">
+              {/* Merged Bell + Configure Icon Component */}
+              <div className="relative flex items-center">
+                {/* Bell Icon Button -> Toggles Notification Quick Dropdown */}
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative p-2.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all"
+                  className={`relative p-2 rounded-xl transition-all duration-200 group active:scale-95 ${
+                    showNotifications || isNotificationPage ? "bg-gray-100 dark:bg-gray-800" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                  }`}
+                  title="Notifications Quick View"
                 >
-                  <Bell className="w-5 h-5" />
-                  {roleUnreadCount > 0 && (
-                    <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-[#05050a]">
-                      {roleUnreadCount}
-                    </span>
-                  )}
+                  <div className="relative">
+                    <Bell
+                      className={`w-6 h-6 transition-all duration-200 ${
+                        isNotificationPage || isNotificationManagePage
+                          ? "fill-black text-black scale-105"
+                          : "text-gray-900 dark:text-white group-hover:text-black group-hover:fill-black/10 stroke-[2]"
+                      }`}
+                    />
+
+                    {/* Unread badge counter */}
+                    {roleUnreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black flex items-center justify-center rounded-full ring-2 ring-white dark:ring-[#0D1B2A] animate-pulse">
+                        {roleUnreadCount > 9 ? '9+' : roleUnreadCount}
+                      </span>
+                    )}
+                  </div>
                 </button>
+
+                {/* Merged Configure Icon Top Overlay -> Navigates to Notification Control */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/notification-management');
+                  }}
+                  className={`-ml-2.5 -mt-3.5 z-10 p-1 rounded-full border shadow-xs transition-all active:scale-90 ${
+                    isNotificationManagePage
+                      ? "bg-black text-white border-black ring-2 ring-black/20"
+                      : "bg-white hover:bg-gray-100 text-gray-700 border-gray-200 hover:border-gray-400"
+                  }`}
+                  title="Notification Control & Settings"
+                >
+                  <Sliders className="w-3 h-3 stroke-[2.5]" />
+                </button>
+
                 <NotificationDropdown
                   isOpen={showNotifications}
                   onClose={() => setShowNotifications(false)}
@@ -339,14 +368,14 @@ export function MainLayout() {
         )}
 
         {/* Dynamic Centered Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 print:p-0 transition-all duration-500">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 sm:pb-28 print:p-0 transition-all duration-500">
           <div className="max-w-7xl mx-auto h-full">
             <Outlet />
           </div>
         </main>
 
-        {/* Global Bottom Navigation (Conditional) */}
-        {!isCheckoutPage && user?.role !== "staff" && (
+        {/* Global Bottom Navigation (Conditional: Hidden when sidebar is open) */}
+        {!isCheckoutPage && user?.role !== "staff" && !isSidebarOpen && (
           <div className="print:hidden lg:hidden">
             <BottomNav onMenuClick={toggleSidebar} />
           </div>

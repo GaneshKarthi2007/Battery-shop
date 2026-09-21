@@ -26,6 +26,7 @@ import { NotFound } from "./pages/NotFound";
 import { WarrantyManagement } from "./pages/WarrantyManagement";
 import { CustomerHistory } from "./pages/CustomerHistory";
 import { Notifications } from "./pages/Notifications";
+import { NotificationManagement } from "./pages/NotificationManagement";
 
 import { MotionConfig } from "framer-motion";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -164,6 +165,8 @@ export const router = createBrowserRouter([
           },
           { path: "profile", element: <Profile /> },
           { path: "notifications", element: <Notifications /> },
+          { path: "notification-management", element: <NotificationManagement /> },
+          { path: "notifications/manage", element: <NotificationManagement /> },
           { path: "checkout", Component: Checkout },
           { path: "invoice", Component: BatteryInvoice },
           { path: "upi-payment", Component: UPIPayment },

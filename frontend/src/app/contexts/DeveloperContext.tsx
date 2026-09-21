@@ -7,6 +7,7 @@ interface DeveloperFeatures {
     enableContactActions: boolean;
     serviceViewToggle: boolean;
     reportExport: boolean;
+    pushNotifications: boolean;
 }
 
 export interface ShopConfig {
@@ -31,6 +32,7 @@ const defaultFeatures: DeveloperFeatures = {
     enableContactActions: false, // Default to Copy behavior
     serviceViewToggle: true,
     reportExport: true, // Enabled by default
+    pushNotifications: true, // Defaultly toggled ON
 };
 
 const defaultShopConfig: ShopConfig = {

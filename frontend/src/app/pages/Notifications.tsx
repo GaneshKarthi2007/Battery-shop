@@ -2,9 +2,26 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useNotifications, NotificationType } from "../contexts/NotificationContext";
 import { useAuth } from "../contexts/AuthContext";
-import { Bell, ShoppingBag, Package, Wrench, FileText, Check, Inbox, ArrowLeft } from "lucide-react";
-import { Button } from "../components/Button";
+import { Bell, ShoppingBag, Package, Wrench, FileText, Check, Inbox, ArrowLeft, CheckCircle2, Trash2, Sliders } from "lucide-react";
 import { PushNotificationManager } from "../components/PushNotificationManager";
+
+function getRelativeTimeString(createdAt: string, timeFallback: string): string {
+    const date = new Date(createdAt);
+    if (isNaN(date.getTime())) return timeFallback || 'now';
+
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffWeeks = Math.floor(diffDays / 7);
+
+    if (diffMins < 1) return 'now';
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+    return `${diffWeeks}w`;
+}
 
 export function Notifications() {
     const { notifications, markAsRead, markAllAsRead, clearAll } = useNotifications();
@@ -19,216 +36,255 @@ export function Notifications() {
         ? notifications
         : notifications.filter(n => n.type === activeTab);
 
-    // Grouping logic
+    // Time grouping
+    const now = new Date().getTime();
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+    const featuredList = filteredNotifications.filter(n => !n.isRead);
+    const nonFeaturedList = filteredNotifications.filter(n => !featuredList.some(f => f.id === n.id));
+
+    const last7DaysList = nonFeaturedList.filter(n => {
+        const time = new Date(n.createdAt).getTime();
+        if (isNaN(time)) return true; // Default to recent if date string is unparseable
+        const diff = now - time;
+        return diff <= SEVEN_DAYS_MS;
+    });
+
+    const last30DaysList = nonFeaturedList.filter(n => {
+        const time = new Date(n.createdAt).getTime();
+        if (isNaN(time)) return false;
+        const diff = now - time;
+        return diff > SEVEN_DAYS_MS && diff <= THIRTY_DAYS_MS;
+    });
+
+    const earlierList = nonFeaturedList.filter(n => {
+        const time = new Date(n.createdAt).getTime();
+        if (isNaN(time)) return false;
+        const diff = now - time;
+        return diff > THIRTY_DAYS_MS;
+    });
+
     const sections = [
-        { title: "Today", notifications: filteredNotifications.filter(n => new Date(n.createdAt).toDateString() === new Date().toDateString()) },
-        { title: "Yesterday", notifications: filteredNotifications.filter(n => new Date(n.createdAt).toDateString() === new Date(Date.now() - 86400000).toDateString()) },
-        {
-            title: "Earlier", notifications: filteredNotifications.filter(n => {
-                const date = new Date(n.createdAt).toDateString();
-                const today = new Date().toDateString();
-                const yesterday = new Date(Date.now() - 86400000).toDateString();
-                return date !== today && date !== yesterday;
-            })
-        }
+        { title: "Unread & Featured", notifications: featuredList },
+        { title: "Last 7 days", notifications: last7DaysList },
+        { title: "Last 30 days", notifications: last30DaysList },
+        { title: "Earlier", notifications: earlierList },
     ].filter(s => s.notifications.length > 0);
 
     const getIcon = (type: NotificationType) => {
         switch (type) {
-            case "SALES": return <ShoppingBag className="w-5 h-5 text-emerald-500" />;
-            case "STOCK": return <Package className="w-5 h-5 text-amber-500" />;
-            case "SERVICE": return <Wrench className="w-5 h-5 text-sky-500" />;
-            case "SUMMARY": return <FileText className="w-5 h-5 text-indigo-500" />;
-            default: return <Bell className="w-5 h-5 text-slate-500" />;
+            case "SALES": return <ShoppingBag className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />;
+            case "STOCK": return <Package className="w-5 h-5 text-amber-600 dark:text-amber-400" />;
+            case "SERVICE": return <Wrench className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
+            case "SUMMARY": return <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />;
+            default: return <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />;
+        }
+    };
+
+    const handleNotificationClick = (notif: typeof notifications[0]) => {
+        markAsRead(notif.id);
+        if (notif.type === "SERVICE") {
+            const match = notif.message.match(/Service #(\d+)/);
+            if (match && match[1]) {
+                navigate(`/service/${match[1]}`);
+            } else {
+                navigate("/service");
+            }
+        } else if (notif.type === "SALES") {
+            navigate("/sales");
         }
     };
 
     return (
-        <div className="max-w-4xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="max-w-2xl mx-auto pb-24 px-4 sm:px-6 pt-2 bg-white dark:bg-[#0D1B2A] text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-300">
             {/* Header */}
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#0D1B2A]/90 backdrop-blur-md py-3 mb-4 flex items-center justify-between border-b border-gray-100 dark:border-[#2E3B55]">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => navigate(-1)}
-                        className="p-2.5 bg-white hover:bg-gray-100 dark:bg-[#1B263B] dark:hover:bg-[#2E3B55] border border-gray-200 dark:border-[#2E3B55] text-gray-700 dark:text-gray-300 rounded-xl transition-all shadow-sm active:scale-95"
+                        className="p-2 -ml-2 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-[#1E293B] rounded-full transition-colors active:scale-95"
                         title="Go Back"
                     >
-                        <ArrowLeft className="w-5 h-5" />
+                        <ArrowLeft className="w-6 h-6" />
                     </button>
-                    <div>
-                        <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Notifications Log</h1>
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Track and manage recent activity alerts</p>
-                    </div>
+                    <h1 className="text-xl font-black text-gray-900 dark:text-gray-100 tracking-tight uppercase">Notifications</h1>
                 </div>
 
-                <div className="flex items-center gap-3 self-end sm:self-auto">
+                <div className="flex items-center gap-2">
                     {filteredNotifications.some(n => !n.isRead) && (
-                        <Button
+                        <button
                             onClick={markAllAsRead}
-                            variant="outline"
-                            size="sm"
-                            className="text-xs font-bold uppercase tracking-wider"
+                            className="px-3 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-full transition-colors"
                         >
-                            Mark All as Read
-                        </Button>
+                            Mark Read
+                        </button>
                     )}
-                    <Button
-                        onClick={clearAll}
-                        variant="danger"
-                        size="sm"
-                        className="text-xs font-bold uppercase tracking-wider"
+                    {filteredNotifications.length > 0 && (
+                        <button
+                            onClick={clearAll}
+                            className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors"
+                            title="Clear all notifications"
+                        >
+                            <Trash2 className="w-5 h-5" />
+                        </button>
+                    )}
+                    <button
+                        onClick={() => navigate('/notification-management')}
+                        className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1E293B] rounded-full transition-colors relative"
+                        title="Notification Settings & Controls"
                     >
-                        Clear All
-                    </Button>
+                        <Sliders className="w-5 h-5" />
+                        {notifications.some(n => !n.isRead) && (
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-[#0D1B2A]" />
+                        )}
+                    </button>
                 </div>
             </div>
 
-            {/* Push Notification PWA Manager */}
-            <PushNotificationManager className="mb-6" />
+            {/* Push Notification Manager Card */}
+            <PushNotificationManager className="mb-4" />
 
-            {/* Main Container Card */}
-            <div className="bg-white dark:bg-[#1B263B] border border-gray-150 dark:border-[#2E3B55] rounded-[2rem] overflow-hidden shadow-sm">
-                
-                {/* Horizontal Category Filtering */}
-                <div className="px-6 py-4 border-b border-gray-150 dark:border-[#2E3B55] flex gap-2.5 overflow-x-auto scrollbar-hide bg-gray-50/50 dark:bg-black/10">
-                    {(["ALL", "SALES", "SERVICE", "STOCK", "SUMMARY"] as const).map((tab) => {
-                        const count = tab === 'ALL'
-                            ? notifications.filter(n => !n.isRead).length
-                            : notifications.filter(n => n.type === tab && !n.isRead).length;
+            {/* Category Filter Pills */}
+            <div className="flex gap-2 overflow-x-auto pb-4 mb-2 scrollbar-hide border-b border-gray-100 dark:border-[#2E3B55]">
+                {(["ALL", "SALES", "SERVICE", "STOCK", "SUMMARY"] as const).map((tab) => {
+                    const unreadCount = tab === 'ALL'
+                        ? notifications.filter(n => !n.isRead).length
+                        : notifications.filter(n => n.type === tab && !n.isRead).length;
 
-                        return (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
-                                    activeTab === tab
-                                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/25 border-transparent"
-                                        : "bg-gray-100 dark:bg-[#0D1B2A] text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800 border border-transparent hover:border-gray-200 dark:hover:border-white/5"
-                                }`}
-                            >
-                                {tab === 'ALL' ? 'All Alerts' : tab.toLowerCase()}
-                                {count > 0 && (
-                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-tighter ${
-                                        activeTab === tab 
-                                            ? 'bg-white text-blue-600' 
-                                            : 'bg-blue-600 text-white shadow-[0_0_8px_rgba(59,130,246,0.4)] animate-pulse'
-                                    }`}>
-                                        {count}
-                                    </span>
-                                )}
-                            </button>
-                        );
-                    })}
+                    return (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                                activeTab === tab
+                                    ? "bg-blue-600 text-white shadow-sm"
+                                    : "bg-gray-100 dark:bg-[#1E293B] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                            }`}
+                        >
+                            {tab === 'ALL' ? 'All Alerts' : tab}
+                            {unreadCount > 0 && (
+                                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                                    activeTab === tab ? "bg-white text-blue-600" : "bg-blue-600 text-white"
+                                }`}>
+                                    {unreadCount}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Notification List */}
+            {filteredNotifications.length === 0 ? (
+                <div className="py-20 text-center">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-[#1E293B] rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Inbox className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                    </div>
+                    <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">You're all caught up</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
+                        No recent notifications for the selected category. Check back later!
+                    </p>
                 </div>
+            ) : (
+                <div className="space-y-6">
+                    {sections.map((section) => (
+                        <div key={section.title} className="space-y-2">
+                            <h2 className="text-sm font-black text-gray-900 dark:text-gray-200 uppercase tracking-wide px-1 pt-2">
+                                {section.title}
+                            </h2>
 
-                {/* List View Container */}
-                <div className="p-6">
-                    {filteredNotifications.length === 0 ? (
-                        <div className="py-24 text-center">
-                            <div className="mb-4 flex justify-center relative">
-                                <div className="absolute inset-0 w-16 h-16 bg-blue-100 dark:bg-blue-900/10 rounded-full blur-2xl mx-auto opacity-50 animate-pulse" />
-                                <Inbox className="w-12 h-12 text-gray-300 dark:text-gray-700 relative z-10" />
-                            </div>
-                            <h3 className="text-base font-bold text-gray-600 dark:text-gray-300">All alerts inspected</h3>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">There are no notifications matching the selected tab filter.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-8">
-                            {sections.map((section) => (
-                                <div key={section.title} className="space-y-3">
-                                    <h4 className="text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.25em] px-1">
-                                        {section.title}
-                                    </h4>
-                                    <div className="space-y-2">
-                                        {section.notifications.map((notif) => (
-                                            <div
-                                                key={notif.id}
-                                                onClick={() => {
-                                                    markAsRead(notif.id);
-                                                    
-                                                    // Logic to navigate if it's a service notification
-                                                    if (notif.type === "SERVICE") {
-                                                        const match = notif.message.match(/Service #(\d+)/);
-                                                        if (match && match[1]) {
-                                                            navigate(`/service/${match[1]}`);
-                                                        } else {
-                                                            navigate("/service");
-                                                        }
-                                                    } else if (notif.type === "SALES") {
-                                                        navigate("/sales");
-                                                    }
-                                                }}
-                                                className={`w-full p-4 rounded-2xl text-left transition-all duration-300 flex gap-4 group relative cursor-pointer border border-transparent ${
-                                                    !notif.isRead
-                                                        ? "bg-blue-50/20 dark:bg-blue-950/10 border-blue-500/10 dark:border-blue-500/5 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
-                                                        : "hover:bg-gray-50 dark:hover:bg-white/5 border-gray-100 dark:border-white/0"
-                                                }`}
-                                            >
-                                                {/* Icon panel */}
-                                                <div className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3 ${
-                                                    notif.type === 'SALES' ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-500/10 dark:border-emerald-500/5' :
-                                                    notif.type === 'STOCK' ? 'bg-amber-50 dark:bg-amber-950/30 border border-amber-500/10 dark:border-amber-500/5' :
-                                                    notif.type === 'SERVICE' ? 'bg-sky-50 dark:bg-sky-950/30 border border-sky-500/10 dark:border-sky-500/5' : 
-                                                    'bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-500/10 dark:border-indigo-500/5'
-                                                }`}>
+                            {/* Section Items */}
+                            <div className="space-y-2">
+                                {section.title === "Unread & Featured" && featuredList.length > 0 && (
+                                    <div className="flex items-center gap-3.5 py-3 px-4 rounded-2xl bg-gray-50 dark:bg-[#15161E] border border-gray-100 dark:border-[#2E3B55] mb-2">
+                                        <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0">
+                                            <CheckCircle2 className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Unread Alert Stream</p>
+                                            <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold cursor-pointer hover:underline" onClick={() => navigate('/service')}>
+                                                View recent service orders & updates
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {section.notifications.map((notif) => {
+                                    const timeAgo = getRelativeTimeString(notif.createdAt, notif.time);
+
+                                    return (
+                                        <div
+                                            key={notif.id}
+                                            onClick={() => handleNotificationClick(notif)}
+                                            className={`group flex items-center gap-3.5 py-3.5 px-4 rounded-2xl border transition-all cursor-pointer relative ${
+                                                !notif.isRead
+                                                    ? "bg-blue-50/50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/40 hover:bg-blue-50/80 dark:hover:bg-blue-950/50"
+                                                    : "bg-white dark:bg-[#15161E] border-gray-100 dark:border-[#2E3B55] hover:bg-gray-50 dark:hover:bg-[#1E293B]"
+                                            }`}
+                                        >
+                                            {/* Avatar Icon */}
+                                            <div className="relative shrink-0">
+                                                <div className="w-11 h-11 rounded-xl bg-gray-50 dark:bg-[#1E293B] border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-800 dark:text-gray-200 font-bold text-sm shadow-xs">
                                                     {getIcon(notif.type)}
                                                 </div>
-
-                                                {/* Details text */}
-                                                <div className="flex-1 min-w-0 pr-8">
-                                                    <div className="flex items-start justify-between gap-2 mb-1">
-                                                        <h3 className={`text-sm font-bold leading-snug tracking-tight ${
-                                                            !notif.isRead ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
-                                                        }`}>
-                                                            {notif.title}
-                                                        </h3>
-                                                        {!notif.isRead && (
-                                                            <div className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse" />
-                                                        )}
-                                                    </div>
-                                                    <p className={`text-xs leading-relaxed mb-2.5 ${
-                                                        !notif.isRead ? "text-slate-650 dark:text-slate-300 font-medium" : "text-slate-450 dark:text-slate-500 font-normal"
-                                                    }`}>
-                                                        {notif.message}
-                                                    </p>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                                                            {notif.time}
-                                                        </span>
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800" />
-                                                        <span className={`text-[10px] font-black uppercase tracking-wider ${
-                                                            notif.type === 'SALES' ? 'text-emerald-600 dark:text-emerald-400' :
-                                                            notif.type === 'STOCK' ? 'text-amber-600 dark:text-amber-400' :
-                                                            notif.type === 'SERVICE' ? 'text-sky-600 dark:text-sky-400' : 
-                                                            'text-indigo-600 dark:text-indigo-400'
-                                                        }`}>
-                                                            {notif.type}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Float Hover mark read button */}
                                                 {!notif.isRead && (
+                                                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-blue-600 rounded-full ring-2 ring-white dark:ring-[#15161E]" />
+                                                )}
+                                            </div>
+
+                                            {/* Content */}
+                                            <div className="flex-1 min-w-0 pr-2">
+                                                <p className="text-sm text-gray-900 dark:text-gray-100 leading-snug">
+                                                    <span className="font-bold mr-1.5">{notif.title}</span>
+                                                    <span className={`${!notif.isRead ? "font-semibold text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-400"}`}>
+                                                        {notif.message}
+                                                    </span>
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-1.5">
+                                                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                                                        notif.type === 'SALES' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40' :
+                                                        notif.type === 'STOCK' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40' :
+                                                        notif.type === 'SERVICE' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/40' :
+                                                        'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/40'
+                                                    }`}>
+                                                        {notif.type}
+                                                    </span>
+                                                    <span className="text-gray-400 dark:text-gray-500 text-[11px] font-medium">
+                                                        {timeAgo}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Right Action / Mark Read checkmark */}
+                                            <div className="shrink-0 flex items-center gap-2">
+                                                {!notif.isRead ? (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             markAsRead(notif.id);
                                                         }}
-                                                        className="absolute right-4 bottom-4 p-1.5 bg-white hover:bg-blue-100 dark:bg-gray-800 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 rounded-xl shadow-sm border border-gray-150 dark:border-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                                                        className="p-1.5 bg-white dark:bg-[#1E293B] border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full shadow-xs transition-all"
                                                         title="Mark as read"
                                                     >
-                                                        <Check className="w-4 h-4" />
+                                                        <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                                     </button>
+                                                ) : (
+                                                    <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-[#1E293B] border border-gray-100 dark:border-gray-800 flex items-center justify-center text-gray-400">
+                                                        {getIcon(notif.type)}
+                                                    </div>
                                                 )}
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    )}
+                    ))}
                 </div>
-            </div>
+            )}
         </div>
     );
 }
+
+

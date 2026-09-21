@@ -42,7 +42,7 @@ export function DeveloperLayout() {
             </header>
 
             {/* Main Content Area */}
-            <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+            <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 pb-24 sm:pb-28">
                 <Outlet />
             </main>
 
