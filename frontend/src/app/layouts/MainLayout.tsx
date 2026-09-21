@@ -169,7 +169,7 @@ export function MainLayout() {
                   className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity"
                 >
                   <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-center bg-black">
-                    <img src="/logo.png" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
+                    <img src="/smr.jpeg" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
                   </div>
                   <h1 className="font-black text-gray-900 dark:text-gray-100 uppercase tracking-tighter text-base">SMR <span className="text-green-500">BATTERY</span></h1>
                 </div>
