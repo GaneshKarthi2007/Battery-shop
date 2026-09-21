@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.auralendr.battery",
+        "sha256_cert_fingerprints": ["F5:50:E2:A6:E1:3D:F5:FD:F7:A6:13:97:FD:F6:A1:08:A1:FB:16:B4:8D:D8:53:51:BA:C4:74:41:87:E4:80:C6"]
+      }
+    }]
