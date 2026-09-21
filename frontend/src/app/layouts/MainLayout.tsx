@@ -18,11 +18,9 @@ import {
   LogOut,
   Sliders,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { BottomNav } from "../components/ui/BottomNav";
 import { useNotifications } from "../contexts/NotificationContext";
-import { NotificationDropdown } from "../components/ui/NotificationDropdown";
 
 interface NavItem {
   name: string;
@@ -43,7 +41,7 @@ const navItems: NavItem[] = [
   { name: "Warranty Claims", path: "/warranty", icon: ShieldCheck, roles: ["admin"] },
   { name: "Customer Profiles", path: "/customers", icon: Users, roles: ["admin"] },
   { name: "Reports & Billing", path: "/reports", icon: FileText, roles: ["admin"] },
-  { name: "Notification Control", path: "/notification-management", icon: Bell },
+  { name: "Notification Control", path: "/notification-management", icon: Sliders },
   { name: "Settings", path: "/settings", icon: SettingsIcon },
 ];
 
@@ -58,9 +56,8 @@ export function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { notifications } = useNotifications();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default to open on desktop
-  const [showNotifications, setShowNotifications] = useState(false);
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Auto-close sidebar on mobile by default
@@ -72,7 +69,7 @@ export function MainLayout() {
         setIsSidebarOpen(true);
       }
     };
-    handleResize(); // Initial check
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -83,7 +80,6 @@ export function MainLayout() {
   const touchEndX = useRef<number | null>(null);
   const touchEndY = useRef<number | null>(null);
 
-  // Swipe paths dynamically configured based on role visibility
   const swipePaths = user?.role === "admin"
     ? ["/", "/sales", "/service"]
     : ["/assigned-jobs", "/available-jobs", "/completed-jobs"];
@@ -124,52 +120,45 @@ export function MainLayout() {
     }
   };
 
-  const roleUnreadCount = notifications.filter(n => n.role === user?.role && !n.isRead).length;
-  const isCheckoutPage = location.pathname === "/checkout" || location.pathname === "/upi-payment";
-  const isNotificationPage = location.pathname === "/notifications";
-  const isNotificationManagePage = location.pathname === "/notification-management" || location.pathname === "/notifications/manage";
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
-  // Toggle Sidebar Wrapper
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const { unreadCount } = useNotifications();
+
+  const isNotificationPage = location.pathname === '/notifications';
+  const isNotificationManagePage = location.pathname === '/notification-management';
+  const isCheckoutPage = location.pathname === '/checkout';
 
   return (
     <div
-      className="flex min-h-screen bg-[#f8f9fc] dark:bg-[#05050a] transition-colors duration-500"
+      className="min-h-screen bg-[#F4F6F9] dark:bg-[#070A13] flex flex-col lg:flex-row relative"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
       {/* Sidebar System */}
-      <AnimatePresence mode="wait">
-        {isSidebarOpen && (
-          <>
-            {/* Mobile/Tablet Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-              onClick={() => setIsSidebarOpen(false)}
-            />
+      {isSidebarOpen && (
+        <>
+          {/* Mobile/Tablet Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
 
-            {/* Sidebar Aside */}
-            <motion.aside
-              initial={{ x: -288, width: 0, opacity: 0.5 }}
-              animate={{ x: 0, width: 288, opacity: 1 }}
-              exit={{ x: -288, width: 0, opacity: 0.5 }}
-              transition={{ type: "spring", damping: 28, stiffness: 250 }}
-              className={`fixed lg:sticky top-0 h-screen inset-y-0 left-0 bg-white dark:bg-[#0D1B2A] border-r border-gray-100 dark:border-[#2E3B55] z-50 flex flex-col rounded-r-3xl shadow-2xl lg:shadow-none print:hidden overflow-hidden`}
-            >
-              {/* Inner fixed-width container prevents content squishing during animation */}
-              <div className="w-72 flex flex-col h-screen overflow-hidden rounded-r-3xl">
-                {/* Sidebar Header */}
-                <div className="h-16 flex-shrink-0 flex items-center justify-between px-6 border-b border-gray-50 dark:border-[#2E3B55]">
+          {/* Sidebar Aside */}
+          <aside
+            className="fixed lg:sticky top-0 h-screen inset-y-0 left-0 bg-white dark:bg-[#0D1B2A] border-r border-gray-100 dark:border-[#2E3B55] z-50 flex flex-col rounded-r-3xl shadow-2xl lg:shadow-none print:hidden overflow-hidden"
+          >
+            <div className="w-72 flex flex-col h-screen overflow-hidden rounded-r-3xl">
+              {/* Sidebar Header */}
+              <div className="h-16 flex-shrink-0 flex items-center justify-between px-6 border-b border-gray-50 dark:border-[#2E3B55]">
                 <div 
                   onClick={() => {
                     navigate("/");
                     if (window.innerWidth < 1024) setIsSidebarOpen(false);
                   }}
-                  className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity"
+                  className="flex items-center gap-3 cursor-pointer hover:opacity-90"
                 >
                   <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-center bg-black">
                     <img src="/smr.jpeg" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
@@ -200,9 +189,9 @@ export function MainLayout() {
                                   navigate(item.path);
                                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
                                 }}
-                                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-300 ${
+                                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold ${
                                   isActive
-                                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25 font-black translate-x-1"
+                                    ? "bg-blue-600 text-white font-black"
                                     : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25334D] hover:text-gray-900 dark:hover:text-white"
                                 }`}
                               >
@@ -211,10 +200,7 @@ export function MainLayout() {
                                   <span>{item.name}</span>
                                 </div>
                                 {isActive && (
-                                  <motion.div
-                                    layoutId="activeIndicator"
-                                    className="w-1.5 h-1.5 rounded-full bg-white"
-                                  />
+                                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
                                 )}
                               </button>
                             );
@@ -227,7 +213,7 @@ export function MainLayout() {
               {/* Sidebar User Card */}
               <div className="p-4 border-t border-gray-100 dark:border-[#2E3B55] bg-gray-50/50 dark:bg-white/[0.01]">
                 <div
-                  className="p-4 bg-white dark:bg-[#15161E] border border-gray-100 dark:border-[#2E3B55] rounded-2xl shadow-sm group cursor-pointer hover:shadow-md hover:border-blue-100 dark:hover:border-blue-500/20 transition-all active:scale-[0.98]"
+                  className="p-4 bg-white dark:bg-[#15161E] border border-gray-100 dark:border-[#2E3B55] rounded-2xl shadow-sm group cursor-pointer hover:shadow-md hover:border-blue-100 dark:hover:border-blue-500/20"
                   onClick={() => {
                     navigate('/profile');
                     if (window.innerWidth < 1024) setIsSidebarOpen(false);
@@ -235,7 +221,7 @@ export function MainLayout() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <div className="w-11 h-11 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 transition-transform group-hover:scale-105">
+                      <div className="w-11 h-11 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
                         <User className="w-5 h-5" />
                       </div>
                       <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-[#15161E] rounded-full shadow-sm"></div>
@@ -253,7 +239,7 @@ export function MainLayout() {
                         e.stopPropagation();
                         setShowLogoutConfirm(true);
                       }}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 dark:text-gray-700 dark:hover:text-red-400 dark:hover:bg-red-950/30 transition-all duration-200 active:scale-90"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 dark:text-gray-700 dark:hover:text-red-400 dark:hover:bg-red-950/30"
                       title="Logout"
                     >
                       <LogOut className="w-4 h-4" />
@@ -261,75 +247,73 @@ export function MainLayout() {
                   </div>
                 </div>
               </div>
-              </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+            </div>
+          </aside>
+        </>
+      )}
 
       {/* Main Content Area Container */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         {/* Dynamic Responsive Header */}
         {!isCheckoutPage && (
           <header
-            className="h-16 bg-white/80 dark:bg-[#0D1B2A]/70 backdrop-blur-2xl border-b border-gray-200 dark:border-[#2E3B55] sticky top-0 z-20 px-4 sm:px-6 flex items-center justify-between print:hidden"
+            className="h-16 bg-white/80 dark:bg-[#0D1B2A]/70 border-b border-gray-200 dark:border-[#2E3B55] sticky top-0 z-20 px-4 sm:px-6 flex items-center justify-between print:hidden"
           >
             <div className="flex items-center gap-3">
               {user?.role !== "staff" && (
                 <button
                   onClick={toggleSidebar}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-700 dark:text-gray-300 transition-all active:scale-95"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-700 dark:text-gray-300"
                 >
                   <Menu className="w-6 h-6" />
                 </button>
               )}
               <div 
                 onClick={() => navigate("/")}
-                className={`flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity ${user?.role === "staff" ? "" : "ml-2 lg:hidden"}`}
+                className={`flex items-center gap-3 cursor-pointer hover:opacity-90 ${user?.role === "staff" ? "" : "ml-2 lg:hidden"}`}
               >
                 <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-center bg-black">
-                  <img src="/logo.png" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
+                  <img src="/smr.jpeg" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
                 </div>
                 <span className="font-black text-gray-900 dark:text-gray-100 text-base sm:block uppercase tracking-tighter">SMR <span className="text-green-500">BATTERY</span></span>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Merged Bell + Configure Icon Component */}
+              {/* Notification Bell Button -> Directly Navigates to /notifications Page */}
               <div className="relative flex items-center">
-                {/* Bell Icon Button -> Toggles Notification Quick Dropdown */}
                 <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className={`relative p-2 rounded-xl transition-all duration-200 group active:scale-95 ${
-                    showNotifications || isNotificationPage ? "bg-gray-100 dark:bg-gray-800" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => navigate('/notifications')}
+                  className={`relative p-2 rounded-xl group ${
+                    isNotificationPage ? "bg-gray-100 dark:bg-gray-800" : "hover:bg-gray-100 dark:hover:bg-gray-800"
                   }`}
-                  title="Notifications Quick View"
+                  title="Notifications Page"
                 >
                   <div className="relative">
                     <Bell
-                      className={`w-6 h-6 transition-all duration-200 ${
+                      className={`w-6 h-6 ${
                         isNotificationPage || isNotificationManagePage
-                          ? "fill-black text-black scale-105"
-                          : "text-gray-900 dark:text-white group-hover:text-black group-hover:fill-black/10 stroke-[2]"
+                          ? "fill-black text-black"
+                          : "text-gray-900 dark:text-white stroke-[2]"
                       }`}
                     />
 
                     {/* Unread badge counter */}
-                    {roleUnreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black flex items-center justify-center rounded-full ring-2 ring-white dark:ring-[#0D1B2A] animate-pulse">
-                        {roleUnreadCount > 9 ? '9+' : roleUnreadCount}
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black flex items-center justify-center rounded-full ring-2 ring-white dark:ring-[#0D1B2A]">
+                        {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     )}
                   </div>
                 </button>
 
-                {/* Merged Configure Icon Top Overlay -> Navigates to Notification Control */}
+                {/* Notification Management Button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate('/notification-management');
                   }}
-                  className={`-ml-2.5 -mt-3.5 z-10 p-1 rounded-full border shadow-xs transition-all active:scale-90 ${
+                  className={`-ml-2.5 -mt-3.5 z-10 p-1 rounded-full border shadow-xs ${
                     isNotificationManagePage
                       ? "bg-black text-white border-black ring-2 ring-black/20"
                       : "bg-white hover:bg-gray-100 text-gray-700 border-gray-200 hover:border-gray-400"
@@ -338,25 +322,20 @@ export function MainLayout() {
                 >
                   <Sliders className="w-3 h-3 stroke-[2.5]" />
                 </button>
-
-                <NotificationDropdown
-                  isOpen={showNotifications}
-                  onClose={() => setShowNotifications(false)}
-                />
               </div>
 
               {user?.role === "staff" && (
                 <>
                   <button
                     onClick={() => navigate('/profile')}
-                    className="p-2.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all"
+                    className="p-2.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl"
                     title="Profile"
                   >
                     <User className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => setShowLogoutConfirm(true)}
-                    className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all"
+                    className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl"
                     title="Logout"
                   >
                     <LogOut className="w-5 h-5" />
@@ -368,13 +347,13 @@ export function MainLayout() {
         )}
 
         {/* Dynamic Centered Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 sm:pb-28 print:p-0 transition-all duration-500">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 sm:pb-28 print:p-0">
           <div className="max-w-7xl mx-auto h-full">
             <Outlet />
           </div>
         </main>
 
-        {/* Global Bottom Navigation (Conditional: Hidden when sidebar is open) */}
+        {/* Global Bottom Navigation */}
         {!isCheckoutPage && user?.role !== "staff" && !isSidebarOpen && (
           <div className="print:hidden lg:hidden">
             <BottomNav onMenuClick={toggleSidebar} />
@@ -383,55 +362,46 @@ export function MainLayout() {
       </div>
 
       {/* Logout Confirmation Dialog */}
-      <AnimatePresence>
-        {showLogoutConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowLogoutConfirm(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="bg-white dark:bg-[#0D1B2A] border border-gray-250 dark:border-[#2E3B55] rounded-[2rem] p-8 max-w-sm w-full relative z-10 shadow-2xl text-center"
-            >
-              <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm border border-red-100 dark:border-red-900/30">
-                <LogOut className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">
-                Sign Out?
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-8">
-                Are you sure you want to sign out of your account?
-              </p>
-              
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#161D30] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold rounded-2xl transition-all text-sm active:scale-95"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    setShowLogoutConfirm(false);
-                    logout();
-                    navigate("/login");
-                  }}
-                  className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-600/20 transition-all text-sm active:scale-95"
-                >
-                  Sign Out
-                </button>
-              </div>
-            </motion.div>
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            onClick={() => setShowLogoutConfirm(false)}
+            className="absolute inset-0 bg-black/60"
+          />
+          <div
+            className="bg-white dark:bg-[#0D1B2A] border border-gray-250 dark:border-[#2E3B55] rounded-[2rem] p-8 max-w-sm w-full relative z-10 shadow-2xl text-center"
+          >
+            <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm border border-red-100 dark:border-red-900/30">
+              <LogOut className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">
+              Sign Out?
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-8">
+              Are you sure you want to sign out of your account?
+            </p>
+            
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#161D30] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold rounded-2xl text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  logout();
+                  navigate("/login");
+                }}
+                className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-600/20 text-sm"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
