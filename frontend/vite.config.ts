@@ -10,7 +10,7 @@ export default defineConfig({
     ...(!process.env.VITEST ? [tailwindcss()] : []),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'logo.png', 'smr.jpeg', 'icons/icon-192.png', 'icons/icon-512.png'],
+      includeAssets: ['favicon.svg', 'logo.png', 'smr.jpeg', 'icons/icon-192.jpeg', 'icons/icon-512.jpeg'],
       manifest: {
         name: 'Battery',
         short_name: 'Battery',
