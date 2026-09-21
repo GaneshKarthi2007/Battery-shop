@@ -20,7 +20,7 @@ export function DeveloperLayout() {
             <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-20 px-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 border border-gray-200 shadow-sm flex items-center justify-center bg-black">
-                        <img src="/logo.png" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
+                        <img src="/smr.jpeg" alt="SMR Battery Shop Logo" className="w-full h-full object-cover" />
                     </div>
                     <span className="font-bold text-gray-900 text-base">SMR Battery Shop - Developer Console</span>
                 </div>
