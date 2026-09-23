@@ -10,7 +10,7 @@ export default defineConfig({
     ...(!process.env.VITEST ? [tailwindcss()] : []),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'logo.png', 'smr.jpeg', 'icons/icon-192.png', 'icons/icon-512.png'],
+      includeAssets: ['favicon.svg', 'logo.png', 'smr.jpeg', 'icons/icon-192.jpeg', 'icons/icon-512.jpeg'],
       manifest: {
         name: 'Battery',
         short_name: 'Battery',
@@ -23,15 +23,15 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: '/icons/icon-192.png',
+            src: '/icons/icon-192.jpeg',
             sizes: '192x192',
-            type: 'image/png',
+            type: 'image/jpeg',
             purpose: 'any maskable'
           },
           {
-            src: '/icons/icon-512.png',
+            src: '/icons/icon-512.jpeg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/jpeg',
             purpose: 'any maskable'
           }
         ]
