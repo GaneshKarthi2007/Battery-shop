@@ -143,9 +143,9 @@ class ServiceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'customer_name' => 'required|string',
+            'customer_name' => 'nullable|string',
             'contact_number' => 'required|string',
-            'vehicle_details' => 'sometimes|string',
+            'vehicle_details' => 'nullable|string',
             'status' => 'sometimes|string',
             'service_charge' => 'sometimes|numeric',
             'battery_brand' => 'nullable|string',
@@ -158,6 +158,13 @@ class ServiceController extends Controller
             'assigned_to' => 'nullable|exists:users,id',
             'sub_status' => 'nullable|string',
         ]);
+
+        if (empty($validated['customer_name'])) {
+            $validated['customer_name'] = 'Customer';
+        }
+        if (empty($validated['vehicle_details'])) {
+            $validated['vehicle_details'] = 'N/A';
+        }
 
         if (isset($validated['assigned_to']) && $validated['assigned_to']) {
             $validated['assigned_at'] = now();

@@ -61,16 +61,16 @@ function WarrantyInput({
     disabled?: boolean;
 }) {
     return (
-        <div className="flex items-center justify-between group">
-            <label className="text-[14px] font-black text-gray-900 dark:text-[#FFFFFF] uppercase tracking-widest ml-1">{label}</label>
-            <div className="relative w-32">
+        <div className="flex items-center justify-between group py-0.5">
+            <label className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider ml-0.5">{label}</label>
+            <div className="relative w-24 sm:w-28">
                 <input
                     type="number"
                     min="0"
                     value={value}
                     onChange={(e) => onValueChange(e.target.value)}
                     disabled={disabled}
-                    className="w-full bg-white dark:bg-[#070A13] border-2 border-gray-300 dark:border-[#25314D] rounded-xl px-4 h-12 text-gray-900 dark:text-[#FFFFFF] font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 text-right disabled:opacity-75 disabled:cursor-not-allowed"
+                    className="w-full bg-white dark:bg-[#070A13] border border-gray-300 dark:border-[#25314D] rounded-xl px-3 h-9 text-gray-900 dark:text-[#FFFFFF] font-bold text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-[#2E6DFF] outline-none transition-all placeholder:text-gray-400 text-right disabled:opacity-75 disabled:cursor-not-allowed"
                     placeholder="0"
                 />
             </div>
@@ -217,7 +217,7 @@ export function Checkout() {
     const exchangeDiscount = selectedExchange ? Number(selectedExchange.valuation_amount) : 0;
     const grandTotal = productSubtotal + productGst + serviceSubtotal + installCharges + deliveryCharges - exchangeDiscount;
 
-    /* ── Warranty expiry calculation (hidden, for invoice) ── */
+    /* ── Warranty expiry calculation ── */
     const calcExpiry = (val: string, unit: string) => {
         const n = parseInt(val) || 0;
         const d = new Date();
@@ -356,34 +356,38 @@ export function Checkout() {
         setWarrantyUnit(newUnit);
     };
 
-    const inputClass = "bg-white dark:bg-[#070A13] border border-gray-300 dark:border-[#25314D] h-14 text-gray-900 dark:text-[#FFFFFF] font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 rounded-xl transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500";
-    const chargeInput = "bg-transparent border-none w-24 text-right font-black text-gray-900 dark:text-[#FFFFFF] focus:ring-0 outline-none p-0 text-[16px] placeholder:text-gray-400 dark:placeholder:text-gray-500";
+    const inputClass = "bg-gray-50/50 hover:bg-white focus:bg-white dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] h-10 sm:h-11 text-gray-900 dark:text-[#FFFFFF] text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 rounded-xl transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 px-3.5";
+    const chargeInput = "bg-transparent border-none w-20 text-right font-black text-gray-900 dark:text-[#FFFFFF] focus:ring-0 outline-none p-0 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500";
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#05050A] flex flex-col font-sans text-gray-900 dark:text-gray-100 transition-colors duration-500">
             {loading && <BatteryLoader />}
 
-            {/* ── Fixed Checkout Header ── */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#0D121F]/80 backdrop-blur-md border-b border-gray-200 dark:border-[#25314D] px-4 py-3 flex items-center justify-between">
+            {/* ── Fixed Compact Checkout Header ── */}
+            <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-[#0D121F]/90 backdrop-blur-md border-b border-gray-200 dark:border-[#25314D] px-3.5 py-2.5 flex items-center justify-between shadow-xs">
                 <button
                     onClick={() => navigate(-1)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-[#161D30] rounded-full transition-colors"
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#161D30] rounded-xl transition-colors text-gray-700 dark:text-gray-200"
                 >
-                    <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-gray-200" />
+                    <ArrowLeft className="w-4 h-4" />
                 </button>
-                <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase">
+                <h1 className="text-base sm:text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase">
                     {state.isQuotation ? "Quotation Details" : "Final Checkout"}
                 </h1>
-                <div className="w-9" />
+                <div className="w-7" />
             </header>
 
-            <main className="flex-1 px-4 pt-24 pb-12 space-y-10 max-w-2xl mx-auto w-full">
+            <main className="flex-1 px-2 sm:px-4 pt-16 pb-6 space-y-3.5 max-w-2xl mx-auto w-full">
 
                 {/* ── Section: Customer Details ── */}
-                <section className="space-y-4">
-                    <SectionHead icon={<User className="w-5 h-5 text-[#2E6DFF]" />} title="Customer Details" />
-                    <div className="bg-white dark:bg-[#0D121F] rounded-3xl p-8 border border-gray-200 dark:border-[#25314D] space-y-6">
-                        <div className="grid grid-cols-1 gap-6">
+                <div className="bg-white dark:bg-[#0D121F] rounded-2xl border border-gray-200 dark:border-[#25314D] shadow-xs overflow-hidden">
+                    <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#161D30]/80 border-b border-gray-200 dark:border-[#25314D] flex items-center gap-2">
+                        <User className="w-4 h-4 text-blue-600" />
+                        <h2 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Customer Details</h2>
+                    </div>
+
+                    <div className="p-3.5 sm:p-4 space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                             <Field label="Full Name">
                                 <Input
                                     type="text"
@@ -395,7 +399,7 @@ export function Checkout() {
                                 />
                             </Field>
                             <Field label="Mobile Number">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5">
                                     <Input
                                         type="tel"
                                         value={customerInfo.phone}
@@ -408,71 +412,72 @@ export function Checkout() {
                                         placeholder="+91 98765 43210"
                                     />
                                     {customerInfo.phone && customerInfo.phone.replace(/\D/g, "").length > 2 && (
-                                        <ContactActions phoneNumber={customerInfo.phone} iconSize={18} className="p-1" />
+                                        <ContactActions phoneNumber={customerInfo.phone} iconSize={16} className="p-1" />
                                     )}
                                 </div>
                             </Field>
-                            <Field label="Billing Address">
-                                <textarea
-                                    value={customerInfo.billingAddress}
-                                    onChange={(e) => {
-                                        setCustomerInfo({ ...customerInfo, billingAddress: e.target.value });
-                                        if (sameAsBilling) setInstallAddress(e.target.value);
-                                    }}
-                                    rows={3}
-                                    className="w-full bg-white dark:bg-[#070A13] border border-gray-300 dark:border-[#25314D] rounded-2xl px-4 py-4 text-gray-900 dark:text-gray-100 font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                                    placeholder="Door No, Street, City, Pincode"
-                                />
-                            </Field>
                         </div>
+                        <Field label="Billing Address">
+                            <textarea
+                                value={customerInfo.billingAddress}
+                                onChange={(e) => {
+                                    setCustomerInfo({ ...customerInfo, billingAddress: e.target.value });
+                                    if (sameAsBilling) setInstallAddress(e.target.value);
+                                }}
+                                rows={2}
+                                className="w-full bg-gray-50/50 hover:bg-white focus:bg-white dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:text-gray-400 min-h-[52px]"
+                                placeholder="Door No, Street, City, Pincode"
+                            />
+                        </Field>
                     </div>
-                </section>
+                </div>
 
                 {/* ── Section: Installation Info ── */}
                 {!state.isQuotation && (
-                <section className="space-y-4">
-                    <SectionHead icon={<Zap className="w-5 h-5 text-[#2E6DFF]" />} title="Installation Info" />
-                    <div className="bg-white dark:bg-[#0D121F] rounded-3xl p-8 border border-gray-200 dark:border-[#25314D] space-y-6">
-                        
-                        {/* Usage Type Radio Selection */}
-                        <div className="space-y-2">
-                            <label className="text-[12px] font-black text-gray-600 dark:text-gray-400 uppercase tracking-widest ml-1">
+                <div className="bg-white dark:bg-[#0D121F] rounded-2xl border border-gray-200 dark:border-[#25314D] shadow-xs overflow-hidden">
+                    <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#161D30]/80 border-b border-gray-200 dark:border-[#25314D] flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-blue-600" />
+                        <h2 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Installation Info</h2>
+                    </div>
+
+                    <div className="p-3.5 sm:p-4 space-y-3">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider ml-0.5">
                                 Usage Selection
                             </label>
-                            <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="flex flex-row gap-2.5">
                                 <label
                                     onClick={() => setUsageType("Vehicle")}
-                                    className={`flex-1 flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${usageType === "Vehicle" ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300 hover:border-gray-300"}`}
+                                    className={`flex-1 flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${usageType === "Vehicle" ? "border-blue-600 bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300"}`}
                                 >
                                     <input
                                         type="radio"
                                         name="usageType"
                                         checked={usageType === "Vehicle"}
                                         onChange={() => setUsageType("Vehicle")}
-                                        className="w-4 h-4 text-blue-600 accent-blue-600"
+                                        className="w-3.5 h-3.5 text-blue-600 accent-blue-600"
                                     />
-                                    <span className="text-xs font-black uppercase tracking-wider">Vehicle Usage</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider">Vehicle Usage</span>
                                 </label>
 
                                 <label
                                     onClick={() => setUsageType("Home")}
-                                    className={`flex-1 flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${usageType === "Home" ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300 hover:border-gray-300"}`}
+                                    className={`flex-1 flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${usageType === "Home" ? "border-blue-600 bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300"}`}
                                 >
                                     <input
                                         type="radio"
                                         name="usageType"
                                         checked={usageType === "Home"}
                                         onChange={() => setUsageType("Home")}
-                                        className="w-4 h-4 text-blue-600 accent-blue-600"
+                                        className="w-3.5 h-3.5 text-blue-600 accent-blue-600"
                                     />
-                                    <span className="text-xs font-black uppercase tracking-wider">Home / UPS Usage</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider">Home / UPS Usage</span>
                                 </label>
                             </div>
                         </div>
 
-                        {/* Vehicle Usage fields */}
                         {usageType === "Vehicle" && (
-                            <div className="space-y-6 pt-2 animate-in fade-in duration-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 pt-1 animate-in fade-in duration-200">
                                 <Field label="Vehicle Model">
                                     <Input
                                         type="text"
@@ -494,75 +499,70 @@ export function Checkout() {
                             </div>
                         )}
 
-                        {/* Home Usage options */}
                         {usageType === "Home" && (
-                            <div className="space-y-6 pt-2 animate-in fade-in duration-300">
+                            <div className="space-y-3 pt-1 animate-in fade-in duration-200">
                                 <div>
-                                    <label className="flex items-center gap-3 cursor-pointer group">
+                                    <label className="flex items-center gap-2.5 cursor-pointer group">
                                         <input
                                             type="checkbox"
                                             checked={installationRequired}
                                             onChange={(e) => setInstallationRequired(e.target.checked)}
-                                            className="w-5 h-5 rounded-md border-gray-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
+                                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
                                         />
-                                        <span className="text-[14px] font-bold text-gray-900 dark:text-gray-100">
+                                        <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
                                             Installation Required
                                         </span>
                                     </label>
                                 </div>
 
                                 {installationRequired && (
-                                    <div className="space-y-6 pt-2 pl-2 border-l-2 border-blue-500/20">
+                                    <div className="space-y-3 pt-1 pl-2 border-l-2 border-blue-500/20">
                                         <div>
-                                            <label className="flex items-center gap-3 cursor-pointer group">
-                                                <div className="relative">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={sameAsBilling}
-                                                        onChange={(e) => {
-                                                            const checked = e.target.checked;
-                                                            setSameAsBilling(checked);
-                                                            if (checked) setInstallAddress(customerInfo.billingAddress);
-                                                        }}
-                                                        className="sr-only"
-                                                    />
-                                                    <div className={`w-12 h-6 rounded-full transition-colors ${sameAsBilling ? "bg-[#2E6DFF]" : "bg-gray-300 dark:bg-gray-700"}`}></div>
-                                                    <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${sameAsBilling ? "translate-x-6" : ""}`}></div>
-                                                </div>
-                                                <span className="text-[14px] font-bold text-gray-700 dark:text-gray-300 transition-colors">Same as Billing Address</span>
+                                            <label className="flex items-center gap-2.5 cursor-pointer group">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={sameAsBilling}
+                                                    onChange={(e) => {
+                                                        const checked = e.target.checked;
+                                                        setSameAsBilling(checked);
+                                                        if (checked) setInstallAddress(customerInfo.billingAddress);
+                                                    }}
+                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 accent-blue-600"
+                                                />
+                                                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Same as Billing Address</span>
                                             </label>
                                         </div>
 
                                         {sameAsBilling && (
-                                            <Field label="Landmark (Optional)">
+                                            <Field label="Landmark">
                                                 <Input
                                                     type="text"
                                                     value={landmark}
                                                     onChange={(e) => setLandmark(e.target.value)}
                                                     className={inputClass}
-                                                    placeholder="e.g. Near Pillayar Temple / Opp. Petrol Bunk"
+                                                    placeholder="e.g. Near Pillayar Temple"
                                                 />
                                             </Field>
                                         )}
 
                                         {!sameAsBilling && (
-                                            <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                            <div className="space-y-2.5 animate-in slide-in-from-top-1 duration-200">
                                                 <Field label="Installation Address">
                                                     <textarea
                                                         value={installAddress}
                                                         onChange={(e) => setInstallAddress(e.target.value)}
                                                         rows={2}
-                                                        className="w-full bg-white dark:bg-[#070A13] border border-gray-300 dark:border-[#25314D] rounded-2xl px-4 py-4 text-gray-900 dark:text-gray-100 font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                                                        className="w-full bg-gray-50/50 hover:bg-white focus:bg-white dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:text-gray-400 min-h-[52px]"
                                                         placeholder="Specific installation location..."
                                                     />
                                                 </Field>
-                                                <Field label="Landmark (Optional)">
+                                                <Field label="Landmark">
                                                     <Input
                                                         type="text"
                                                         value={landmark}
                                                         onChange={(e) => setLandmark(e.target.value)}
                                                         className={inputClass}
-                                                        placeholder="e.g. Near Pillayar Temple / Opp. Petrol Bunk"
+                                                        placeholder="e.g. Near Pillayar Temple"
                                                     />
                                                 </Field>
                                             </div>
@@ -572,51 +572,52 @@ export function Checkout() {
                             </div>
                         )}
                     </div>
-                </section>
+                </div>
                 )}
 
                 {/* ── Section: Warranty Registration ── */}
                 {!state.isQuotation && (
-                    <section className="space-y-4">
-                        <div className="flex items-center justify-between px-2">
-                            <div className="flex items-center gap-3">
-                                <SectionHead icon={<ShieldCheck className="w-5 h-5 text-[#2E6DFF]" />} title="Warranty Registration" />
-                                {!isWarrantyEditable && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsWarrantyEditable(true)}
-                                        className="px-3 py-1 text-[11px] font-black text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-lg transition-all uppercase tracking-wider shadow-sm"
-                                    >
-                                        Change
-                                    </button>
-                                )}
+                    <div className="bg-white dark:bg-[#0D121F] rounded-2xl border border-gray-200 dark:border-[#25314D] shadow-xs overflow-hidden">
+                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#161D30]/80 border-b border-gray-200 dark:border-[#25314D] flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-blue-600" />
+                                <h2 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Warranty Registration</h2>
                             </div>
-                            {isWarrantyEditable && (
-                                <div className="flex bg-gray-100 dark:bg-[#161D30] p-1 rounded-xl border border-gray-200 dark:border-[#25314D] animate-in fade-in zoom-in-95 duration-200">
+                            {!isWarrantyEditable ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsWarrantyEditable(true)}
+                                    className="px-2.5 py-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-lg transition-all uppercase tracking-wider"
+                                >
+                                    Edit
+                                </button>
+                            ) : (
+                                <div className="flex bg-gray-100 dark:bg-[#161D30] p-0.5 rounded-lg border border-gray-200 dark:border-[#25314D]">
                                     <button
                                         onClick={() => handleUnitChange("Months")}
-                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Months" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70"}`}
+                                        className={`px-2.5 py-1 rounded-md text-[9px] font-bold transition-all ${warrantyUnit === "Months" ? "bg-blue-600 text-white" : "text-gray-500 dark:text-white/40"}`}
                                     >
                                         MONTHS
                                     </button>
                                     <button
                                         onClick={() => handleUnitChange("Years")}
-                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${warrantyUnit === "Years" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70"}`}
+                                        className={`px-2.5 py-1 rounded-md text-[9px] font-bold transition-all ${warrantyUnit === "Years" ? "bg-blue-600 text-white" : "text-gray-500 dark:text-white/40"}`}
                                     >
                                         YEARS
                                     </button>
                                 </div>
                             )}
                         </div>
-                        <div className="bg-white dark:bg-[#0D121F] rounded-3xl p-8 border border-gray-200 dark:border-[#25314D] space-y-8">
-                            <div className="space-y-6">
+
+                        <div className="p-3.5 sm:p-4 space-y-3">
+                            <div className="space-y-2">
                                 <WarrantyInput
                                     label="Total Warranty"
                                     value={totalWarrantyVal}
                                     onValueChange={setTotalWarrantyVal}
                                     disabled={!isWarrantyEditable}
                                 />
-                                <div className="h-px bg-gray-200 dark:bg-gray-800 w-full" />
+                                <div className="h-px bg-gray-100 dark:bg-gray-800 w-full" />
                                 <WarrantyInput
                                     label="Free Replacement"
                                     value={freeReplacementVal}
@@ -625,218 +626,203 @@ export function Checkout() {
                                 />
                             </div>
                             {(parseInt(totalWarrantyVal) > 0 || parseInt(freeReplacementVal) > 0) && (
-                                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-6 space-y-2 border border-blue-100 dark:border-blue-900/30">
-                                    <p className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em]">Calculated Expiry Dates</p>
+                                <div className="bg-blue-50/60 dark:bg-blue-950/20 rounded-xl p-3 space-y-1 border border-blue-100 dark:border-blue-900/30">
+                                    <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Calculated Expiry Dates</p>
                                     {parseInt(totalWarrantyVal) > 0 && (
-                                        <p className="text-[14px] text-gray-900 dark:text-white font-bold">
-                                            Total Warranty: <span className="text-blue-600 dark:text-blue-400 font-black">{totalWarrantyExpiry}</span>
+                                        <p className="text-xs text-gray-800 dark:text-white font-semibold">
+                                            Total Warranty: <span className="text-blue-600 dark:text-blue-400 font-bold">{totalWarrantyExpiry}</span>
                                         </p>
                                     )}
                                     {parseInt(freeReplacementVal) > 0 && (
-                                        <p className="text-[14px] text-gray-900 dark:text-white font-bold">
-                                            Free Replacement: <span className="text-blue-600 dark:text-blue-400 font-black">{freeReplacementExpiry}</span>
+                                        <p className="text-xs text-gray-800 dark:text-white font-semibold">
+                                            Free Replacement: <span className="text-blue-600 dark:text-blue-400 font-bold">{freeReplacementExpiry}</span>
                                         </p>
                                     )}
                                 </div>
                             )}
                         </div>
-                    </section>
+                    </div>
                 )}
 
                 {/* ── Section: Order Items & Charges ── */}
-                <section className="space-y-4">
-                    <SectionHead icon={<FileText className="w-5 h-5 text-[#2E6DFF]" />} title="Order Items & Charges" />
-                    <div className="bg-white dark:bg-[#0D121F] rounded-[32px] border border-gray-200 dark:border-[#25314D] overflow-hidden">
-                        {/* Items list */}
-                        <div className="divide-y divide-gray-100 dark:divide-[#25314D]">
-                            {state.items.map((item) => (
-                                <div key={item.id} className="p-5 flex justify-between items-center">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${item.type === "Product" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"}`}>
-                                            {item.type === "Product" ? <Zap className="w-6 h-6" /> : <Wrench className="w-6 h-6" />}
-                                        </div>
-                                        <div>
-                                            <h3 className="text-[15px] font-black text-gray-900 dark:text-white tracking-tight">{item.name} {item.model}</h3>
-                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest">
-                                                {item.quantity} unit(s) · ₹{item.price.toLocaleString()}
-                                                {item.type === "Product" && gstEnabled && <span className="text-gray-400"> · GST included</span>}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <p className="text-lg font-black text-gray-900 dark:text-white tracking-tighter">₹{(item.price * item.quantity).toLocaleString()}</p>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Charges */}
-                        {!state.isQuotation && (
-                            <div className="p-8 bg-gray-50/50 dark:bg-[#070A13]/50 space-y-6 border-t border-gray-200 dark:border-[#25314D]">
-                                <ChargeRow label="Installation Charges" sublabel="No GST applied">
-                                    <div className="flex items-center bg-white dark:bg-[#070A13] rounded-2xl px-4 py-3 border border-gray-200 dark:border-[#25314D] transition-all focus-within:ring-2 focus-within:ring-blue-500/20">
-                                        <span className="text-gray-900 dark:text-white font-bold mr-1">₹</span>
-                                        <input
-                                            type="number" min="0"
-                                            value={installCharges || ""}
-                                            onChange={(e) => setInstallCharges(Number(e.target.value))}
-                                            className={chargeInput} placeholder="0"
-                                        />
-                                    </div>
-                                </ChargeRow>
-
-                                <ChargeRow label="Delivery Charges" sublabel="No GST applied">
-                                    <div className="flex items-center bg-white dark:bg-[#070A13] rounded-2xl px-4 py-3 border border-gray-200 dark:border-[#25314D] transition-all focus-within:ring-2 focus-within:ring-blue-500/20">
-                                        <Truck className="w-4 h-4 text-gray-600 dark:text-gray-400 mr-2" />
-                                        <input
-                                            type="number" min="0"
-                                            value={deliveryCharges || ""}
-                                            onChange={(e) => setDeliveryCharges(Number(e.target.value))}
-                                            className={chargeInput} placeholder="0"
-                                        />
-                                    </div>
-                                </ChargeRow>
-
-                                {/* Old Battery Exchange selection */}
-                                <div className="space-y-2 pt-1">
-                                    <div className="flex items-center gap-2">
-                                        <RefreshCcw className="w-4 h-4 text-rose-500" />
-                                        <span className="text-[14px] font-black text-rose-500 uppercase tracking-widest">Old Battery Exchange</span>
-                                    </div>
-                                    {loadingExchanges ? (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 py-2">Loading exchange records…</p>
-                                    ) : exchangeRecords.length === 0 ? (
-                                        <div className="bg-white dark:bg-[#070A13] rounded-2xl p-6 border border-dashed border-gray-200 dark:border-[#25314D] text-center transition-all">
-                                            <p className="text-[12px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">No pending exchange records found</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {selectedExchange && (
-                                                <button
-                                                    onClick={() => setSelectedExchange(null)}
-                                                    className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 underline transition-colors"
-                                                >
-                                                    Remove exchange selection
-                                                </button>
-                                            )}
-                                            {exchangeRecords.map(rec => (
-                                                <div
-                                                    key={rec.id}
-                                                    onClick={() => setSelectedExchange(selectedExchange?.id === rec.id ? null : rec)}
-                                                    className={`flex items-center justify-between p-5 rounded-[22px] border-2 cursor-pointer transition-all duration-300 group ${selectedExchange?.id === rec.id
-                                                        ? "border-rose-500 bg-rose-50 dark:bg-rose-950/10"
-                                                        : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] hover:border-rose-400 dark:hover:border-rose-500"
-                                                        }`}
-                                                >
-                                                    <div>
-                                                        <p className="text-[14px] font-black text-gray-900 dark:text-white transition-colors group-hover:text-rose-600">{rec.battery_brand} {rec.battery_model}</p>
-                                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium tracking-tight mt-0.5">{rec.customer_name}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-lg font-black text-rose-500 tracking-tighter">- ₹{Number(rec.valuation_amount).toLocaleString()}</p>
-                                                        {selectedExchange?.id === rec.id && (
-                                                            <p className="text-[10px] text-rose-400 font-black uppercase tracking-widest mt-0.5">Selected</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Summary breakdown */}
-                        <div className="p-8 space-y-3 bg-gray-50/30 dark:bg-[#070A13]/30 border-t border-gray-200 dark:border-[#25314D]">
-                            {serviceSubtotal > 0 && (
-                                <SummaryRow label="Service Charges" value={`₹${serviceSubtotal.toLocaleString()}`} />
-                            )}
-                            <SummaryRow label={`Product Subtotal`} value={`₹${productSubtotal.toLocaleString()}`} />
-                            {gstEnabled && (
-                                <SummaryRow label="Product GST (18%)" value={`₹${productGst.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
-                            )}
-                            {installCharges > 0 && <SummaryRow label="Installation Charges" value={`₹${installCharges.toLocaleString()}`} />}
-                            {deliveryCharges > 0 && <SummaryRow label="Delivery Charges" value={`₹${deliveryCharges.toLocaleString()}`} />}
-                            {exchangeDiscount > 0 && (
-                                <SummaryRow label="Exchange Discount" value={`- ₹${exchangeDiscount.toLocaleString()}`} accent="text-rose-500" />
-                            )}
-                        </div>
+                <div className="bg-white dark:bg-[#0D121F] rounded-2xl border border-gray-200 dark:border-[#25314D] shadow-xs overflow-hidden">
+                    <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#161D30]/80 border-b border-gray-200 dark:border-[#25314D] flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                        <h2 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Order Items & Charges</h2>
                     </div>
-                </section>
 
-                {/* ── Payment Method & Action ── */}
-                <div className="bg-white dark:bg-[#0D121F] rounded-[40px] border border-gray-200 dark:border-[#25314D] p-8 space-y-8 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full -mr-16 -mt-16"></div>
-                    
-                    {/* GST / Non-GST Billing Selection (BEFORE Grand Total) */}
-                    <div className="space-y-3 relative z-10">
-                        <label className="text-[12px] font-black text-gray-600 dark:text-gray-400 uppercase tracking-[0.15em] block ml-1">
+                    <div className="divide-y divide-gray-100 dark:divide-[#25314D]">
+                        {state.items.map((item) => (
+                            <div key={item.id} className="p-3.5 flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${item.type === "Product" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"}`}>
+                                        {item.type === "Product" ? <Zap className="w-4 h-4" /> : <Wrench className="w-4 h-4" />}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white tracking-tight">{item.name} {item.model}</h3>
+                                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
+                                            {item.quantity} unit(s) · ₹{item.price.toLocaleString()}
+                                        </p>
+                                    </div>
+                                </div>
+                                <p className="text-sm sm:text-base font-black text-gray-900 dark:text-white tracking-tight">₹{(item.price * item.quantity).toLocaleString()}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {!state.isQuotation && (
+                        <div className="p-3.5 bg-gray-50/50 dark:bg-[#070A13]/50 space-y-3 border-t border-gray-200 dark:border-[#25314D]">
+                            <ChargeRow label="Installation Charges" sublabel="No GST applied">
+                                <div className="flex items-center bg-white dark:bg-[#070A13] rounded-xl px-3 py-1.5 border border-gray-200 dark:border-[#25314D]">
+                                    <span className="text-gray-900 dark:text-white font-bold text-xs mr-1">₹</span>
+                                    <input
+                                        type="number" min="0"
+                                        value={installCharges || ""}
+                                        onChange={(e) => setInstallCharges(Number(e.target.value))}
+                                        className={chargeInput} placeholder="0"
+                                    />
+                                </div>
+                            </ChargeRow>
+
+                            <ChargeRow label="Delivery Charges" sublabel="No GST applied">
+                                <div className="flex items-center bg-white dark:bg-[#070A13] rounded-xl px-3 py-1.5 border border-gray-200 dark:border-[#25314D]">
+                                    <Truck className="w-3.5 h-3.5 text-gray-500 mr-1.5" />
+                                    <input
+                                        type="number" min="0"
+                                        value={deliveryCharges || ""}
+                                        onChange={(e) => setDeliveryCharges(Number(e.target.value))}
+                                        className={chargeInput} placeholder="0"
+                                    />
+                                </div>
+                            </ChargeRow>
+
+                            {/* Old Battery Exchange */}
+                            <div className="space-y-1.5 pt-1">
+                                <div className="flex items-center gap-1.5">
+                                    <RefreshCcw className="w-3.5 h-3.5 text-rose-500" />
+                                    <span className="text-xs font-bold text-rose-500 uppercase tracking-wider">Old Battery Exchange</span>
+                                </div>
+                                {loadingExchanges ? (
+                                    <p className="text-xs text-gray-400 py-1">Loading exchanges…</p>
+                                ) : exchangeRecords.length === 0 ? (
+                                    <div className="bg-white dark:bg-[#070A13] rounded-xl p-3 border border-dashed border-gray-200 dark:border-[#25314D] text-center">
+                                        <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">No pending exchange records found</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1.5">
+                                        {selectedExchange && (
+                                            <button
+                                                onClick={() => setSelectedExchange(null)}
+                                                className="text-[10px] text-gray-500 hover:text-gray-700 underline"
+                                            >
+                                                Remove exchange selection
+                                            </button>
+                                        )}
+                                        {exchangeRecords.map(rec => (
+                                            <div
+                                                key={rec.id}
+                                                onClick={() => setSelectedExchange(selectedExchange?.id === rec.id ? null : rec)}
+                                                className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${selectedExchange?.id === rec.id
+                                                    ? "border-rose-500 bg-rose-50 dark:bg-rose-950/20"
+                                                    : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13]"
+                                                    }`}
+                                            >
+                                                <div>
+                                                    <p className="text-xs font-bold text-gray-900 dark:text-white">{rec.battery_brand} {rec.battery_model}</p>
+                                                    <p className="text-[10px] text-gray-500 font-medium">{rec.customer_name}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-black text-rose-500">- ₹{Number(rec.valuation_amount).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="p-3.5 space-y-1.5 bg-gray-50/30 dark:bg-[#070A13]/30 border-t border-gray-200 dark:border-[#25314D]">
+                        {serviceSubtotal > 0 && (
+                            <SummaryRow label="Service Charges" value={`₹${serviceSubtotal.toLocaleString()}`} />
+                        )}
+                        <SummaryRow label={`Product Subtotal`} value={`₹${productSubtotal.toLocaleString()}`} />
+                        {gstEnabled && (
+                            <SummaryRow label="Product GST (18%)" value={`₹${productGst.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
+                        )}
+                        {installCharges > 0 && <SummaryRow label="Installation Charges" value={`₹${installCharges.toLocaleString()}`} />}
+                        {deliveryCharges > 0 && <SummaryRow label="Delivery Charges" value={`₹${deliveryCharges.toLocaleString()}`} />}
+                        {exchangeDiscount > 0 && (
+                            <SummaryRow label="Exchange Discount" value={`- ₹${exchangeDiscount.toLocaleString()}`} accent="text-rose-500" />
+                        )}
+                    </div>
+                </div>
+
+                {/* ── Payment Method & Action Card ── */}
+                <div className="bg-white dark:bg-[#0D121F] rounded-2xl border border-gray-200 dark:border-[#25314D] p-3.5 sm:p-4 space-y-3.5 shadow-xs relative overflow-hidden">
+                    <div className="space-y-1.5 relative z-10">
+                        <label className="text-[11px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block ml-0.5">
                             Billing Selection (GST / Non-GST)
                         </label>
-                        <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex flex-row gap-2.5">
                             <label
                                 onClick={() => setGstEnabled(true)}
-                                className={`flex-1 flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${gstEnabled ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 shadow-xs" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300 hover:border-gray-300"}`}
+                                className={`flex-1 flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${gstEnabled ? "border-blue-600 bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300"}`}
                             >
                                 <input
                                     type="radio"
                                     name="gstBillingType"
                                     checked={gstEnabled}
                                     onChange={() => setGstEnabled(true)}
-                                    className="w-4 h-4 text-blue-600 accent-blue-600"
+                                    className="w-3.5 h-3.5 text-blue-600 accent-blue-600"
                                 />
                                 <div>
-                                    <p className="text-xs font-black uppercase tracking-wider">GST Invoice (Tax Invoice)</p>
-                                    <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-0.5">Includes 18% GST tax breakdown</p>
+                                    <p className="text-xs font-bold uppercase tracking-wider">GST Tax Invoice</p>
                                 </div>
                             </label>
 
                             <label
                                 onClick={() => setGstEnabled(false)}
-                                className={`flex-1 flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${!gstEnabled ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 shadow-xs" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300 hover:border-gray-300"}`}
+                                className={`flex-1 flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${!gstEnabled ? "border-blue-600 bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300"}`}
                             >
                                 <input
                                     type="radio"
                                     name="gstBillingType"
                                     checked={!gstEnabled}
                                     onChange={() => setGstEnabled(false)}
-                                    className="w-4 h-4 text-blue-600 accent-blue-600"
+                                    className="w-3.5 h-3.5 text-blue-600 accent-blue-600"
                                 />
                                 <div>
-                                    <p className="text-xs font-black uppercase tracking-wider">Non-GST / Cash Bill</p>
-                                    <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-0.5">Standard receipt without GST</p>
+                                    <p className="text-xs font-bold uppercase tracking-wider">Non-GST / Cash Bill</p>
                                 </div>
                             </label>
                         </div>
                     </div>
 
-                    {/* Grand Total */}
+                    {/* Grand Total Display */}
                     <div className="flex items-end justify-between relative z-10 pt-2 border-t border-gray-100 dark:border-[#25314D]">
-                        <div className="space-y-1">
-                            <p className="text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] mb-1">
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">
                                 Grand Total Payable
-                                {gstEnabled && (
-                                    <span className="text-[9px] normal-case font-bold ml-1 text-gray-400">
-                                        (Incl. ₹{productGst.toLocaleString(undefined, { maximumFractionDigits: 0 })} GST)
-                                    </span>
-                                )}
                             </p>
-                            <p className="text-5xl font-black text-gray-900 dark:text-white tracking-tighter transition-all">
+                            <p className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
                                 ₹{Math.max(0, grandTotal).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                             </p>
                         </div>
-                        <div className="bg-emerald-500/10 dark:bg-emerald-500/20 px-5 py-2 rounded-full border border-emerald-500/20">
-                            <div className="flex items-center gap-2">
+                        <div className="bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                            <div className="flex items-center gap-1.5">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Confirmed</p>
+                                <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Confirmed</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Payment Method Dropdown */}
+                    {/* Payment Method Selection */}
                     {!state.isQuotation && (
                         <>
-                            <div className="space-y-4 relative z-10">
-                                <label className="text-[12px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-[0.15em] block ml-1">Transaction Method</label>
-                                <div className="relative group">
+                            <div className="space-y-1 relative z-10">
+                                <label className="text-[11px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block ml-0.5">Transaction Method</label>
+                                <div className="relative">
                                     <select
                                         value={paymentMethod}
                                         onChange={(e) => {
@@ -844,25 +830,24 @@ export function Checkout() {
                                             setPaymentMethod(val);
                                             if (val === "Split") setCashPart(0);
                                         }}
-                                        className="w-full bg-white dark:bg-[#070A13] border-2 border-gray-200 dark:border-[#25314D] rounded-2xl px-6 h-16 text-gray-900 dark:text-white font-black text-lg focus:ring-4 focus:ring-blue-500/10 focus:border-[#2E6DFF] outline-none appearance-none cursor-pointer transition-all pr-12 hover:bg-gray-50 dark:hover:bg-[#161D30]"
+                                        className="w-full bg-white dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] rounded-xl px-3.5 h-11 text-gray-900 dark:text-white font-bold text-xs sm:text-sm focus:ring-2 focus:ring-blue-500/20 outline-none appearance-none cursor-pointer transition-all pr-10"
                                     >
                                         <option value="Cash">Cash Transaction</option>
                                         <option value="UPI">UPI / QR Payment</option>
                                         <option value="Split">Split Payment (Mix Mode)</option>
                                     </select>
-                                    <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
+                                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Split Payment Inputs */}
                             {paymentMethod === "Split" && (
-                                <div className="grid grid-cols-2 gap-5 animate-in fade-in zoom-in-95 duration-500 relative z-10">
-                                    <div className="space-y-3">
-                                        <label className="text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1">Cash Part</label>
-                                        <div className="relative group">
-                                            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-900 dark:text-white font-bold text-lg">₹</span>
+                                <div className="grid grid-cols-2 gap-3 relative z-10 animate-in fade-in duration-200">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider ml-0.5">Cash Part</label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-900 dark:text-white font-bold text-xs">₹</span>
                                             <input
                                                 type="number"
                                                 value={cashPart || ""}
@@ -870,23 +855,15 @@ export function Checkout() {
                                                     const val = Math.min(grandTotal, Math.max(0, Number(e.target.value)));
                                                     setCashPart(val);
                                                 }}
-                                                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                className="w-full pl-7 pr-3 py-2 rounded-xl border border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                 placeholder="0"
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-3">
-                                        <label className="text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1">UPI Part</label>
-                                        <div className="relative group">
-                                            <div className="w-full bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-100 dark:border-blue-800/50 rounded-2xl flex items-center px-6 h-16 transition-all">
-                                                <span className="text-gray-900 dark:text-white font-bold mr-2 text-lg">₹</span>
-                                                <span className="text-blue-600 dark:text-blue-400 font-black text-2xl tracking-tighter">
-                                                    {(grandTotal - cashPart).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                                                </span>
-                                            </div>
-                                            <div className="absolute -top-1 -right-1 bg-[#2E6DFF] text-white text-[9px] font-black px-2 py-0.5 rounded-full border border-white dark:border-slate-900">
-                                                AUTO
-                                            </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider ml-0.5">UPI Part</label>
+                                        <div className="w-full bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-xl flex items-center px-3 h-9 text-xs font-bold text-blue-600 dark:text-blue-400">
+                                            ₹{(grandTotal - cashPart).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                         </div>
                                     </div>
                                 </div>
@@ -894,25 +871,23 @@ export function Checkout() {
                         </>
                     )}
 
-                    {/* Action button */}
+                    {/* Submit Action Button */}
                     <Button
                         onClick={handleProcessSale}
                         disabled={loading}
-                        className={`w-full text-white h-20 rounded-[28px] text-xl font-black transition-all active:scale-[0.97] flex items-center justify-center gap-4 relative z-10 ${paymentMethod === "Cash"
-                            ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                        className={`w-full text-white h-12 sm:h-13 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2.5 relative z-10 ${paymentMethod === "Cash"
+                            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                             : paymentMethod === "Split"
-                                ? "bg-gradient-to-r from-emerald-500 via-[#2E6DFF] to-blue-600 hover:opacity-95 text-white"
-                                : "bg-[#2E6DFF] hover:bg-blue-600 text-white"
+                                ? "bg-gradient-to-r from-emerald-600 via-blue-600 to-indigo-600 hover:opacity-95 text-white"
+                                : "bg-blue-600 hover:bg-blue-700 text-white"
                             }`}
                     >
                         {loading ? (
-                            <Zap className="w-8 h-8 animate-pulse text-yellow-300 fill-current" />
+                            <Zap className="w-5 h-5 animate-spin" />
                         ) : (
                             <>
-                                <div className="p-2 bg-white/20 rounded-xl">
-                                    {paymentMethod === "Cash" ? <Banknote className="w-6 h-6 text-white" /> : paymentMethod === "Split" ? <RefreshCcw className="w-6 h-6 text-white" /> : <QrCode className="w-6 h-6 text-white" />}
-                                </div>
-                                <span className="uppercase tracking-widest text-white">
+                                {paymentMethod === "Cash" ? <Banknote className="w-4 h-4" /> : paymentMethod === "Split" ? <RefreshCcw className="w-4 h-4" /> : <QrCode className="w-4 h-4" />}
+                                <span>
                                     {state.isQuotation ? "Confirm Quotation Details" : "Generate Bill & Pay"}
                                 </span>
                             </>
@@ -920,29 +895,17 @@ export function Checkout() {
                     </Button>
                 </div>
 
-                {/* Bottom spacer for mobile nav */}
-                <div className="h-20" />
+                <div className="h-10" />
             </main>
         </div>
     );
 }
 
 /** Helpers */
-function SectionHead({ icon, title }: { icon: React.ReactNode; title: string }) {
-    return (
-        <div className="flex items-center gap-3 px-2">
-            <div className="p-2 bg-gray-100 dark:bg-[#161D30] rounded-lg border border-gray-200 dark:border-[#25314D]">
-                {icon}
-            </div>
-            <h2 className="text-[13px] font-black text-gray-900 dark:text-white uppercase tracking-[0.2em]">{title}</h2>
-        </div>
-    );
-}
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
-        <div className="space-y-2.5">
-            <label className="text-[12px] font-black text-gray-600 dark:text-gray-400 uppercase tracking-widest ml-1">{label}</label>
+        <div className="space-y-1">
+            <label className="text-[11px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider ml-0.5">{label}</label>
             {children}
         </div>
     );
@@ -956,8 +919,8 @@ function ChargeRow({
     return (
         <div className="flex items-center justify-between group">
             <div>
-                <span className="text-[15px] font-black text-gray-900 dark:text-white transition-colors group-hover:text-blue-500">{label}</span>
-                {sublabel && <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mt-0.5">{sublabel}</p>}
+                <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{label}</span>
+                {sublabel && <p className="text-[10px] text-gray-400 font-medium mt-0.5">{sublabel}</p>}
             </div>
             {children}
         </div>
@@ -967,8 +930,8 @@ function ChargeRow({
 function SummaryRow({ label, value, accent }: { label: string; value: string; accent?: string }) {
     return (
         <div className="flex justify-between items-center py-0.5">
-            <span className="text-[14px] text-gray-600 dark:text-gray-400 font-bold tracking-tight">{label}</span>
-            <span className={`text-[15px] font-black ${accent ?? "text-gray-900 dark:text-white"} tracking-tight`}>{value}</span>
+            <span className="text-xs text-gray-600 dark:text-gray-400 font-semibold">{label}</span>
+            <span className={`text-xs sm:text-sm font-bold ${accent ?? "text-gray-900 dark:text-white"}`}>{value}</span>
         </div>
     );
 }
