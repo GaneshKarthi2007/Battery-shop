@@ -26,5 +26,3 @@ php artisan key:generate
 php artisan migrate
 php artisan serve
 ```
-
-Original design: https://www.figma.com/design/udZb5AsWdwZIATCfSWOECC/Battery-Shop-Management-UI
