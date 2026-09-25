@@ -39,7 +39,7 @@ const navItems: NavItem[] = [
   { name: "Service Management", path: "/service", icon: Wrench, roles: ["admin"] },
   { name: "Inventory", path: "/inventory", icon: Package, roles: ["admin"] },
   { name: "Warranty Claims", path: "/warranty", icon: ShieldCheck, roles: ["admin"] },
-  { name: "Customer Profiles", path: "/customers", icon: Users, roles: ["admin"] },
+  { name: "User & Customer Profiles", path: "/customers", icon: Users, roles: ["admin"] },
   { name: "Reports & Billing", path: "/reports", icon: FileText, roles: ["admin"] },
   { name: "Notification Control", path: "/notification-management", icon: Sliders },
   { name: "Settings", path: "/settings", icon: SettingsIcon },
@@ -48,7 +48,7 @@ const navItems: NavItem[] = [
 const navGroups = [
   { title: "Overview", items: ["Dashboard"], roles: ["admin"] },
   { title: "Tasks", items: ["My Jobs", "Available Tasks", "Job History"], roles: ["staff"] },
-  { title: "Management", items: ["Battery Sales", "Battery Exchange", "Service Management", "Inventory", "Warranty Claims", "Customer Profiles", "Reports & Billing"], roles: ["admin"] },
+  { title: "Management", items: ["Battery Sales", "Battery Exchange", "Service Management", "Inventory", "Warranty Claims", "User & Customer Profiles", "Reports & Billing"], roles: ["admin"] },
   { title: "System", items: ["Notification Control", "Settings"] },
 ];
 
