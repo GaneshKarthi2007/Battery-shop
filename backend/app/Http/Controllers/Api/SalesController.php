@@ -70,17 +70,13 @@ class SalesController extends Controller
 
             $processedServices = [];
             foreach ($validated['items'] as $itemData) {
-                // Stock deduction for products
+                // Stock deduction for products (allows billing even if stock is 0 or less)
                 if (!$isQuotation && !empty($itemData['product_id'])) {
                     $product = Product::lockForUpdate()->find($itemData['product_id']);
-                    
-                    if ($product->stock < $itemData['quantity']) {
-                        throw new \Exception("Insufficient stock for product: {$product->brand} {$product->model}");
-                    }
 
                     $product->decrement('stock', $itemData['quantity']);
                     $product->update([
-                        'stock_status' => $product->stock == 0 ? 'out_of_stock' : ($product->stock <= $product->min_stock ? 'low_stock' : 'in_stock')
+                        'stock_status' => $product->stock <= 0 ? 'out_of_stock' : ($product->stock <= $product->min_stock ? 'low_stock' : 'in_stock')
                     ]);
 
                     // Handle serial numbers
