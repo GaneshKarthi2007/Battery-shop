@@ -98,6 +98,46 @@ describe("UserManagement Component", () => {
         });
     });
 
+    it("creates a new service manager user successfully", async () => {
+        (apiClient.post as any).mockResolvedValue({
+            id: 5,
+            name: "Sam Manager",
+            email: "sam@manager.com",
+            role: "service_manager",
+        });
+
+        render(
+            <BrowserRouter>
+                <UserManagement />
+            </BrowserRouter>
+        );
+
+        const nameInput = screen.getByLabelText("Full Name");
+        const emailInput = screen.getByLabelText("Email Address");
+        const passwordInput = screen.getByLabelText("Password");
+        const roleSelect = screen.getByLabelText("System Role");
+        const submitBtn = screen.getByRole("button", { name: /create new user/i });
+
+        fireEvent.change(nameInput, { target: { value: "Sam Manager" } });
+        fireEvent.change(emailInput, { target: { value: "sam@manager.com" } });
+        fireEvent.change(passwordInput, { target: { value: "secret123" } });
+        fireEvent.change(roleSelect, { target: { value: "service_manager" } });
+
+        await act(async () => {
+            fireEvent.click(submitBtn);
+        });
+
+        await waitFor(() => {
+            expect(apiClient.post).toHaveBeenCalledWith("/users", {
+                name: "Sam Manager",
+                email: "sam@manager.com",
+                password: "secret123",
+                role: "service_manager",
+            });
+            expect(screen.getByText("User created successfully!")).toBeInTheDocument();
+        });
+    });
+
     it("deletes user when delete button is clicked and confirmed", async () => {
         vi.spyOn(window, "confirm").mockReturnValue(true);
         (apiClient.delete as any).mockResolvedValue({ message: "User deleted successfully." });

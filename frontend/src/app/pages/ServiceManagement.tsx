@@ -129,7 +129,7 @@ export function ServiceManagement() {
           <p className="text-xs text-gray-500 dark:text-gray-400">Track and manage battery service requests</p>
         </div>
         <div>
-          {user?.role === "admin" && (
+          {(user?.role === "admin" || user?.role === "manager" || user?.role === "staff") && (
             <button
               onClick={() => navigate('/services/new')}
               aria-label="New Service Request"

@@ -95,6 +95,32 @@ class UserControllerTest extends TestCase
             ]);
     }
 
+    public function test_developer_can_create_user_with_manager_role(): void
+    {
+        $developer = User::factory()->create(['role' => 'developer']);
+        Sanctum::actingAs($developer);
+
+        $payload = [
+            'name' => 'New Manager User',
+            'email' => 'newmanager@example.com',
+            'password' => 'secret123',
+            'role' => 'manager',
+        ];
+
+        $response = $this->postJson('/api/users', $payload);
+
+        $response->assertStatus(201)
+            ->assertJsonFragment([
+                'name' => 'New Manager User',
+                'role' => 'manager',
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'newmanager@example.com',
+            'role' => 'manager',
+        ]);
+    }
+
     public function test_user_creation_validates_required_fields_and_unique_email(): void
     {
         $developer = User::factory()->create(['role' => 'developer', 'email' => 'existing@example.com']);

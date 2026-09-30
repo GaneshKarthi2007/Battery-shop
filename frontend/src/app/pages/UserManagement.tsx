@@ -151,6 +151,8 @@ export function UserManagement() {
                                 className="w-full px-4 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
                             >
                                 <option value="staff">Staff - Standard Access</option>
+                                <option value="service_manager">Service Manager - Contact Customer & Operations</option>
+                                <option value="manager">Manager - General Management</option>
                                 <option value="admin">Admin - Full Access</option>
                                 <option value="developer">Developer - System Config & Dev Access</option>
                             </select>
@@ -206,6 +208,7 @@ export function UserManagement() {
                                             <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase flex items-center gap-1 ${
                                                 u.role === 'admin' ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' :
                                                 u.role === 'developer' ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' :
+                                                (u.role === 'manager' || u.role === 'service_manager') ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' :
                                                 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
                                             }`}>
                                                 {getRoleIcon(u.role)}

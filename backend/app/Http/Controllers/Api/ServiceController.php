@@ -211,7 +211,7 @@ class ServiceController extends Controller
         }
 
         // Rule 2: Staff restrictions on completed/converted jobs and status transitions
-        if ($user && $user->role !== 'admin') {
+        if ($user && !in_array($user->role, ['admin', 'manager', 'service_manager'])) {
             if (in_array($service->status, ['Completed', 'Converted to Order'])) {
                 return response()->json(['message' => 'Completed jobs cannot be modified by staff.'], 403);
             }
@@ -248,6 +248,7 @@ class ServiceController extends Controller
             'voice_note' => 'nullable|string', // Could be a file path from frontend
             'payment_status' => 'sometimes|string',
             'sub_status' => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         if ((isset($validated['status']) && $validated['status'] !== $service->status) || 
@@ -259,17 +260,18 @@ class ServiceController extends Controller
             $validated['resolved_at'] = now();
         }
 
-        if (isset($validated['sub_status']) && $validated['sub_status'] !== $service->sub_status) {
+        if (!empty($validated['notes']) || (isset($validated['sub_status']) && $validated['sub_status'] !== $service->sub_status)) {
             ServiceProcessFlow::create([
                 'service_id' => $service->id,
-                'sub_status' => $validated['sub_status'],
+                'sub_status' => $validated['sub_status'] ?? 'Customer Contact & Detail Update',
                 'staff_id' => $user?->id,
-                'notes' => $request->input('notes') // Optional notes if provided
+                'notes' => $validated['notes'] ?? ($validated['sub_status'] ?? 'Updated service details')
             ]);
         }
 
         $oldAssignedTo = $service->assigned_to;
-        $service->update($validated);
+        $updateData = \Illuminate\Support\Arr::except($validated, ['notes']);
+        $service->update($updateData);
 
         if ($service->assigned_to && $service->assigned_to != $oldAssignedTo) {
             $service->update(['assigned_at' => now(), 'status' => 'In Progress']);
@@ -537,8 +539,8 @@ class ServiceController extends Controller
     {
         $user = auth()->user();
         
-        // Only the staff who created it or an admin can delete it
-        if ($user->role !== 'admin' && $flow->staff_id !== $user->id) {
+        // Only the staff who created it, manager, service manager or an admin can delete it
+        if (!in_array($user->role, ['admin', 'manager', 'service_manager']) && $flow->staff_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
