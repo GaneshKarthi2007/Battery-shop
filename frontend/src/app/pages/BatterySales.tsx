@@ -136,15 +136,13 @@ export function BatterySales() {
     const existingItem = billItems.find((bi) => bi.id === battery.id);
 
     if (existingItem) {
-      if (existingItem.quantity < battery.stock) {
-        setBillItems(
-          billItems.map((bi) =>
-            bi.id === battery.id
-              ? { ...bi, quantity: bi.quantity + 1 }
-              : bi
-          )
-        );
-      }
+      setBillItems(
+        billItems.map((bi) =>
+          bi.id === battery.id
+            ? { ...bi, quantity: bi.quantity + 1 }
+            : bi
+        )
+      );
     } else {
       const newItem: BillItem = {
         id: battery.id,
@@ -167,10 +165,6 @@ export function BatterySales() {
           if (item.id === itemId) {
             const newQuantity = item.quantity + change;
             if (newQuantity <= 0) return null;
-
-            const battery = item.originalData as Battery;
-            if (newQuantity > battery.stock) return item;
-
             return { ...item, quantity: newQuantity };
           }
           return item;
@@ -334,8 +328,8 @@ export function BatterySales() {
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-gray-600">Stock:</span>
-                                <span className={`font-medium ${battery.stock < 10 ? "text-orange-600" : "text-green-600"}`}>
-                                  {battery.stock} units
+                                <span className={`font-medium ${battery.stock <= 0 ? "text-red-600" : battery.stock < 10 ? "text-orange-600" : "text-green-600"}`}>
+                                  {battery.stock} units {battery.stock <= 0 ? "(Zero Stock)" : ""}
                                 </span>
                               </div>
                             </div>
@@ -347,7 +341,7 @@ export function BatterySales() {
                               {isAdmin && (
                                 <Button
                                   onClick={() => addToBill(battery)}
-                                  disabled={battery.stock === 0 || isAdded}
+                                  disabled={isAdded}
                                   size="sm"
                                   className={`flex items-center gap-2 transition-all ${isAdded ? "bg-green-600 hover:bg-green-600 cursor-default opacity-80" : ""}`}
                                 >

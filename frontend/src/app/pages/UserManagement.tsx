@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Plus, Loader2, Lock, ArrowLeft, Trash2, ShieldCheck, Code, UserCheck } from "lucide-react";
+import { Users, Plus, Loader2, Lock, ArrowLeft, Trash2, ShieldCheck, Code, UserCheck, Briefcase } from "lucide-react";
 import { apiClient } from "../api/client";
 import { useNavigate } from "react-router";
 
@@ -76,6 +76,8 @@ export function UserManagement() {
                 return <Code className="w-3.5 h-3.5" />;
             case 'admin':
                 return <ShieldCheck className="w-3.5 h-3.5" />;
+            case 'manager':
+                return <Briefcase className="w-3.5 h-3.5" />;
             default:
                 return <UserCheck className="w-3.5 h-3.5" />;
         }
@@ -93,7 +95,7 @@ export function UserManagement() {
                 </button>
                 <div>
                     <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase">User Management</h1>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Create or manage system users & developer accounts</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Create & manage system accounts (Manager, Staff, Admin, Developer)</p>
                 </div>
             </div>
 
@@ -114,7 +116,7 @@ export function UserManagement() {
                                 value={newUser.name}
                                 onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                                 className="w-full px-4 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                                placeholder="E.g., Jane Developer"
+                                placeholder="E.g., Manager Name"
                             />
                         </div>
                         <div>
@@ -125,7 +127,7 @@ export function UserManagement() {
                                 value={newUser.email}
                                 onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                                 className="w-full px-4 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                                placeholder="E.g., jane@developer.com"
+                                placeholder="E.g., manager@battery.com"
                             />
                         </div>
                         <div>
@@ -151,6 +153,7 @@ export function UserManagement() {
                                 className="w-full px-4 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
                             >
                                 <option value="staff">Staff - Standard Access</option>
+                                <option value="manager">Manager - Operations & Store Oversight Access</option>
                                 <option value="admin">Admin - Full Access</option>
                                 <option value="developer">Developer - System Config & Dev Access</option>
                             </select>
@@ -205,6 +208,7 @@ export function UserManagement() {
                                         <div className="flex items-center gap-2">
                                             <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase flex items-center gap-1 ${
                                                 u.role === 'admin' ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' :
+                                                u.role === 'manager' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' :
                                                 u.role === 'developer' ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' :
                                                 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
                                             }`}>

@@ -273,5 +273,25 @@ class ServiceTest extends TestCase
         $deleteResponse = $this->deleteJson("/api/gps-photos/{$photo->id}");
         $deleteResponse->assertStatus(204);
     }
+
+    public function test_create_service_with_only_contact_number()
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        Sanctum::actingAs($staff);
+
+        $response = $this->postJson('/api/services', [
+            'contact_number' => '9876543210'
+        ]);
+
+        $response->assertStatus(201);
+        $response->assertJsonFragment([
+            'contact_number' => '9876543210',
+            'customer_name' => 'Customer',
+        ]);
+        $this->assertDatabaseHas('services', [
+            'contact_number' => '9876543210',
+            'customer_name' => 'Customer',
+        ]);
+    }
 }
 

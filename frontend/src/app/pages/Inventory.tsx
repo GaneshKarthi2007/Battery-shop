@@ -152,7 +152,7 @@ export function Inventory() {
   };
 
   const getStockStatus = (stock: number, min_stock: number) => {
-    if (stock === 0) return { label: "Out of Stock", color: "text-red-600 bg-red-100 dark:bg-red-900/30" };
+    if (stock <= 0) return { label: stock < 0 ? `Negative (${stock})` : "Out of Stock", color: "text-red-600 bg-red-100 dark:bg-red-900/30" };
     if (stock <= min_stock) return { label: "Low Stock", color: "text-orange-600 bg-orange-100 dark:bg-orange-900/30" };
     return { label: "In Stock", color: "text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30" };
   };

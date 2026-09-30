@@ -70,14 +70,13 @@ class ServiceController extends Controller
         ]);
 
         $product = \App\Models\Product::findOrFail($validated['product_id']);
-        
-        if ($product->stock < $validated['quantity']) {
-            return response()->json(['message' => 'Insufficient stock for this product.'], 400);
-        }
 
         return \Illuminate\Support\Facades\DB::transaction(function () use ($service, $product, $validated, $request) {
-            // 1. Deduct stock
+            // 1. Deduct stock (allows billing even if stock is 0 or less)
             $product->decrement('stock', $validated['quantity']);
+            $product->update([
+                'stock_status' => $product->stock <= 0 ? 'out_of_stock' : ($product->stock <= $product->min_stock ? 'low_stock' : 'in_stock')
+            ]);
 
             // 2. Update service with new battery specs implicitly
             $service->update([
@@ -143,9 +142,9 @@ class ServiceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'customer_name' => 'required|string',
+            'customer_name' => 'nullable|string',
             'contact_number' => 'required|string',
-            'vehicle_details' => 'sometimes|string',
+            'vehicle_details' => 'nullable|string',
             'status' => 'sometimes|string',
             'service_charge' => 'sometimes|numeric',
             'battery_brand' => 'nullable|string',
@@ -158,6 +157,13 @@ class ServiceController extends Controller
             'assigned_to' => 'nullable|exists:users,id',
             'sub_status' => 'nullable|string',
         ]);
+
+        if (empty($validated['customer_name'])) {
+            $validated['customer_name'] = 'Customer';
+        }
+        if (empty($validated['vehicle_details'])) {
+            $validated['vehicle_details'] = 'N/A';
+        }
 
         if (isset($validated['assigned_to']) && $validated['assigned_to']) {
             $validated['assigned_at'] = now();
@@ -205,7 +211,7 @@ class ServiceController extends Controller
         }
 
         // Rule 2: Staff restrictions on completed/converted jobs and status transitions
-        if ($user && $user->role !== 'admin') {
+        if ($user && !in_array($user->role, ['admin', 'manager'])) {
             if (in_array($service->status, ['Completed', 'Converted to Order'])) {
                 return response()->json(['message' => 'Completed jobs cannot be modified by staff.'], 403);
             }
@@ -496,14 +502,13 @@ class ServiceController extends Controller
         ]);
 
         $product = \App\Models\Product::findOrFail($validated['product_id']);
-        
-        if ($product->stock < $validated['quantity']) {
-            return response()->json(['message' => 'Insufficient stock for this product.'], 400);
-        }
 
         return \Illuminate\Support\Facades\DB::transaction(function () use ($service, $product, $validated, $request) {
-            // Deduct stock
+            // Deduct stock (allows billing even if stock is 0 or less)
             $product->decrement('stock', $validated['quantity']);
+            $product->update([
+                'stock_status' => $product->stock <= 0 ? 'out_of_stock' : ($product->stock <= $product->min_stock ? 'low_stock' : 'in_stock')
+            ]);
 
             // Update service with the new battery specs implicitly
             $service->update([

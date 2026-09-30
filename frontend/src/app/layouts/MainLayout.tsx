@@ -30,25 +30,26 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: "Dashboard", path: "/", icon: LayoutDashboard, roles: ["admin"] },
+  { name: "Dashboard", path: "/", icon: LayoutDashboard, roles: ["admin", "manager"] },
   { name: "My Jobs", path: "/assigned-jobs", icon: Wrench, roles: ["staff"] },
   { name: "Available Tasks", path: "/available-jobs", icon: ClipboardList, roles: ["staff"] },
   { name: "Job History", path: "/completed-jobs", icon: History, roles: ["staff"] },
-  { name: "Battery Sales", path: "/sales", icon: ShoppingCart, roles: ["admin"] },
-  { name: "Battery Exchange", path: "/exchange", icon: RefreshCcw, roles: ["admin"] },
-  { name: "Service Management", path: "/service", icon: Wrench, roles: ["admin"] },
-  { name: "Inventory", path: "/inventory", icon: Package, roles: ["admin"] },
-  { name: "Warranty Claims", path: "/warranty", icon: ShieldCheck, roles: ["admin"] },
-  { name: "User & Customer Profiles", path: "/customers", icon: Users, roles: ["admin"] },
+  { name: "Battery Sales", path: "/sales", icon: ShoppingCart, roles: ["admin", "manager"] },
+  { name: "Battery Exchange", path: "/exchange", icon: RefreshCcw, roles: ["admin", "manager"] },
+  { name: "Service Management", path: "/service", icon: Wrench, roles: ["admin", "manager"] },
+  { name: "Inventory", path: "/inventory", icon: Package, roles: ["admin", "manager"] },
+  { name: "Warranty Claims", path: "/warranty", icon: ShieldCheck, roles: ["admin", "manager"] },
+  { name: "Customer Management", path: "/customers", icon: Users, roles: ["admin", "manager"] },
+  { name: "User Management", path: "/users", icon: Users, roles: ["admin", "developer"] },
   { name: "Reports & Billing", path: "/reports", icon: FileText, roles: ["admin"] },
-  { name: "Notification Control", path: "/notification-management", icon: Sliders },
+  { name: "Notification Control", path: "/notification-management", icon: Sliders, roles: ["admin", "developer"] },
   { name: "Settings", path: "/settings", icon: SettingsIcon },
 ];
 
 const navGroups = [
-  { title: "Overview", items: ["Dashboard"], roles: ["admin"] },
+  { title: "Overview", items: ["Dashboard"], roles: ["admin", "manager"] },
   { title: "Tasks", items: ["My Jobs", "Available Tasks", "Job History"], roles: ["staff"] },
-  { title: "Management", items: ["Battery Sales", "Battery Exchange", "Service Management", "Inventory", "Warranty Claims", "User & Customer Profiles", "Reports & Billing"], roles: ["admin"] },
+  { title: "Management", items: ["Battery Sales", "Battery Exchange", "Service Management", "Inventory", "Warranty Claims", "Customer Management", "User Management", "Reports & Billing"], roles: ["admin", "manager", "developer"] },
   { title: "System", items: ["Notification Control", "Settings"] },
 ];
 
@@ -80,7 +81,7 @@ export function MainLayout() {
   const touchEndX = useRef<number | null>(null);
   const touchEndY = useRef<number | null>(null);
 
-  const swipePaths = user?.role === "admin"
+  const swipePaths = (user?.role === "admin" || user?.role === "manager")
     ? ["/", "/sales", "/service"]
     : ["/assigned-jobs", "/available-jobs", "/completed-jobs"];
 
@@ -178,7 +179,7 @@ export function MainLayout() {
                       </h3>
                       <div className="space-y-1">
                         {navItems
-                          .filter(item => group.items.includes(item.name))
+                          .filter(item => group.items.includes(item.name) && (!item.roles || item.roles.includes(user?.role || "")))
                           .map((item) => {
                             const Icon = item.icon;
                             const isActive = location.pathname === item.path;
