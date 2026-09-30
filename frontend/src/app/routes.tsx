@@ -67,7 +67,7 @@ export const router = createBrowserRouter([
           {
             path: "sales",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager", "service_manager"]}>
                 <BatterySales />
               </ProtectedRoute>
             ),
@@ -75,7 +75,7 @@ export const router = createBrowserRouter([
           {
             path: "exchange",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager", "service_manager"]}>
                 <BatteryExchange />
               </ProtectedRoute>
             ),
@@ -83,7 +83,7 @@ export const router = createBrowserRouter([
           {
             path: "service",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager", "service_manager"]}>
                 <ServiceManagement />
               </ProtectedRoute>
             ),
@@ -91,7 +91,7 @@ export const router = createBrowserRouter([
           {
             path: "services/new",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager", "service_manager", "staff"]}>
                 <NewService />
               </ProtectedRoute>
             ),
@@ -100,7 +100,7 @@ export const router = createBrowserRouter([
           {
             path: "assigned-jobs",
             element: (
-              <ProtectedRoute allowedRoles={["staff"]}>
+              <ProtectedRoute allowedRoles={["staff", "manager", "service_manager"]}>
                 <AssignedJobs />
               </ProtectedRoute>
             ),
@@ -108,7 +108,7 @@ export const router = createBrowserRouter([
           {
             path: "available-jobs",
             element: (
-              <ProtectedRoute allowedRoles={["staff"]}>
+              <ProtectedRoute allowedRoles={["staff", "manager", "service_manager"]}>
                 <AvailableJobs />
               </ProtectedRoute>
             ),
@@ -116,7 +116,7 @@ export const router = createBrowserRouter([
           {
             path: "completed-jobs",
             element: (
-              <ProtectedRoute allowedRoles={["staff"]}>
+              <ProtectedRoute allowedRoles={["staff", "manager", "service_manager"]}>
                 <CompletedJobs />
               </ProtectedRoute>
             ),
@@ -124,7 +124,7 @@ export const router = createBrowserRouter([
           {
             path: "inventory",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager", "service_manager"]}>
                 <Inventory />
               </ProtectedRoute>
             ),
@@ -132,7 +132,7 @@ export const router = createBrowserRouter([
           {
             path: "reports",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager", "service_manager"]}>
                 <Reports />
               </ProtectedRoute>
             ),
@@ -140,7 +140,7 @@ export const router = createBrowserRouter([
           {
             path: "warranty",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager", "service_manager"]}>
                 <WarrantyManagement />
               </ProtectedRoute>
             ),
@@ -148,7 +148,7 @@ export const router = createBrowserRouter([
           {
             path: "customers",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager", "service_manager"]}>
                 <CustomerHistory />
               </ProtectedRoute>
             ),

@@ -103,13 +103,19 @@ interface Staff {
 
 
 const SUB_STATUS_OPTIONS = [
-    "Task Picked Up / Commenced",
-    "Battery Testing",
-    "Charging In Progress",
-    "Acid/Water Refilling",
-    "Plate Inspection",
-    "Load Testing",
-    "Finished - Waiting for Disposal"
+    "Job Card Created",
+    "Customer Contacted & Details Updated",
+    "Customer Ask to Wait",
+    "Appoiment Not Given",
+    "Battery Warrenty Checking",
+    "Pickup for Testing",
+    "Water Levels - Refilling",
+    "Parts Replacement",
+    "New Parts - Ordered",
+    "Normal Checkup Only",
+    "Replacement",
+    "New Order",
+    "Others",
 ];
 
 export function ServiceDetails() {
@@ -118,6 +124,8 @@ export function ServiceDetails() {
     const { user } = useAuth();
     const { addNotification } = useNotifications();
     const isAdmin = user?.role === "admin";
+    const isManager = user?.role === "manager" || user?.role === "service_manager";
+    const canManage = isAdmin || isManager;
 
     const [service, setService] = useState<ServiceRequest | null>(null);
     const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -134,10 +142,79 @@ export function ServiceDetails() {
     const [staffNote, setStaffNote] = useState("");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+    // Manager / Staff Customer Contact & Edit State
+    const [showContactModal, setShowContactModal] = useState(false);
+    const [customerEditData, setCustomerEditData] = useState({
+        customer_name: "",
+        contact_number: "",
+        vehicle_details: "",
+        address: "",
+        complaint_type: "",
+        complaint_details: "",
+        battery_brand: "",
+        battery_model: "",
+        battery_capacity: "",
+        service_charge: "",
+        sub_status: "",
+        notes: ""
+    });
+
     useEffect(() => {
         fetchService();
-        if (isAdmin) fetchStaff();
-    }, [id, isAdmin]);
+        if (canManage) fetchStaff();
+    }, [id, canManage]);
+
+    const openContactModal = () => {
+        if (!service) return;
+        setCustomerEditData({
+            customer_name: service.customer_name === 'Customer' ? '' : service.customer_name,
+            contact_number: service.contact_number || '',
+            vehicle_details: service.vehicle_details === 'N/A' ? '' : service.vehicle_details,
+            address: service.address || '',
+            complaint_type: service.complaint_type || '',
+            complaint_details: service.complaint_details || '',
+            battery_brand: service.battery_brand || '',
+            battery_model: service.battery_model || '',
+            battery_capacity: service.battery_capacity || '',
+            service_charge: service.service_charge ? service.service_charge.toString() : '0',
+            sub_status: service.sub_status || 'Customer Contacted & Details Updated',
+            notes: 'Contacted customer and updated service requirements.'
+        });
+        setShowContactModal(true);
+    };
+
+    const handleSaveCustomerDetails = async () => {
+        if (!id) return;
+        setUpdating(true);
+        try {
+            const payload: any = {
+                customer_name: customerEditData.customer_name || 'Customer',
+                contact_number: customerEditData.contact_number,
+                vehicle_details: customerEditData.vehicle_details || 'N/A',
+                address: customerEditData.address || null,
+                complaint_type: customerEditData.complaint_type || null,
+                complaint_details: customerEditData.complaint_details || null,
+                battery_brand: customerEditData.battery_brand || null,
+                battery_model: customerEditData.battery_model || null,
+                battery_capacity: customerEditData.battery_capacity || null,
+                sub_status: customerEditData.sub_status || 'Customer Contacted & Details Updated',
+                notes: customerEditData.notes || 'Updated details after contacting customer'
+            };
+            if (customerEditData.service_charge !== '') {
+                payload.service_charge = Number(customerEditData.service_charge);
+            }
+
+            const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, payload);
+            setService(updated);
+            setTempCharge(updated.service_charge ? updated.service_charge.toString() : "0");
+            setShowContactModal(false);
+            addNotification({ type: "SERVICE", title: "Details Updated", message: `Service #${id} details updated after customer contact.`, role: "staff" });
+        } catch (err: any) {
+            alert(err.message || "Failed to update service details");
+        } finally {
+            setUpdating(false);
+        }
+    };
 
     const fetchStaff = async () => {
         try {
@@ -463,9 +540,18 @@ export function ServiceDetails() {
 
                     {/* Customer & Vehicle Info */}
                     <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-                            <User className="w-4 h-4 text-blue-600" />
-                            <h2 className="text-sm font-bold text-gray-900">Customer & Vehicle Information</h2>
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <User className="w-4 h-4 text-blue-600" />
+                                <h2 className="text-sm font-bold text-gray-900">Customer & Vehicle Information</h2>
+                            </div>
+                            <button
+                                onClick={openContactModal}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-bold transition-all border border-blue-200"
+                            >
+                                <Phone className="w-3.5 h-3.5" />
+                                <span>Contact & Update Details</span>
+                            </button>
                         </div>
                         <div className="p-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -960,12 +1046,12 @@ export function ServiceDetails() {
                         </div>
                     </div>
 
-                    {/* Assign Staff (Admin) */}
-                    {isAdmin && (
+                    {/* Assign Staff (Admin / Manager) */}
+                    {(isAdmin || isManager) && (
                         <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden">
                             <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
                                 <User className="w-4 h-4 text-blue-600" />
-                                <h2 className="text-sm font-bold text-gray-900">Assign Staff</h2>
+                                <h2 className="text-sm font-bold text-gray-900">Assign Staff / Manager</h2>
                             </div>
                             <div className="p-4 space-y-2">
                                 {service.assigned_to ? (
@@ -1094,6 +1180,155 @@ export function ServiceDetails() {
                     </div>
                 </div>
             </div>
+
+            {/* Customer Details Contact & Gathering Modal */}
+            {showContactModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white dark:bg-[#1B263B] w-full max-w-xl rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-5 border-b border-gray-100 dark:border-[#2E3B55] bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-[#15161E] dark:to-[#0D1B2A] flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Phone className="w-5 h-5 text-blue-600" />
+                                <h3 className="font-bold text-gray-900 dark:text-white text-base">Contact & Update Service Details</h3>
+                            </div>
+                            <button onClick={() => setShowContactModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white text-lg font-bold">✕</button>
+                        </div>
+
+                        <div className="p-5 overflow-y-auto space-y-4">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Contact the customer to gather service details. Service manager or staff (if manager on leave) can update these details anytime.
+                            </p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Customer Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Customer Name"
+                                        value={customerEditData.customer_name}
+                                        onChange={(e) => setCustomerEditData({ ...customerEditData, customer_name: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Contact Mobile (Mandatory)</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                                        value={customerEditData.contact_number}
+                                        onChange={(e) => setCustomerEditData({ ...customerEditData, contact_number: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Vehicle Details</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g. Swift TN-38-AB-1234"
+                                        value={customerEditData.vehicle_details}
+                                        onChange={(e) => setCustomerEditData({ ...customerEditData, vehicle_details: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Estimated Charge (₹)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full px-3 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                                        placeholder="e.g. 250"
+                                        value={customerEditData.service_charge}
+                                        onChange={(e) => setCustomerEditData({ ...customerEditData, service_charge: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Address / Pickup Location</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Customer Address"
+                                    value={customerEditData.address}
+                                    onChange={(e) => setCustomerEditData({ ...customerEditData, address: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">Battery Brand</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-lg text-xs"
+                                        placeholder="Exide / Amaron"
+                                        value={customerEditData.battery_brand}
+                                        onChange={(e) => setCustomerEditData({ ...customerEditData, battery_brand: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">Model</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-lg text-xs"
+                                        placeholder="Matrix / Flo"
+                                        value={customerEditData.battery_model}
+                                        onChange={(e) => setCustomerEditData({ ...customerEditData, battery_model: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">Capacity</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-lg text-xs"
+                                        placeholder="35Ah / 65Ah"
+                                        value={customerEditData.battery_capacity}
+                                        onChange={(e) => setCustomerEditData({ ...customerEditData, battery_capacity: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Service Sub-Status</label>
+                                <select
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={customerEditData.sub_status}
+                                    onChange={(e) => setCustomerEditData({ ...customerEditData, sub_status: e.target.value })}
+                                >
+                                    {SUB_STATUS_OPTIONS.map(opt => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Issue Description / Details</label>
+                                <textarea
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 min-h-[70px]"
+                                    placeholder="Details gathered during phone call..."
+                                    value={customerEditData.complaint_details}
+                                    onChange={(e) => setCustomerEditData({ ...customerEditData, complaint_details: e.target.value })}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Contact Note / Log</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-[#2E3B55] dark:bg-[#0D1B2A] dark:text-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="e.g. Spoke to customer, battery needs charging"
+                                    value={customerEditData.notes}
+                                    onChange={(e) => setCustomerEditData({ ...customerEditData, notes: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-gray-100 dark:border-[#2E3B55] flex justify-end gap-2 bg-gray-50 dark:bg-[#0D1B2A]">
+                            <Button variant="outline" onClick={() => setShowContactModal(false)}>Cancel</Button>
+                            <Button onClick={handleSaveCustomerDetails} className="bg-blue-600 hover:bg-blue-700 text-white">Save Updated Details</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <AudioRecorder
                 isOpen={showAudioRecorder}

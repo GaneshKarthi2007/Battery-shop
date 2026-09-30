@@ -30,25 +30,25 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: "Dashboard", path: "/", icon: LayoutDashboard, roles: ["admin"] },
-  { name: "My Jobs", path: "/assigned-jobs", icon: Wrench, roles: ["staff"] },
-  { name: "Available Tasks", path: "/available-jobs", icon: ClipboardList, roles: ["staff"] },
-  { name: "Job History", path: "/completed-jobs", icon: History, roles: ["staff"] },
-  { name: "Battery Sales", path: "/sales", icon: ShoppingCart, roles: ["admin"] },
-  { name: "Battery Exchange", path: "/exchange", icon: RefreshCcw, roles: ["admin"] },
-  { name: "Service Management", path: "/service", icon: Wrench, roles: ["admin"] },
-  { name: "Inventory", path: "/inventory", icon: Package, roles: ["admin"] },
-  { name: "Warranty Claims", path: "/warranty", icon: ShieldCheck, roles: ["admin"] },
-  { name: "User & Customer Profiles", path: "/customers", icon: Users, roles: ["admin"] },
-  { name: "Reports & Billing", path: "/reports", icon: FileText, roles: ["admin"] },
+  { name: "Dashboard", path: "/", icon: LayoutDashboard, roles: ["admin", "manager", "service_manager"] },
+  { name: "My Jobs", path: "/assigned-jobs", icon: Wrench, roles: ["staff", "manager", "service_manager"] },
+  { name: "Available Tasks", path: "/available-jobs", icon: ClipboardList, roles: ["staff", "manager", "service_manager"] },
+  { name: "Job History", path: "/completed-jobs", icon: History, roles: ["staff", "manager", "service_manager"] },
+  { name: "Battery Sales", path: "/sales", icon: ShoppingCart, roles: ["admin", "manager", "service_manager"] },
+  { name: "Battery Exchange", path: "/exchange", icon: RefreshCcw, roles: ["admin", "manager", "service_manager"] },
+  { name: "Service Management", path: "/service", icon: Wrench, roles: ["admin", "manager", "service_manager"] },
+  { name: "Inventory", path: "/inventory", icon: Package, roles: ["admin", "manager", "service_manager"] },
+  { name: "Warranty Claims", path: "/warranty", icon: ShieldCheck, roles: ["admin", "manager", "service_manager"] },
+  { name: "User & Customer Profiles", path: "/customers", icon: Users, roles: ["admin", "manager", "service_manager"] },
+  { name: "Reports & Billing", path: "/reports", icon: FileText, roles: ["admin", "manager", "service_manager"] },
   { name: "Notification Control", path: "/notification-management", icon: Sliders },
   { name: "Settings", path: "/settings", icon: SettingsIcon },
 ];
 
 const navGroups = [
-  { title: "Overview", items: ["Dashboard"], roles: ["admin"] },
-  { title: "Tasks", items: ["My Jobs", "Available Tasks", "Job History"], roles: ["staff"] },
-  { title: "Management", items: ["Battery Sales", "Battery Exchange", "Service Management", "Inventory", "Warranty Claims", "User & Customer Profiles", "Reports & Billing"], roles: ["admin"] },
+  { title: "Overview", items: ["Dashboard"], roles: ["admin", "manager", "service_manager"] },
+  { title: "Tasks", items: ["My Jobs", "Available Tasks", "Job History"], roles: ["staff", "manager", "service_manager"] },
+  { title: "Management", items: ["Battery Sales", "Battery Exchange", "Service Management", "Inventory", "Warranty Claims", "User & Customer Profiles", "Reports & Billing"], roles: ["admin", "manager", "service_manager"] },
   { title: "System", items: ["Notification Control", "Settings"] },
 ];
 

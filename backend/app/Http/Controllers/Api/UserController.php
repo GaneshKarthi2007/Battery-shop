@@ -28,7 +28,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => 'required|string|in:staff,admin,developer',
+            'role' => 'required|string|in:staff,manager,service_manager,admin,developer',
         ]);
 
         $user = User::create([
@@ -49,7 +49,7 @@ class UserController extends Controller
             'name' => 'sometimes|required|string|max:255',
             'email' => ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:6',
-            'role' => 'sometimes|required|string|in:staff,admin,developer',
+            'role' => 'sometimes|required|string|in:staff,manager,service_manager,admin,developer',
         ]);
 
         if (isset($validated['name'])) {
@@ -88,7 +88,7 @@ class UserController extends Controller
 
     public function getStaff()
     {
-        $staff = User::where('role', 'staff')->get(['id', 'name', 'email']);
+        $staff = User::whereIn('role', ['staff', 'manager', 'service_manager'])->get(['id', 'name', 'email', 'role']);
         return response()->json($staff);
     }
 
