@@ -12,12 +12,14 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
+        $this->checkAccess($request);
         $data = $this->getReportData($request);
         return response()->json($data);
     }
 
     public function downloadPdf(Request $request)
     {
+        $this->checkAccess($request);
         $data = $this->getReportData($request);
         
         $pdf = Pdf::loadView('reports.report', [
@@ -30,6 +32,7 @@ class ReportController extends Controller
 
     public function download(Request $request)
     {
+        $this->checkAccess($request);
         $data = $this->getReportData($request);
         $invoices = $data['invoices'];
 
@@ -187,5 +190,13 @@ class ReportController extends Controller
             'invoices' => $sortedInvoices,
             'summary' => $summary,
         ];
+    }
+
+    private function checkAccess(Request $request)
+    {
+        $role = $request->user()->role ?? '';
+        if (!in_array($role, ['admin', 'developer'])) {
+            abort(403, 'Unauthorized. Only admins and developers can access reports.');
+        }
     }
 }

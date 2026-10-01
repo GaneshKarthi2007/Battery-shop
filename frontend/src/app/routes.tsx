@@ -28,6 +28,8 @@ import { CustomerHistory } from "./pages/CustomerHistory";
 import { Notifications } from "./pages/Notifications";
 import { NotificationManagement } from "./pages/NotificationManagement";
 
+import { ManagerDashboard } from "./pages/ManagerDashboard";
+
 import { MotionConfig } from "framer-motion";
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
@@ -65,9 +67,17 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: IndexRedirect },
           {
+            path: "manager",
+            element: (
+              <ProtectedRoute allowedRoles={["manager"]}>
+                <ManagerDashboard />
+              </ProtectedRoute>
+            ),
+          },
+          {
             path: "sales",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
                 <BatterySales />
               </ProtectedRoute>
             ),
@@ -75,7 +85,7 @@ export const router = createBrowserRouter([
           {
             path: "exchange",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
                 <BatteryExchange />
               </ProtectedRoute>
             ),
@@ -83,7 +93,7 @@ export const router = createBrowserRouter([
           {
             path: "service",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
                 <ServiceManagement />
               </ProtectedRoute>
             ),
@@ -91,7 +101,7 @@ export const router = createBrowserRouter([
           {
             path: "services/new",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
                 <NewService />
               </ProtectedRoute>
             ),
@@ -124,7 +134,7 @@ export const router = createBrowserRouter([
           {
             path: "inventory",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
                 <Inventory />
               </ProtectedRoute>
             ),
@@ -140,7 +150,7 @@ export const router = createBrowserRouter([
           {
             path: "warranty",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
                 <WarrantyManagement />
               </ProtectedRoute>
             ),
@@ -148,12 +158,20 @@ export const router = createBrowserRouter([
           {
             path: "customers",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
                 <CustomerHistory />
               </ProtectedRoute>
             ),
           },
           { path: "settings", Component: Settings },
+          {
+            path: "users",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "developer"]}>
+                <UserManagement />
+              </ProtectedRoute>
+            ),
+          },
           {
             path: "developer",
             element: (
@@ -165,15 +183,29 @@ export const router = createBrowserRouter([
           {
             path: "developer/users",
             element: (
-              <ProtectedRoute allowedRoles={["developer"]}>
+              <ProtectedRoute allowedRoles={["admin", "developer"]}>
                 <UserManagement />
               </ProtectedRoute>
             ),
           },
           { path: "profile", element: <Profile /> },
           { path: "notifications", element: <Notifications /> },
-          { path: "notification-management", element: <NotificationManagement /> },
-          { path: "notifications/manage", element: <NotificationManagement /> },
+          {
+            path: "notification-management",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "developer"]}>
+                <NotificationManagement />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "notifications/manage",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "developer"]}>
+                <NotificationManagement />
+              </ProtectedRoute>
+            ),
+          },
           { path: "checkout", Component: Checkout },
           { path: "invoice", Component: BatteryInvoice },
           { path: "upi-payment", Component: UPIPayment },

@@ -73,7 +73,7 @@ class GpsPhotoController extends Controller
     public function show(GpsPhoto $gpsPhoto, Request $request): JsonResponse
     {
         // Ensure the authenticated user owns this photo or is an admin
-        if ($gpsPhoto->user_id !== $request->user()->id && $request->user()->role !== 'admin') {
+        if ($gpsPhoto->user_id !== $request->user()->id && !in_array($request->user()->role, ['admin', 'manager'])) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -86,7 +86,7 @@ class GpsPhotoController extends Controller
      */
     public function destroy(GpsPhoto $gpsPhoto, Request $request): JsonResponse
     {
-        if ($gpsPhoto->user_id !== $request->user()->id && $request->user()->role !== 'admin') {
+        if ($gpsPhoto->user_id !== $request->user()->id && !in_array($request->user()->role, ['admin', 'manager'])) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

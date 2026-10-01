@@ -7,7 +7,10 @@ import {
   IndianRupee,
   AlertTriangle,
   Calendar,
-  Filter
+  Filter,
+  FileText,
+  Plus,
+  RefreshCcw
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useDeveloper } from "../contexts/DeveloperContext";
@@ -252,6 +255,73 @@ export function Dashboard() {
                   No sales recorded in this timeframe
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Admin Services & Billing Quick Management Hub */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Services Management Quick Panel */}
+            <div className="bg-white dark:bg-[#15161E] rounded-2xl border border-gray-100 dark:border-[#2E3B55] p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                    <Wrench className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Services Management</h3>
+                    <p className="text-[11px] text-gray-400 font-medium">Handle service complaints & technician tasks</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate('/services/new')}
+                  className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" /> New Service
+                </button>
+              </div>
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={() => navigate('/service')}
+                  className="flex-1 py-2 bg-gray-50 dark:bg-[#1E293B] hover:bg-gray-100 dark:hover:bg-[#25334D] text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors text-center"
+                >
+                  View All Complaints ({data?.todayServicesCount || 0})
+                </button>
+              </div>
+            </div>
+
+            {/* Billing & Sales Quick Panel */}
+            <div className="bg-white dark:bg-[#15161E] rounded-2xl border border-gray-100 dark:border-[#2E3B55] p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Billing & Invoicing</h3>
+                    <p className="text-[11px] text-gray-400 font-medium">Process checkout, exchanges & view reports</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate('/sales')}
+                  className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" /> POS Sale
+                </button>
+              </div>
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={() => navigate('/exchange')}
+                  className="flex-1 py-2 bg-gray-50 dark:bg-[#1E293B] hover:bg-gray-100 dark:hover:bg-[#25334D] text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors text-center flex items-center justify-center gap-1"
+                >
+                  <RefreshCcw className="w-3 h-3 text-emerald-500" /> Battery Exchange
+                </button>
+                <button
+                  onClick={() => navigate('/reports')}
+                  className="flex-1 py-2 bg-gray-50 dark:bg-[#1E293B] hover:bg-gray-100 dark:hover:bg-[#25334D] text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors text-center"
+                >
+                  Reports Ledger
+                </button>
+              </div>
             </div>
           </div>
 
