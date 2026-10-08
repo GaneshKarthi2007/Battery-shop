@@ -31,6 +31,20 @@ class UserControllerTest extends TestCase
         ])->assertStatus(403);
     }
 
+    public function test_manager_users_cannot_access_user_management(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+        Sanctum::actingAs($manager);
+
+        $this->getJson('/api/users')->assertStatus(403);
+        $this->postJson('/api/users', [
+            'name' => 'New Staff',
+            'email' => 'newstaff@example.com',
+            'password' => 'password123',
+            'role' => 'staff',
+        ])->assertStatus(403);
+    }
+
     public function test_developer_can_list_users(): void
     {
         $developer = User::factory()->create(['role' => 'developer']);
@@ -93,6 +107,33 @@ class UserControllerTest extends TestCase
                 'name' => 'New Admin User',
                 'role' => 'admin',
             ]);
+    }
+
+    public function test_admin_can_create_user_with_manager_role(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+
+        $payload = [
+            'name' => 'Store Manager',
+            'email' => 'manager@example.com',
+            'password' => 'manager123',
+            'role' => 'manager',
+        ];
+
+        $response = $this->postJson('/api/users', $payload);
+
+        $response->assertStatus(201)
+            ->assertJsonFragment([
+                'name' => 'Store Manager',
+                'email' => 'manager@example.com',
+                'role' => 'manager',
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'manager@example.com',
+            'role' => 'manager',
+        ]);
     }
 
     public function test_user_creation_validates_required_fields_and_unique_email(): void

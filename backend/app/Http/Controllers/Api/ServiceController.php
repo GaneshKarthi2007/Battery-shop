@@ -211,7 +211,7 @@ class ServiceController extends Controller
         }
 
         // Rule 2: Staff restrictions on completed/converted jobs and status transitions
-        if ($user && $user->role !== 'admin') {
+        if ($user && !in_array($user->role, ['admin', 'manager'])) {
             if (in_array($service->status, ['Completed', 'Converted to Order'])) {
                 return response()->json(['message' => 'Completed jobs cannot be modified by staff.'], 403);
             }
