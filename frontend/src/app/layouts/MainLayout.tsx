@@ -41,7 +41,7 @@ const navItems: NavItem[] = [
   { name: "Warranty Claims", path: "/warranty", icon: ShieldCheck, roles: ["admin", "manager"] },
   { name: "Customer Management", path: "/customers", icon: Users, roles: ["admin", "manager"] },
   { name: "User Management", path: "/users", icon: Users, roles: ["admin", "developer"] },
-  { name: "Reports & Billing", path: "/reports", icon: FileText, roles: ["admin"] },
+  { name: "Reports & Billing", path: "/reports", icon: FileText, roles: ["admin", "manager"] },
   { name: "Notification Control", path: "/notification-management", icon: Sliders, roles: ["admin", "developer"] },
   { name: "Settings", path: "/settings", icon: SettingsIcon },
 ];

@@ -28,8 +28,6 @@ import { CustomerHistory } from "./pages/CustomerHistory";
 import { Notifications } from "./pages/Notifications";
 import { NotificationManagement } from "./pages/NotificationManagement";
 
-import { ManagerDashboard } from "./pages/ManagerDashboard";
-
 import { MotionConfig } from "framer-motion";
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
@@ -66,14 +64,6 @@ export const router = createBrowserRouter([
         ),
         children: [
           { index: true, Component: IndexRedirect },
-          {
-            path: "manager",
-            element: (
-              <ProtectedRoute allowedRoles={["manager"]}>
-                <ManagerDashboard />
-              </ProtectedRoute>
-            ),
-          },
           {
             path: "sales",
             element: (
@@ -142,7 +132,7 @@ export const router = createBrowserRouter([
           {
             path: "reports",
             element: (
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
                 <Reports />
               </ProtectedRoute>
             ),

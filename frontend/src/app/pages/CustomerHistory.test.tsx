@@ -42,8 +42,29 @@ vi.mock("../api/client", () => ({
   },
 }));
 
+let mockUser = { role: "admin" };
+
+vi.mock("../contexts/AuthContext", () => ({
+  useAuth: () => ({
+    user: mockUser,
+  }),
+}));
+
 describe("CustomerHistory Component", () => {
-  it("renders customer directory and profile summary header", async () => {
+  it("renders customer directory and profile summary header for admin", async () => {
+    mockUser = { role: "admin" };
+    render(
+      <MemoryRouter>
+        <CustomerHistory />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/User & Customer Profiles & History/i)).toBeInTheDocument();
+    expect(screen.getByText(/System Users/i)).toBeInTheDocument();
+  });
+
+  it("removes System Users tab for manager role", async () => {
+    mockUser = { role: "manager" };
     render(
       <MemoryRouter>
         <CustomerHistory />
@@ -51,5 +72,6 @@ describe("CustomerHistory Component", () => {
     );
 
     expect(screen.getByText(/Customer Profiles & History/i)).toBeInTheDocument();
+    expect(screen.queryByText(/System Users/i)).not.toBeInTheDocument();
   });
 });

@@ -90,4 +90,13 @@ describe('ManagerDashboard Component', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/service');
   });
+
+  it('navigates to sales history reports when View Sales History button is clicked', async () => {
+    render(<ManagerDashboard />);
+
+    const salesHistoryBtn = await screen.findByRole('button', { name: /View Sales History/i });
+    await userEvent.click(salesHistoryBtn);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/reports');
+  });
 });
