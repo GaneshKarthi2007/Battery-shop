@@ -61,11 +61,20 @@ class ReportTest extends TestCase
         $this->assertCount(3, $invoices);
     }
 
-    public function test_manager_cannot_access_reports()
+    public function test_manager_can_access_reports()
     {
         $manager = User::factory()->create(['role' => 'manager']);
 
         $response = $this->actingAs($manager, 'sanctum')->getJson('/api/reports');
+
+        $response->assertStatus(200);
+    }
+
+    public function test_staff_cannot_access_reports()
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+
+        $response = $this->actingAs($staff, 'sanctum')->getJson('/api/reports');
 
         $response->assertStatus(403);
     }

@@ -210,39 +210,43 @@ export function CustomerHistory() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#15161E] p-6 rounded-2xl border border-gray-100 dark:border-[#2E3B55] shadow-sm">
         <div>
           <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 uppercase tracking-tight flex items-center gap-2">
-            <Users className="w-7 h-7 text-blue-600" /> User & Customer Profiles & History
+            <Users className="w-7 h-7 text-blue-600" /> {currentUser?.role === 'manager' ? 'Customer Profiles & History' : 'User & Customer Profiles & History'}
           </h1>
-          <p className="text-xs text-gray-500 mt-1 font-medium">Complete WhatsApp-style profile directory, ledgers & system user access</p>
+          <p className="text-xs text-gray-500 mt-1 font-medium">
+            {currentUser?.role === 'manager' ? 'Complete WhatsApp-style customer profile directory & ledgers' : 'Complete WhatsApp-style profile directory, ledgers & system user access'}
+          </p>
         </div>
 
         {/* Module Switcher Tabs (Customers vs System Users) */}
-        <div className="flex items-center gap-2 bg-gray-100 dark:bg-[#1E293B] p-1.5 rounded-xl border border-gray-200 dark:border-gray-800 self-start sm:self-auto">
-          <button
-            onClick={() => {
-              setActiveModule("customers");
-              setShowDetailView(false);
-            }}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
-              activeModule === "customers"
-                ? "bg-white dark:bg-[#0D1B2A] text-blue-600 shadow-sm"
-                : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Customers ({customers.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveModule("users")}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
-              activeModule === "users"
-                ? "bg-white dark:bg-[#0D1B2A] text-purple-600 shadow-sm"
-                : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>System Users ({visibleUsers.length})</span>
-          </button>
-        </div>
+        {currentUser?.role !== 'manager' && (
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-[#1E293B] p-1.5 rounded-xl border border-gray-200 dark:border-gray-800 self-start sm:self-auto">
+            <button
+              onClick={() => {
+                setActiveModule("customers");
+                setShowDetailView(false);
+              }}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
+                activeModule === "customers"
+                  ? "bg-white dark:bg-[#0D1B2A] text-blue-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Customers ({customers.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveModule("users")}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
+                activeModule === "users"
+                  ? "bg-white dark:bg-[#0D1B2A] text-purple-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>System Users ({visibleUsers.length})</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ============================================================== */}

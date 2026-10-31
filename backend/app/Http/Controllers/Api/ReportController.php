@@ -195,8 +195,8 @@ class ReportController extends Controller
     private function checkAccess(Request $request)
     {
         $role = $request->user()->role ?? '';
-        if (!in_array($role, ['admin', 'developer'])) {
-            abort(403, 'Unauthorized. Only admins and developers can access reports.');
+        if (!in_array($role, ['admin', 'developer', 'manager'])) {
+            abort(403, 'Unauthorized. Only admins, developers, and managers can access reports.');
         }
     }
 }

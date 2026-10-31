@@ -294,10 +294,10 @@ export function ManagerDashboard() {
               </div>
 
               <button
-                onClick={() => navigate('/customers')}
+                onClick={() => navigate('/reports')}
                 className="w-full mt-4 flex items-center justify-center gap-2 py-3 bg-gray-100 dark:bg-[#1E293B] hover:bg-gray-200 dark:hover:bg-[#25334D] text-gray-900 dark:text-white rounded-xl text-xs font-bold transition-all"
               >
-                View Customer Profiles & Ledger <ArrowRight className="w-4 h-4" />
+                View Sales History <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
