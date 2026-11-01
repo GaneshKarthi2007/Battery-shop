@@ -131,7 +131,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // Trend Charts Data (Daily breakdown for Sales and Profit)
+        // Trend Charts Data (Daily breakdown for Sales and Profit and Services)
         $isSqlite = DB::connection()->getDriverName() === 'sqlite';
         $dateExpression = $isSqlite ? "date(created_at)" : "DATE(created_at)";
 
@@ -145,6 +145,16 @@ class DashboardController extends Controller
         ->orderBy('date_label', 'ASC')
         ->get();
 
+        $dailyServicesRaw = Service::select(
+            DB::raw("$dateExpression as date_label"),
+            DB::raw('SUM(COALESCE(service_charge, 0)) as services_amount'),
+            DB::raw('COUNT(*) as services_count')
+        )
+        ->whereBetween('created_at', [$queryStartDate, $queryEndDate])
+        ->groupBy('date_label')
+        ->get()
+        ->keyBy('date_label');
+
         $trendData = [];
         foreach ($dailySalesRaw as $row) {
             $date = $row->date_label;
@@ -156,14 +166,83 @@ class DashboardController extends Controller
             
             $salesVal = (float)$row->sales;
             $profitVal = max(0, $salesVal - $dayItemsCost);
+            $serviceRow = $dailyServicesRaw->get($date);
+            $servicesVal = $serviceRow ? (float)$serviceRow->services_amount : 0;
+            $servicesCount = $serviceRow ? (int)$serviceRow->services_count : 0;
 
+            $parsedDate = Carbon::parse($date);
             $trendData[] = [
-                'date' => Carbon::parse($date)->format('M d'),
+                'date' => $parsedDate->format('M d'),
+                'day' => (int)$parsedDate->format('j'),
                 'sales' => $salesVal,
+                'services' => $servicesVal,
+                'services_count' => $servicesCount,
                 'profit' => $profitVal,
                 'count' => (int)$row->count,
             ];
         }
+
+        // If today or timeframe has no sales rows, ensure at least today point or dates
+        if (empty($trendData)) {
+            $trendData[] = [
+                'date' => Carbon::now()->format('M d'),
+                'day' => (int)Carbon::now()->format('j'),
+                'sales' => (float)$todaySales,
+                'services' => 0,
+                'services_count' => (int)$todayServicesCount,
+                'profit' => (float)$todayProfit,
+                'count' => 0,
+            ];
+        }
+
+        // Unique Customers in Timeframe
+        $salesCustQuery = DB::table('sales')
+            ->whereBetween('created_at', [$queryStartDate, $queryEndDate])
+            ->whereNotNull('customer_name')
+            ->where('customer_name', '!=', '')
+            ->select('customer_name');
+        $servicesCustQuery = DB::table('services')
+            ->whereBetween('created_at', [$queryStartDate, $queryEndDate])
+            ->whereNotNull('customer_name')
+            ->where('customer_name', '!=', '')
+            ->select('customer_name');
+        $totalCustomers = $salesCustQuery->union($servicesCustQuery)->count();
+
+        // Recent Activity (Top 5 items across Sales, Services, Exchanges)
+        $recentSales = Sale::select('id', DB::raw("'Sale' as type"), 'customer_name', 'total_amount as amount', 'payment_status as status', 'created_at')
+            ->latest()
+            ->limit(5)
+            ->get();
+        $recentServices = Service::select('id', DB::raw("'Service' as type"), 'customer_name', 'service_charge as amount', 'status', 'created_at')
+            ->latest()
+            ->limit(5)
+            ->get();
+        $recentExchanges = ExchangeRecord::select('id', DB::raw("'Exchange' as type"), 'customer_name', 'valuation_amount as amount', DB::raw("'Completed' as status"), 'created_at')
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        $recentActivity = $recentSales->concat($recentServices)->concat($recentExchanges)
+            ->sortByDesc('created_at')
+            ->values()
+            ->take(5)
+            ->map(function ($item) {
+                $cDate = Carbon::parse($item->created_at);
+                $dateLabel = $cDate->isToday()
+                    ? 'Today, ' . $cDate->format('h:i A')
+                    : ($cDate->isYesterday() ? 'Yesterday, ' . $cDate->format('h:i A') : $cDate->format('d M, h:i A'));
+                return [
+                    'id' => $item->id,
+                    'type' => $item->type,
+                    'customer_name' => $item->customer_name ?: 'Customer',
+                    'amount' => (float)$item->amount,
+                    'status' => $item->status ?: 'Completed',
+                    'date' => $dateLabel,
+                    'created_at' => $cDate->toISOString(),
+                ];
+            });
+
+        $activeUsersCount = DB::table('users')->count();
 
         // Staff specific stats
         $pendingServicesQuery = Service::where('status', 'pending');
@@ -206,6 +285,10 @@ class DashboardController extends Controller
             'todayServicesCount' => (int)$todayServicesCount,
             'lowStockCount' => (int)$lowStockCount,
             'outstandingCustomerBalance' => (float)$outstandingCustomerBalance,
+            'totalCustomers' => (int)$totalCustomers,
+            'filterSales' => (float)$timeframeSales,
+            'recentActivity' => $recentActivity,
+            'activeUsersCount' => (int)$activeUsersCount,
 
             // Selected Timeframe Analytics
             'timeframe' => $timeframe,

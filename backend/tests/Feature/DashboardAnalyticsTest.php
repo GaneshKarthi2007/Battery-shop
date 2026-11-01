@@ -49,11 +49,20 @@ class DashboardAnalyticsTest extends TestCase
                 'todayServicesCount',
                 'lowStockCount',
                 'outstandingCustomerBalance',
+                'totalCustomers',
+                'filterSales',
+                'recentActivity',
+                'activeUsersCount',
                 'timeframe',
                 'paymentMethodBreakdown',
                 'gstBreakdown',
                 'topSellingBatteries',
                 'trendData',
             ]);
+
+        $this->assertEquals(1, $response->json('totalCustomers'));
+        $this->assertNotEmpty($response->json('recentActivity'));
+        $this->assertEquals('Sale', $response->json('recentActivity.0.type'));
+        $this->assertEquals('John Doe', $response->json('recentActivity.0.customer_name'));
     }
 }

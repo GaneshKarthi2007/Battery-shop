@@ -29,7 +29,7 @@ vi.mock('../api/client', () => ({
   },
 }));
 
-describe('Dashboard Component', () => {
+describe('Dashboard Component - Wireframe Layout', () => {
   const mockDashboardData = {
     todaySales: 15400,
     todayProfit: 3200,
@@ -39,7 +39,38 @@ describe('Dashboard Component', () => {
     todayServicesCount: 8,
     lowStockCount: 3,
     outstandingCustomerBalance: 0,
-    timeframe: '7days',
+    totalCustomers: 42,
+    filterSales: 15400,
+    recentActivity: [
+      {
+        id: 101,
+        type: 'Sale',
+        customer_name: 'Rajesh Kumar',
+        amount: 5400,
+        status: 'paid',
+        date: 'Today, 10:30 AM',
+        created_at: '2026-11-01T10:30:00Z',
+      },
+      {
+        id: 102,
+        type: 'Service',
+        customer_name: 'Anita Sharma',
+        amount: 800,
+        status: 'pending',
+        date: 'Today, 09:15 AM',
+        created_at: '2026-11-01T09:15:00Z',
+      },
+      {
+        id: 103,
+        type: 'Exchange',
+        customer_name: 'Vikram Singh',
+        amount: 1200,
+        status: 'Completed',
+        date: 'Yesterday, 04:30 PM',
+        created_at: '2026-10-31T16:30:00Z',
+      },
+    ],
+    timeframe: 'today',
     timeframeSales: 15400,
     paymentMethodBreakdown: {},
     gstBreakdown: {
@@ -54,11 +85,11 @@ describe('Dashboard Component', () => {
       { brand: 'Amaron', model: 'Hilife', ah: '45Ah', total_qty: 8, total_revenue: 36000 },
     ],
     trendData: [
-      { date: 'Sep 19', sales: 5000, profit: 1200, count: 2 },
-      { date: 'Sep 20', sales: 10400, profit: 2000, count: 4 },
+      { date: 'Nov 01', day: 1, sales: 5000, services: 1200, profit: 1200, count: 2 },
+      { date: 'Nov 05', day: 5, sales: 10400, services: 2000, profit: 2000, count: 4 },
     ],
     totalStock: 150,
-    pendingServices: 2,
+    pendingServices: 7,
     myActiveJobs: 1,
     completedToday: 5,
   };
@@ -68,59 +99,93 @@ describe('Dashboard Component', () => {
     (apiClient.get as any).mockResolvedValue(mockDashboardData);
   });
 
-  it('renders welcome message and updated executive cards (Sales, Profit, Service Orders, Low Stock Alerts)', async () => {
+  it('renders welcome back card with user name, date, and filter dropdown', async () => {
     render(<Dashboard />);
 
-    // Check header
-    expect(await screen.findByText(/Welcome back, Alex/i)).toBeInTheDocument();
-
-    // Check Executive Cards
-    expect(screen.getByText("Today's Sales")).toBeInTheDocument();
-    expect(screen.getByText("Today's Profit")).toBeInTheDocument();
-    expect(screen.getByText("Service Orders")).toBeInTheDocument();
-    expect(screen.getByText("Low Stock Alerts")).toBeInTheDocument();
-
-    // Check values
-    expect(screen.getByText("₹15,400")).toBeInTheDocument();
-    expect(screen.getByText("₹3,200")).toBeInTheDocument();
-    expect(screen.getByText("8")).toBeInTheDocument(); // Service orders count
-    expect(screen.getByText("3")).toBeInTheDocument(); // Low stock count
+    expect(await screen.findByText(/Welcome Back,/i)).toBeInTheDocument();
+    expect(screen.getByText('Alex Johnson')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Filter timeframe/i)).toBeInTheDocument();
   });
 
-  it('does NOT render removed cards/sections (Pending Payments, Battery Exchanges, Outstanding Balance, Payment Methods)', async () => {
+  it('renders 3 metric cards: Today sales, Pending Services, and Total Customers with correct values', async () => {
     render(<Dashboard />);
 
-    await screen.findByText(/Welcome back, Alex/i);
+    expect(await screen.findByText('Today sales')).toBeInTheDocument();
+    expect(screen.getByText('Pending Services')).toBeInTheDocument();
+    expect(screen.getByText('Total Customers')).toBeInTheDocument();
 
-    // Verify removed headers/cards are not present
-    expect(screen.queryByText("Pending Payments")).not.toBeInTheDocument();
-    expect(screen.queryByText("Battery Exchanges")).not.toBeInTheDocument();
-    expect(screen.queryByText("Outstanding Balance")).not.toBeInTheDocument();
-    expect(screen.queryByText("Payment Methods")).not.toBeInTheDocument();
-    expect(screen.queryByText("Tax Structure Distribution")).not.toBeInTheDocument();
+    // Verify filter dependency tags
+    const filterDependentTags = screen.getAllByText('(depend on filter)');
+    expect(filterDependentTags.length).toBe(2);
+
+    // Verify card values
+    expect(screen.getByText('₹15,400')).toBeInTheDocument();
+    expect(screen.getByText('7')).toBeInTheDocument(); // pendingServices
+    expect(screen.getByText('42')).toBeInTheDocument(); // totalCustomers
   });
 
-  it('navigates to /service when Service Orders card is clicked', async () => {
+  it('renders Collection graph like reference image with axes and ticks', async () => {
     render(<Dashboard />);
 
-    await screen.findByText(/Welcome back, Alex/i);
+    expect(await screen.findByText(/Collection - /i)).toBeInTheDocument();
+    expect(screen.getByText('Settled collections only')).toBeInTheDocument();
+    expect(screen.getByText('1.0')).toBeInTheDocument();
+    expect(screen.getByText('0.5')).toBeInTheDocument();
+    expect(screen.getByText('0.0')).toBeInTheDocument();
+    expect(screen.getByText('-0.5')).toBeInTheDocument();
+    expect(screen.getByText('-1.0')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('10')).toBeInTheDocument();
+    expect(screen.getByText('15')).toBeInTheDocument();
+    expect(screen.getByText('20')).toBeInTheDocument();
+    expect(screen.getByText('25')).toBeInTheDocument();
+    expect(screen.getByText('30')).toBeInTheDocument();
+  });
 
-    const serviceOrdersCard = screen.getByText("Service Orders").closest('div.cursor-pointer');
-    expect(serviceOrdersCard).not.toBeNull();
-    await userEvent.click(serviceOrdersCard!);
+  it('renders Recent Activity timeline with recent 5 activities formatted as Type (Customer Name)', async () => {
+    render(<Dashboard />);
 
+    expect(await screen.findByText('Recent Activity')).toBeInTheDocument();
+    expect(screen.getByText('(For recent 5)')).toBeInTheDocument();
+
+    // Check timeline items and customer names
+    expect(screen.getByText('(Rajesh Kumar)')).toBeInTheDocument();
+    expect(screen.getByText('(Anita Sharma)')).toBeInTheDocument();
+    expect(screen.getByText('(Vikram Singh)')).toBeInTheDocument();
+  });
+
+  it('navigates to relevant routes when metric cards are clicked', async () => {
+    render(<Dashboard />);
+
+    await screen.findByText(/Welcome Back,/i);
+
+    // Pending services card click
+    const pendingServicesCard = screen.getByText('Pending Services').closest('div.cursor-pointer');
+    expect(pendingServicesCard).not.toBeNull();
+    await userEvent.click(pendingServicesCard!);
     expect(mockNavigate).toHaveBeenCalledWith('/service');
+
+    // Total customers card click
+    const totalCustomersCard = screen.getByText('Total Customers').closest('div.cursor-pointer');
+    expect(totalCustomersCard).not.toBeNull();
+    await userEvent.click(totalCustomersCard!);
+    expect(mockNavigate).toHaveBeenCalledWith('/customers');
+
+    // Sales card click
+    const todaySalesCard = screen.getByText('Today sales').closest('div.cursor-pointer');
+    expect(todaySalesCard).not.toBeNull();
+    await userEvent.click(todaySalesCard!);
+    expect(mockNavigate).toHaveBeenCalledWith('/sales');
   });
 
-  it('navigates to /inventory when Low Stock Alerts card is clicked', async () => {
+  it('refetches dashboard data when timeframe filter is changed', async () => {
     render(<Dashboard />);
 
-    await screen.findByText(/Welcome back, Alex/i);
+    await screen.findByText(/Welcome Back,/i);
 
-    const lowStockCard = screen.getByText("Low Stock Alerts").closest('div.cursor-pointer');
-    expect(lowStockCard).not.toBeNull();
-    await userEvent.click(lowStockCard!);
+    const select = screen.getByLabelText(/Filter timeframe/i);
+    await userEvent.selectOptions(select, 'month');
 
-    expect(mockNavigate).toHaveBeenCalledWith('/inventory');
+    expect(apiClient.get).toHaveBeenCalledWith('/dashboard?timeframe=month');
   });
 });

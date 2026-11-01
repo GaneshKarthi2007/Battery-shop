@@ -6,7 +6,10 @@ import { BatterySales } from "./pages/BatterySales";
 import { BatteryExchange } from "./pages/BatteryExchange";
 import { ServiceManagement } from "./pages/ServiceManagement";
 import { Inventory } from "./pages/Inventory";
-import { Reports } from "./pages/Reports";
+import { ReportsHome } from "./pages/ReportsHome";
+import { SalesReportPage } from "./pages/reports/SalesReportPage";
+import { GstReportPage } from "./pages/reports/GstReportPage";
+import { DailyReportPage } from "./pages/reports/DailyReportPage";
 import { Settings } from "./pages/Settings";
 import { Profile } from "./pages/Profile";
 import { Checkout } from "./pages/Checkout";
@@ -133,7 +136,83 @@ export const router = createBrowserRouter([
             path: "reports",
             element: (
               <ProtectedRoute allowedRoles={["admin", "manager"]}>
-                <Reports />
+                <ReportsHome />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "reports/all",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <SalesReportPage
+                  reportType="All"
+                  title="All Transactions Report"
+                  description="Combined view of bills, exchanges, services & quotations"
+                />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "reports/sales",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <SalesReportPage
+                  reportType="Sale"
+                  title="Bills / Sales Report"
+                  description="Battery sale invoices with GST breakdown"
+                />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "reports/exchanges",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <SalesReportPage
+                  reportType="Exchange"
+                  title="Battery Exchange Report"
+                  description="Old-battery exchange records with transaction values"
+                />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "reports/services",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <SalesReportPage
+                  reportType="Service"
+                  title="Service Job Report"
+                  description="All service orders with charges and complaint types"
+                />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "reports/quotations",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <SalesReportPage
+                  reportType="Quotation"
+                  title="Quotations Report"
+                  description="All pending and converted quotation records"
+                />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "reports/gst",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <GstReportPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "reports/daily",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <DailyReportPage />
               </ProtectedRoute>
             ),
           },
