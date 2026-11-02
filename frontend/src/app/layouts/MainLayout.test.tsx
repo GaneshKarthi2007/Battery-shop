@@ -99,3 +99,4 @@ describe("MainLayout Sidebar Accordion Behavior", () => {
     expect(screen.queryByText("Settings")).not.toBeInTheDocument();
   });
 });
+
