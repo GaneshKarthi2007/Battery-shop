@@ -40,6 +40,7 @@ export function MainLayout() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Management: true,
+    Account: false,
     Configuration: false,
     "Task Management": false,
   });
@@ -75,6 +76,9 @@ export function MainLayout() {
         ].some((p) => currentPath.startsWith(p))
       ) {
         updated["Management"] = true;
+      }
+      if (["/accounts"].some((p) => currentPath.startsWith(p))) {
+        updated["Account"] = true;
       }
       if (
         ["/users", "/settings", "/notification-management", "/profile"].some((p) =>
@@ -130,6 +134,13 @@ export function MainLayout() {
         { name: "Stock Inventory", path: "/inventory", roles: ["admin", "manager"] },
         { name: "Warranty Claims", path: "/warranty", roles: ["admin", "manager"] },
         { name: "Customer Management", path: "/customers", roles: ["admin", "manager"] },
+      ],
+    },
+    {
+      name: "Account",
+      roles: ["admin", "manager"],
+      subItems: [
+        { name: "MISC Transaction", path: "/accounts/misc-transactions", roles: ["admin", "manager"] },
       ],
     },
     {
