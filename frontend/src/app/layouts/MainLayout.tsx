@@ -40,8 +40,6 @@ export function MainLayout() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Management: true,
-    Configuration: false,
-    "Task Management": false,
   });
 
   // Auto-close sidebar on mobile by default
@@ -58,47 +56,55 @@ export function MainLayout() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Auto-expand group if current route is inside it
+  // Auto-expand the active route's parent group, and keep only one group open at a time
   useEffect(() => {
     const currentPath = location.pathname;
-    setOpenGroups((prev) => {
-      const updated = { ...prev };
-      if (
-        [
-          "/sales",
-          "/exchange",
-          "/service",
-          "/services/new",
-          "/inventory",
-          "/warranty",
-          "/customers",
-        ].some((p) => currentPath.startsWith(p))
-      ) {
-        updated["Management"] = true;
-      }
-      if (
-        ["/users", "/settings", "/notification-management", "/profile"].some((p) =>
-          currentPath.startsWith(p)
-        )
-      ) {
-        updated["Configuration"] = true;
-      }
-      if (
-        ["/assigned-jobs", "/available-jobs", "/completed-jobs"].some((p) =>
-          currentPath.startsWith(p)
-        )
-      ) {
-        updated["Task Management"] = true;
-      }
-      return updated;
-    });
+    let activeGroup: string | null = null;
+
+    if (
+      [
+        "/sales",
+        "/exchange",
+        "/service",
+        "/services/new",
+        "/inventory",
+        "/warranty",
+        "/customers",
+      ].some((p) => currentPath.startsWith(p))
+    ) {
+      activeGroup = "Management";
+    } else if (["/accounts"].some((p) => currentPath.startsWith(p))) {
+      activeGroup = "Account";
+    } else if (
+      ["/users", "/settings", "/notification-management", "/profile"].some((p) =>
+        currentPath.startsWith(p)
+      )
+    ) {
+      activeGroup = "Configuration";
+    } else if (
+      ["/assigned-jobs", "/available-jobs", "/completed-jobs"].some((p) =>
+        currentPath.startsWith(p)
+      )
+    ) {
+      activeGroup = "Task Management";
+    }
+
+    if (activeGroup) {
+      setOpenGroups({ [activeGroup]: true });
+    }
   }, [location.pathname]);
 
+  // Accordion behavior: only one dropdown group open at a time
   const toggleGroup = (groupName: string) => {
-    setOpenGroups((prev) => ({
-      ...prev,
-      [groupName]: !prev[groupName],
-    }));
+    setOpenGroups((prev) => {
+      const isCurrentlyOpen = !!prev[groupName];
+      if (isCurrentlyOpen) {
+        // If clicking on the currently open dropdown, close it
+        return {};
+      }
+      // Open only this dropdown, automatically closing all others
+      return { [groupName]: true };
+    });
   };
 
   // Menu items configured to match reference sidebar
@@ -130,6 +136,13 @@ export function MainLayout() {
         { name: "Stock Inventory", path: "/inventory", roles: ["admin", "manager"] },
         { name: "Warranty Claims", path: "/warranty", roles: ["admin", "manager"] },
         { name: "Customer Management", path: "/customers", roles: ["admin", "manager"] },
+      ],
+    },
+    {
+      name: "Account",
+      roles: ["admin", "manager"],
+      subItems: [
+        { name: "MISC Transaction", path: "/accounts/misc-transactions", roles: ["admin", "manager"] },
       ],
     },
     {

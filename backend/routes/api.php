@@ -102,4 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // GPS Photos
     Route::apiResource('gps-photos', \App\Http\Controllers\Api\GpsPhotoController::class)
         ->only(['index', 'store', 'show', 'destroy']);
+
+    // Miscellaneous Accounts Transactions
+    Route::apiResource('misc-transactions', \App\Http\Controllers\Api\MiscTransactionController::class);
 });

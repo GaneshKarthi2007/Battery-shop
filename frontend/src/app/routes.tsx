@@ -30,6 +30,7 @@ import { WarrantyManagement } from "./pages/WarrantyManagement";
 import { CustomerHistory } from "./pages/CustomerHistory";
 import { Notifications } from "./pages/Notifications";
 import { NotificationManagement } from "./pages/NotificationManagement";
+import { MiscTransactions } from "./pages/MiscTransactions";
 
 import { MotionConfig } from "framer-motion";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -229,6 +230,14 @@ export const router = createBrowserRouter([
             element: (
               <ProtectedRoute allowedRoles={["admin", "manager"]}>
                 <CustomerHistory />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "accounts/misc-transactions",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <MiscTransactions />
               </ProtectedRoute>
             ),
           },
