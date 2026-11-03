@@ -64,8 +64,8 @@ const mockSearchPanelFields: SearchPanelField<MockRecord>[] = [
   },
 ];
 
-describe("ReportTable with Search Panel (Reference Layout)", () => {
-  it("renders table, HIDE SEARCH PANEL button and Search panel with typed fields", () => {
+describe("ReportTable with WhatsApp-Style Search Module and Responsive Layout", () => {
+  it("renders table, WhatsApp-style filter chips, and desktop search panel toggle button", () => {
     render(
       <ReportTable
         columns={mockColumns}
@@ -75,17 +75,19 @@ describe("ReportTable with Search Panel (Reference Layout)", () => {
       />
     );
 
-    // Verify toggle button
-    expect(screen.getByText("HIDE SEARCH PANEL")).toBeInTheDocument();
+    // Verify toggle button is hidden on mobile (has hidden lg:flex)
+    const toggleBtn = screen.getByText("HIDE SEARCH PANEL").closest("button");
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn).toHaveClass("hidden", "lg:flex");
 
-    // Verify Search Panel Header
+    // Verify Search Panel Header on desktop
     expect(screen.getByRole("heading", { name: "Search" })).toBeInTheDocument();
 
-    // Verify floating labels from reference image
-    expect(screen.getByText("Ent. No")).toBeInTheDocument();
-    expect(screen.getByText("Entry Date")).toBeInTheDocument();
-    expect(screen.getByText("Party Name")).toBeInTheDocument();
-    expect(screen.getByText("Status / Type")).toBeInTheDocument();
+    // Verify WhatsApp-style search category chips
+    expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Sale/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Exchange/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Service/i })).toBeInTheDocument();
 
     // All 3 rows rendered
     expect(screen.getByText("Rajesh Sharma")).toBeInTheDocument();
@@ -93,7 +95,53 @@ describe("ReportTable with Search Panel (Reference Layout)", () => {
     expect(screen.getByText("Vikram Singh")).toBeInTheDocument();
   });
 
-  it("filters table data when entering values into typed search panel fields", () => {
+  it("filters table data when clicking WhatsApp-style filter chips", () => {
+    render(
+      <ReportTable
+        columns={mockColumns}
+        data={mockData}
+        searchPanelFields={mockSearchPanelFields}
+        rowKey={(r) => r.id}
+      />
+    );
+
+    // Click "Exchange" chip
+    const exchangeChip = screen.getByRole("button", { name: /Exchange/i });
+    fireEvent.click(exchangeChip);
+
+    // Only Anita Verma (Exchange) should be visible
+    expect(screen.getByText("Anita Verma")).toBeInTheDocument();
+    expect(screen.queryByText("Rajesh Sharma")).not.toBeInTheDocument();
+    expect(screen.queryByText("Vikram Singh")).not.toBeInTheDocument();
+
+    // Click "All" to reset
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    expect(screen.getByText("Rajesh Sharma")).toBeInTheDocument();
+    expect(screen.getByText("Anita Verma")).toBeInTheDocument();
+    expect(screen.getByText("Vikram Singh")).toBeInTheDocument();
+  });
+
+  it("filters table data using WhatsApp universal live search input", () => {
+    render(
+      <ReportTable
+        columns={mockColumns}
+        data={mockData}
+        searchPanelFields={mockSearchPanelFields}
+        searchFields={["customer_name", "invoice_number"]}
+        rowKey={(r) => r.id}
+      />
+    );
+
+    const searchInput = screen.getByPlaceholderText("Search records...");
+    fireEvent.change(searchInput, { target: { value: "Vikram" } });
+
+    // Only Vikram Singh is visible
+    expect(screen.getByText("Vikram Singh")).toBeInTheDocument();
+    expect(screen.queryByText("Rajesh Sharma")).not.toBeInTheDocument();
+    expect(screen.queryByText("Anita Verma")).not.toBeInTheDocument();
+  });
+
+  it("filters table data when entering values into desktop search panel fields", () => {
     render(
       <ReportTable
         columns={mockColumns}
@@ -113,7 +161,7 @@ describe("ReportTable with Search Panel (Reference Layout)", () => {
     expect(screen.queryByText("Vikram Singh")).not.toBeInTheDocument();
   });
 
-  it("toggles Search Panel visibility when HIDE / SHOW SEARCH PANEL is clicked", () => {
+  it("toggles Search Panel visibility when HIDE / SHOW SEARCH PANEL is clicked on desktop", () => {
     render(
       <ReportTable
         columns={mockColumns}
