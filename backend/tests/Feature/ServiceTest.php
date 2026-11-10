@@ -92,6 +92,15 @@ class ServiceTest extends TestCase
         $response->assertStatus(200);
         $this->assertCount(1, $response->json());
         $this->assertEquals($s2->id, $response->json()[0]['id']);
+
+        // Search by solid service log ID
+        $s1Code = $s1->fresh()->service_code;
+        $this->assertNotNull($s1Code);
+        $this->assertStringStartsWith('SRV-', $s1Code);
+        $response = $this->getJson("/api/services?search={$s1Code}");
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json());
+        $this->assertEquals($s1->id, $response->json()[0]['id']);
     }
 
     public function test_view_selected_complaint_details()
@@ -113,6 +122,15 @@ class ServiceTest extends TestCase
         $response->assertJsonFragment([
             'customer_name' => 'Rajesh',
             'complaint_type' => 'Dead Battery',
+        ]);
+
+        // Route binding test using solid log ID (SRV-xxxxx)
+        $srvCode = $service->fresh()->service_code;
+        $responseCode = $this->getJson("/api/services/{$srvCode}");
+        $responseCode->assertStatus(200);
+        $responseCode->assertJsonFragment([
+            'customer_name' => 'Rajesh',
+            'service_code' => $srvCode,
         ]);
     }
 

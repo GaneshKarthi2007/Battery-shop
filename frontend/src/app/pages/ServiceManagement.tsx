@@ -20,6 +20,9 @@ import { CircleLoader } from "../components/ui/CircleLoader";
 
 interface ServiceRequest {
   id: number;
+  service_code?: string;
+  log_id?: string;
+  customer_code?: string;
   customer_name: string;
   contact_number: string;
   vehicle_details: string;
@@ -226,9 +229,14 @@ export function ServiceManagement() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors uppercase text-sm truncate">
-                            {service.customer_name}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors uppercase text-sm truncate">
+                              {service.customer_name}
+                            </h3>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-black bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50">
+                              {service.log_id || service.service_code || ('SRV-' + String(service.id).padStart(5, '0'))}
+                            </span>
+                          </div>
                           <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${config.color} whitespace-nowrap`}>
                             {service.status}
                           </span>

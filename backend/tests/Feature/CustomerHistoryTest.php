@@ -24,11 +24,20 @@ class CustomerHistoryTest extends TestCase
         ]);
 
         $listResponse = $this->actingAs($admin)->getJson('/api/customers');
-        $listResponse->assertStatus(200);
+        $listResponse->assertStatus(200)
+            ->assertJsonPath('0.name', 'Kumar')
+            ->assertJsonPath('0.log_id', 'CUST-00001');
 
-        $showResponse = $this->actingAs($admin)->getJson('/api/customers/9876543210');
+        // Lookup by solid log ID CUST-00001
+        $showResponse = $this->actingAs($admin)->getJson('/api/customers/CUST-00001');
         $showResponse->assertStatus(200)
             ->assertJsonPath('profile.name', 'Kumar')
+            ->assertJsonPath('profile.log_id', 'CUST-00001')
             ->assertJsonPath('profile.total_purchases', 4500);
+
+        // Search by solid log ID
+        $searchResponse = $this->actingAs($admin)->getJson('/api/customers?search=CUST-00001');
+        $searchResponse->assertStatus(200)
+            ->assertJsonPath('0.log_id', 'CUST-00001');
     }
 }

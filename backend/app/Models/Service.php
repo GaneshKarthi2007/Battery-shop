@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\Customer;
 
 class Service extends Model
 {
@@ -18,6 +19,48 @@ class Service extends Model
         'status_updated_at' => 'datetime',
         'billed_at' => 'datetime',
     ];
+
+    protected $appends = ['log_id'];
+
+    protected static function booted()
+    {
+        static::creating(function ($service) {
+            // Link customer and assign customer_code
+            if (empty($service->customer_code) && (!empty($service->customer_name) || !empty($service->contact_number))) {
+                $customer = Customer::ensureCustomer(
+                    $service->customer_name,
+                    $service->contact_number,
+                    $service->vehicle_details
+                );
+                if ($customer) {
+                    $service->customer_code = $customer->customer_code;
+                }
+            }
+        });
+
+        static::created(function ($service) {
+            // Assign solid service log ID (e.g. SRV-00001)
+            if (empty($service->service_code)) {
+                $service->service_code = 'SRV-' . str_pad($service->id, 5, '0', STR_PAD_LEFT);
+                $service->saveQuietly();
+            }
+        });
+    }
+
+    public function getLogIdAttribute(): string
+    {
+        return $this->service_code ?: ('SRV-' . str_pad($this->id, 5, '0', STR_PAD_LEFT));
+    }
+
+    /**
+     * Resolve route binding allowing lookup by ID or solid log ID (SRV-00001).
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return $this->where('service_code', $value)
+            ->orWhere('id', $value)
+            ->firstOrFail();
+    }
 
     public function assignedStaff()
     {

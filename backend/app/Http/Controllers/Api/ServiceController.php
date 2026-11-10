@@ -14,11 +14,18 @@ class ServiceController extends Controller
         $query = Service::with(['assignedStaff', 'processFlows', 'processFlows.staff'])->latest();
 
         if ($request->has('search')) {
-            $search = $request->query('search');
+            $search = trim($request->query('search'));
             $query->where(function($q) use ($search) {
                 $q->where('contact_number', 'like', "%{$search}%")
                   ->orWhere('customer_name', 'like', "%{$search}%")
+                  ->orWhere('service_code', 'like', "%{$search}%")
+                  ->orWhere('customer_code', 'like', "%{$search}%")
                   ->orWhere('id', 'like', "%{$search}%");
+
+                if (preg_match('/^SRV-?(\d+)$/i', $search, $matches)) {
+                    $numId = (int)$matches[1];
+                    $q->orWhere('id', $numId);
+                }
             });
         }
 

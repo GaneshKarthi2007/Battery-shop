@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Customer;
 
 class Sale extends Model
 {
@@ -17,6 +18,22 @@ class Sale extends Model
         'paid_amount' => 'decimal:2',
         'balance_due' => 'decimal:2',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($sale) {
+            if (empty($sale->customer_code) && (!empty($sale->customer_name) || !empty($sale->customer_phone))) {
+                $customer = Customer::ensureCustomer(
+                    $sale->customer_name,
+                    $sale->customer_phone,
+                    $sale->vehicle_details
+                );
+                if ($customer) {
+                    $sale->customer_code = $customer->customer_code;
+                }
+            }
+        });
+    }
 
     public function items()
     {
