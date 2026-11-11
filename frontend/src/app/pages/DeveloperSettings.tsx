@@ -2,6 +2,7 @@ import { useDeveloper } from "../contexts/DeveloperContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { Settings, Edit2, ShieldCheck, Hash, ToggleLeft, ToggleRight, Moon, Sun, Users, ChevronRight, FileText, Bell } from "lucide-react";
 import { useNavigate } from "react-router";
+import { ServiceLogIdPrefixSetting } from "../components/service/ServiceLogIdPrefixSetting";
 
 export function DeveloperSettings() {
     const { features, toggleFeature, shopConfig, updateShopConfig } = useDeveloper();
@@ -52,6 +53,9 @@ export function DeveloperSettings() {
                             )}
                         </button>
                     </div>
+
+                    {/* Input: Service Log ID Prefix */}
+                    <ServiceLogIdPrefixSetting accent="purple" />
 
                     {/* Toggle: Edit Profile */}
                     <div className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl border border-gray-200">

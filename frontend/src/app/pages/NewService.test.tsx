@@ -24,18 +24,85 @@ vi.mock("../api/client", () => ({
 }));
 
 let mockFeatures = { enableContactActions: false, autoGenerateServiceLogId: false };
+let mockShopConfig = { serviceLogIdPrefix: "" };
 
-vi.mock("../contexts/DeveloperContext", () => ({
-    useDeveloper: () => ({
-        features: mockFeatures,
-    }),
-}));
+vi.mock("../contexts/DeveloperContext", async () => {
+    const actual = await vi.importActual<typeof import("../contexts/DeveloperContext")>("../contexts/DeveloperContext");
+    return {
+        ...actual,
+        useDeveloper: () => ({
+            features: mockFeatures,
+            shopConfig: mockShopConfig,
+        }),
+    };
+});
 
 describe("NewService Component", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockFeatures = { enableContactActions: false, autoGenerateServiceLogId: false };
+        mockShopConfig = { serviceLogIdPrefix: "" };
         (apiClient.get as any).mockResolvedValue({ next_log_id: 1 });
+    });
+
+    it("does not render a prefix chip when no Service Log ID prefix is configured", () => {
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+        expect(screen.queryByTestId("service-log-id-prefix")).not.toBeInTheDocument();
+    });
+
+    it("shows the configured Service Log ID prefix next to the input and still posts digits only", async () => {
+        mockShopConfig = { serviceLogIdPrefix: "SRV-" };
+        (apiClient.post as any).mockResolvedValue({
+            id: 7,
+            service_code: "42",
+            log_id: "42",
+            customer_name: "Customer",
+            contact_number: "9876543210",
+        });
+
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        expect(screen.getByTestId("service-log-id-prefix")).toHaveTextContent("SRV-");
+
+        fireEvent.change(screen.getByLabelText(/Service Log ID/i), { target: { value: "42" } });
+        fireEvent.change(screen.getByPlaceholderText("+91"), { target: { value: "9876543210" } });
+        fireEvent.click(screen.getByRole("button", { name: /Initialize Service Entry/i }));
+
+        await waitFor(() => {
+            expect(apiClient.post).toHaveBeenCalledWith(
+                "/services",
+                expect.objectContaining({ service_code: "42", log_id: "42" })
+            );
+        });
+
+        // Success card shows the prefixed log ID (not the raw DB id)
+        await waitFor(() => {
+            expect(screen.getByText("#SRV-42")).toBeInTheDocument();
+        });
+    });
+
+    it("uses the prefix in the auto-generated placeholder when auto mode is on", async () => {
+        mockFeatures.autoGenerateServiceLogId = true;
+        mockShopConfig = { serviceLogIdPrefix: "JOB" };
+        (apiClient.get as any).mockResolvedValue({ next_log_id: 15 });
+
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText("Auto: JOB15")).toBeInTheDocument();
+        });
     });
 
     it("renders Service Log ID text box and does not render Customer Log ID", () => {

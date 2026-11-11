@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useServiceLogIdPrefix, formatServiceLogId } from "../contexts/DeveloperContext";
 import { apiClient } from "../api/client";
 import { AudioPlayer } from "../components/ui/AudioPlayer";
 import { useAuth } from "../contexts/AuthContext";
@@ -42,6 +43,7 @@ interface TasksWorkspaceProps {
 }
 
 export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps) {
+  const logIdPrefix = useServiceLogIdPrefix();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [services, setServices] = useState<ServiceRecord[]>([]);
@@ -387,7 +389,7 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                       
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-black font-mono text-gray-900 dark:text-white">
-                          #{job.log_id || job.service_code || job.id}
+                          #{formatServiceLogId(logIdPrefix, job.log_id || job.service_code || job.id)}
                         </span>
                         <div className="flex gap-2">
                           {isUrgent && (
@@ -451,7 +453,7 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                       Complaint Details
                     </h2>
                     <h3 className="text-xl font-black font-mono text-gray-955 dark:text-white tracking-tighter">
-                      #{selectedJob.log_id || selectedJob.service_code || selectedJob.id}
+                      #{formatServiceLogId(logIdPrefix, selectedJob.log_id || selectedJob.service_code || selectedJob.id)}
                     </h3>
                   </div>
                   <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border ${

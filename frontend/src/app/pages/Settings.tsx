@@ -3,6 +3,7 @@ import { useDeveloper } from "../contexts/DeveloperContext";
 import { useAuth } from "../contexts/AuthContext";
 import { Settings as SettingsIcon, Moon, Sun } from "lucide-react";
 import { PushNotificationManager } from "../components/PushNotificationManager";
+import { ServiceLogIdPrefixSetting } from "../components/service/ServiceLogIdPrefixSetting";
 
 export function Settings() {
     const { isDarkMode, toggleDarkMode } = useTheme();
@@ -47,6 +48,18 @@ export function Settings() {
                                     <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${isDarkMode ? 'translate-x-8' : 'translate-x-1'}`} />
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Service Configuration - admins only */}
+                {user?.role === 'admin' && (
+                    <div className="bg-white dark:bg-[#1B263B] rounded-[2rem] border border-gray-100 dark:border-[#2E3B55] overflow-hidden">
+                        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Service Configuration</h2>
+                        </div>
+                        <div className="p-6">
+                            <ServiceLogIdPrefixSetting accent="blue" />
                         </div>
                     </div>
                 )}

@@ -5,11 +5,12 @@ import { User, Phone, ArrowLeft, Hash, Save, AlertTriangle, Zap, MapPin, Chevron
 import { apiClient } from "../api/client";
 import { Input } from "../components/Input";
 import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
-import { useDeveloper } from "../contexts/DeveloperContext";
+import { useDeveloper, formatServiceLogId } from "../contexts/DeveloperContext";
 
 export function NewService() {
     const navigate = useNavigate();
-    const { features } = useDeveloper();
+    const { features, shopConfig } = useDeveloper();
+    const logIdPrefix = shopConfig?.serviceLogIdPrefix ?? "";
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [manualServiceId, setManualServiceId] = useState("");
@@ -37,7 +38,8 @@ export function NewService() {
         "Others"
     ];
 
-    const [showSuccess, setShowSuccess] = useState<{ id: number; name: string } | null>(null);
+    const [showSuccess, setShowSuccess] = useState<{ id: number; logId: string; name: string } | null>(null);
+    const createdLogIdRef = useRef<string | null>(null);
     const submittingRef = useRef(false);
     const createdServiceIdRef = useRef<number | null>(null);
 
@@ -114,6 +116,7 @@ export function NewService() {
                 const response = await apiClient.post<any>("/services", payload);
                 serviceId = response.id;
                 createdServiceIdRef.current = serviceId;
+                createdLogIdRef.current = String(response.log_id ?? response.service_code ?? response.id);
             }
 
             // Step 2: Upload Voice Note (if exists)
@@ -124,8 +127,10 @@ export function NewService() {
             }
 
             const finalId = serviceId;
+            const finalLogId = createdLogIdRef.current ?? String(finalId);
             createdServiceIdRef.current = null;
-            setShowSuccess({ id: finalId!, name: customerName });
+            createdLogIdRef.current = null;
+            setShowSuccess({ id: finalId!, logId: finalLogId, name: customerName });
             
         } catch (err: any) {
             setError(err.message || "Failed to create service request");
@@ -166,7 +171,16 @@ export function NewService() {
                         <label htmlFor="service-log-id" className="text-[11px] font-bold text-gray-600 uppercase tracking-wider ml-0.5 block mb-1">
                             Service Log ID {!features.autoGenerateServiceLogId && <span className="text-red-500">*</span>}
                         </label>
-                        <div className="relative group">
+                        <div className="relative group flex items-stretch gap-2">
+                            {logIdPrefix && (
+                                <span
+                                    data-testid="service-log-id-prefix"
+                                    className="flex items-center px-3 h-10 sm:h-11 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 text-sm font-mono font-bold select-none"
+                                >
+                                    {logIdPrefix}
+                                </span>
+                            )}
+                            <div className="relative flex-1">
                             <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 group-focus-within:text-blue-500 transition-colors" />
                             <Input
                                 id="service-log-id"
@@ -178,9 +192,10 @@ export function NewService() {
                                     setManualServiceId(e.target.value.replace(/[^0-9]/g, ''));
                                     if (error) setError("");
                                 }}
-                                placeholder={features.autoGenerateServiceLogId ? (suggestedServiceId ? `Auto: #${suggestedServiceId}` : "Enter Service Log ID (Optional)") : "Enter Service Log ID (e.g. 1)"}
+                                placeholder={features.autoGenerateServiceLogId ? (suggestedServiceId ? `Auto: ${formatServiceLogId(logIdPrefix, suggestedServiceId)}` : "Enter Service Log ID (Optional)") : "Enter Service Log ID (e.g. 1)"}
                                 className="h-10 sm:h-11 pl-10 text-sm font-mono font-bold bg-gray-50/50 hover:bg-white focus:bg-white border-gray-100 rounded-xl group-focus-within:border-blue-200 group-focus-within:ring-2 group-focus-within:ring-blue-50"
                             />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -482,7 +497,7 @@ export function NewService() {
                             <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 grid grid-cols-2 gap-2">
                                 <div>
                                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Log ID</span>
-                                    <div className="text-lg font-black text-blue-600">#{showSuccess.id}</div>
+                                    <div className="text-lg font-black text-blue-600">#{formatServiceLogId(logIdPrefix, showSuccess.logId)}</div>
                                 </div>
                                 <div className="text-right">
                                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Customer</span>
