@@ -20,7 +20,7 @@ class Service extends Model
         'billed_at' => 'datetime',
     ];
 
-    protected $appends = ['log_id'];
+    protected $appends = ['log_id', 'display_log_id'];
 
     public static function getNextLogId(): int
     {
@@ -57,6 +57,12 @@ class Service extends Model
                 }
             }
         });
+    }
+
+    /** Log ID with the shop-configured prefix applied (e.g. "SRV-12"). */
+    public function getDisplayLogIdAttribute(): string
+    {
+        return Setting::serviceLogIdPrefix() . $this->log_id;
     }
 
     public function getLogIdAttribute(): string

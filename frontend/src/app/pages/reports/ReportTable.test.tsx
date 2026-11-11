@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { ReportTable, SearchPanelField } from "./ReportTable";
 
 interface MockRecord {
@@ -181,5 +181,63 @@ describe("ReportTable with WhatsApp-Style Search Module and Responsive Layout", 
     // Toggle back
     fireEvent.click(screen.getByText("SHOW SEARCH PANEL"));
     expect(screen.getByRole("heading", { name: "Search" })).toBeInTheDocument();
+  });
+});
+
+describe("ReportTable responsive layout (horizontal scroll + mobile cards)", () => {
+  const originalWidth = window.innerWidth;
+
+  function setViewportWidth(width: number) {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: width });
+  }
+
+  afterEach(() => {
+    setViewportWidth(originalWidth);
+  });
+
+  it("gives the desktop table a minimum width inside a horizontally scrollable container", () => {
+    setViewportWidth(1280);
+    render(<ReportTable columns={mockColumns} data={mockData} minTableWidth={900} />);
+
+    const scroller = screen.getByTestId("report-table-scroll");
+    expect(scroller.className).toContain("overflow-x-auto");
+
+    const table = screen.getByRole("table");
+    expect(table).toHaveStyle({ minWidth: "900px" });
+    expect(screen.queryByTestId("report-table-cards")).not.toBeInTheDocument();
+  });
+
+  it("renders stacked cards instead of a table on mobile widths", () => {
+    setViewportWidth(390);
+    render(<ReportTable columns={mockColumns} data={mockData} />);
+
+    expect(screen.getByTestId("report-table-cards")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+
+    // Every row becomes a card with labelled fields
+    expect(screen.getByText("Rajesh Sharma")).toBeInTheDocument();
+    expect(screen.getByText("Vikram Singh")).toBeInTheDocument();
+    expect(screen.getAllByText("Customer Name")).toHaveLength(mockData.length);
+    expect(screen.getByText("#1")).toBeInTheDocument();
+  });
+
+  it("places the action column in the card header on mobile", () => {
+    setViewportWidth(390);
+    const columns = [
+      ...mockColumns,
+      { key: "action", header: "Action", render: () => <button>Options</button> },
+    ];
+    render(<ReportTable columns={columns} data={mockData} />);
+
+    expect(screen.getAllByRole("button", { name: "Options" })).toHaveLength(mockData.length);
+    // "Action" label is not rendered as a field label in the card body
+    expect(screen.queryByText("Action")).not.toBeInTheDocument();
+  });
+
+  it("keeps the table when mobileCards is disabled, even on mobile widths", () => {
+    setViewportWidth(390);
+    render(<ReportTable columns={mockColumns} data={mockData} mobileCards={false} />);
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.queryByTestId("report-table-cards")).not.toBeInTheDocument();
   });
 });

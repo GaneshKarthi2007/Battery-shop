@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { CircleLoader } from "../../components/ui/CircleLoader";
+import { useIsMobile } from "../../components/ui/use-mobile";
 
 export interface ColDef<T> {
   key: keyof T | string;
@@ -56,6 +57,10 @@ interface ReportTableProps<T extends Record<string, any>> {
   emptyMessage?: string;
   rowKey?: (row: T, i: number) => string | number;
   initialShowSearchPanel?: boolean;
+  /** Render rows as stacked full-width cards on small screens (default true). */
+  mobileCards?: boolean;
+  /** Minimum table width in px before it starts scrolling horizontally (default 760). */
+  minTableWidth?: number;
 }
 
 type SortDir = "asc" | "desc" | null;
@@ -86,7 +91,15 @@ export function ReportTable<T extends Record<string, any>>({
   emptyMessage = "No matching records found.",
   rowKey,
   initialShowSearchPanel = true,
+  mobileCards = true,
+  minTableWidth = 760,
 }: ReportTableProps<T>) {
+  const isMobile = useIsMobile();
+  const useCards = mobileCards && isMobile;
+  const isActionColumn = (col: ColDef<T>) => {
+    const k = String(col.key).toLowerCase();
+    return k === "action" || k === "actions";
+  };
   const [search, setSearch] = useState("");
   const [panelFilters, setPanelFilters] = useState<Record<string, string>>({});
   const [activeChip, setActiveChip] = useState<{ key: string; value: string } | null>(null);
@@ -382,13 +395,78 @@ export function ReportTable<T extends Record<string, any>>({
       {/* Main Container: Table on Left + Desktop Outlined Search Panel on Right */}
       <div className="flex flex-col lg:flex-row relative">
         {/* Table Content Area */}
-        <div className="flex-1 min-w-0 overflow-x-auto relative min-h-[300px]">
+        <div
+          className="flex-1 min-w-0 overflow-x-auto overflow-y-visible relative min-h-[300px] custom-scrollbar"
+          data-testid="report-table-scroll"
+        >
           {loading && (
             <div className="absolute inset-0 bg-white/70 dark:bg-[#070A13]/70 backdrop-blur-[1px] z-20 flex items-center justify-center">
               <CircleLoader size="md" text="Loading records..." />
             </div>
           )}
-          <table className="w-full text-left text-xs border-collapse">
+          {useCards ? (
+            /* Mobile: stacked full-width cards */
+            <div className="p-3 space-y-3 w-full" data-testid="report-table-cards">
+              {filtered.map((row, i) => {
+                const actionCol = columns.find(isActionColumn);
+                const dataCols = columns.filter((c) => !isActionColumn(c));
+                return (
+                  <div
+                    key={rowKey ? rowKey(row, i) : i}
+                    className="relative w-full bg-white dark:bg-[#1B263B]/60 border border-gray-200 dark:border-[#2E3B55] rounded-xl p-3.5 shadow-xs"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 tabular-nums">
+                        #{i + 1}
+                      </span>
+                      {actionCol && (
+                        <div className="shrink-0">
+                          {actionCol.render ? actionCol.render(row, i) : null}
+                        </div>
+                      )}
+                    </div>
+                    <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+                      {dataCols.map((col) => (
+                        <div key={col.key as string} className="min-w-0">
+                          <dt className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">
+                            {col.header}
+                          </dt>
+                          <dd className="text-xs text-gray-800 dark:text-gray-200 break-words">
+                            {col.render ? (
+                              col.render(row, i)
+                            ) : (
+                              <span>{String(row[col.key as string] ?? "-")}</span>
+                            )}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                );
+              })}
+              {filtered.length === 0 && !loading && (
+                <div className="px-6 py-14 text-center text-gray-400 dark:text-gray-500">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 stroke-[1.5]" />
+                    <p className="text-sm font-semibold">{emptyMessage}</p>
+                    {activeFiltersCount > 0 && (
+                      <button
+                        onClick={handleResetFilters}
+                        className="mt-2 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Clear search and filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+          <table
+            className="w-full text-left text-xs border-collapse"
+            style={{ minWidth: `${minTableWidth}px` }}
+          >
             <thead>
               <tr className="sticky top-0 z-10 bg-gray-50/95 dark:bg-[#0D1B2A]/95 backdrop-blur-sm border-b border-gray-200 dark:border-[#2E3B55]">
                 <th className="w-12 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center border-r border-gray-150 dark:border-[#2E3B55]/50">
@@ -461,6 +539,7 @@ export function ReportTable<T extends Record<string, any>>({
               )}
             </tbody>
           </table>
+          )}
         </div>
 
         {/* Desktop-only Search Panel (Hidden on mobile responsive as requested) */}

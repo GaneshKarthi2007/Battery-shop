@@ -24,18 +24,110 @@ vi.mock("../api/client", () => ({
 }));
 
 let mockFeatures = { enableContactActions: false, autoGenerateServiceLogId: false };
+let mockShopConfig = { serviceLogIdPrefix: "" };
 
-vi.mock("../contexts/DeveloperContext", () => ({
-    useDeveloper: () => ({
-        features: mockFeatures,
-    }),
-}));
+vi.mock("../contexts/DeveloperContext", async () => {
+    const actual = await vi.importActual<typeof import("../contexts/DeveloperContext")>("../contexts/DeveloperContext");
+    return {
+        ...actual,
+        useDeveloper: () => ({
+            features: mockFeatures,
+            shopConfig: mockShopConfig,
+        }),
+    };
+});
 
 describe("NewService Component", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockFeatures = { enableContactActions: false, autoGenerateServiceLogId: false };
+        mockShopConfig = { serviceLogIdPrefix: "" };
         (apiClient.get as any).mockResolvedValue({ next_log_id: 1 });
+    });
+
+    it("renders every field and the submit button inside one compact card", () => {
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        const card = screen.getByTestId("new-service-card");
+        // All inputs live in the same card (no separate section cards to scroll through)
+        expect(card).toContainElement(screen.getByLabelText(/Service Log ID/i));
+        expect(card).toContainElement(screen.getByRole("button", { name: /Complaint Type/i }));
+        expect(card).toContainElement(screen.getByPlaceholderText("SMR"));
+        expect(card).toContainElement(screen.getByPlaceholderText("+91"));
+        expect(card).toContainElement(screen.getByLabelText(/Service Address/i));
+        expect(card).toContainElement(screen.getByLabelText(/Issue Description/i));
+        expect(card).toContainElement(screen.getByRole("button", { name: /Record Voice Note/i }));
+        expect(card).toContainElement(screen.getByRole("button", { name: /Initialize Service Entry/i }));
+        expect(card).toContainElement(screen.getByRole("button", { name: /Discard/i }));
+
+        // Only one white card wrapper in the form
+        expect(document.querySelectorAll('[data-testid="new-service-card"]')).toHaveLength(1);
+        // Service Address is a single-line input, not a textarea
+        expect(screen.getByLabelText(/Service Address/i).tagName).toBe("INPUT");
+    });
+
+    it("does not render a prefix chip when no Service Log ID prefix is configured", () => {
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+        expect(screen.queryByTestId("service-log-id-prefix")).not.toBeInTheDocument();
+    });
+
+    it("shows the configured Service Log ID prefix next to the input and still posts digits only", async () => {
+        mockShopConfig = { serviceLogIdPrefix: "SRV-" };
+        (apiClient.post as any).mockResolvedValue({
+            id: 7,
+            service_code: "42",
+            log_id: "42",
+            customer_name: "Customer",
+            contact_number: "9876543210",
+        });
+
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        expect(screen.getByTestId("service-log-id-prefix")).toHaveTextContent("SRV-");
+
+        fireEvent.change(screen.getByLabelText(/Service Log ID/i), { target: { value: "42" } });
+        fireEvent.change(screen.getByPlaceholderText("+91"), { target: { value: "9876543210" } });
+        fireEvent.click(screen.getByRole("button", { name: /Initialize Service Entry/i }));
+
+        await waitFor(() => {
+            expect(apiClient.post).toHaveBeenCalledWith(
+                "/services",
+                expect.objectContaining({ service_code: "42", log_id: "42" })
+            );
+        });
+
+        // Success card shows the prefixed log ID (not the raw DB id)
+        await waitFor(() => {
+            expect(screen.getByText("#SRV-42")).toBeInTheDocument();
+        });
+    });
+
+    it("uses the prefix in the auto-generated placeholder when auto mode is on", async () => {
+        mockFeatures.autoGenerateServiceLogId = true;
+        mockShopConfig = { serviceLogIdPrefix: "JOB" };
+        (apiClient.get as any).mockResolvedValue({ next_log_id: 15 });
+
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText("Auto: JOB15")).toBeInTheDocument();
+        });
     });
 
     it("renders Service Log ID text box and does not render Customer Log ID", () => {

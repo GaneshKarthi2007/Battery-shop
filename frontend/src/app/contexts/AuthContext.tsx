@@ -50,6 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(userData);
             localStorage.setItem("auth_token", response.access_token);
             localStorage.setItem("powercell_user", JSON.stringify(userData));
+            // Let DeveloperContext re-fetch shop settings for this session
+            window.dispatchEvent(new Event("auth:changed"));
         } catch (error) {
             console.error("Login failed:", error);
             throw error;

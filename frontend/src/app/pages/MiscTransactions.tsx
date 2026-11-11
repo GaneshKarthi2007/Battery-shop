@@ -538,8 +538,8 @@ export function MiscTransactions() {
       header: "Particular",
       sortable: true,
       render: (row) => (
-        <div className="max-w-xs md:max-w-md">
-          <p className="font-semibold text-gray-800 dark:text-gray-200 text-xs truncate" title={row.particular}>
+        <div className="max-w-full md:max-w-md min-w-[160px]">
+          <p className="font-semibold text-gray-800 dark:text-gray-200 text-xs break-words md:truncate" title={row.particular}>
             {row.particular}
           </p>
           {row.entry_number && (
@@ -693,8 +693,8 @@ export function MiscTransactions() {
       {viewMode === "list" && (
         <div className="space-y-3">
           {/* Top Title Bar with + ADD NEW button and Info icon */}
-          <div className="flex items-center justify-between bg-white dark:bg-[#15161E] px-4 py-3 rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-between gap-2 bg-white dark:bg-[#15161E] px-3 sm:px-4 py-3 rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm">
+            <div className="flex items-center gap-2.5 flex-wrap min-w-0">
               <span className="flex items-center gap-1.5 text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                 General Transaction
                 <span

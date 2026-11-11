@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MiscTransactions } from "./MiscTransactions";
 import { apiClient } from "../api/client";
 
@@ -159,5 +159,44 @@ describe("MiscTransactions Component (Accounts Maintenance)", () => {
     await waitFor(() => {
       expect(screen.getByText("Cash transaction saved successfully!")).toBeInTheDocument();
     });
+  });
+});
+
+describe("MiscTransactions responsive list", () => {
+  const originalWidth = window.innerWidth;
+  afterEach(() => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: originalWidth });
+  });
+
+  it("shows transactions as full-width cards on mobile widths", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 390 });
+    (apiClient.get as any).mockResolvedValue({
+      status: "success",
+      data: [
+        {
+          id: 1,
+          entry_number: "TXN-00001",
+          date: "2026-10-29",
+          type: "Cash",
+          particular: "KVT BSNL BILL",
+          debit_amount: 1000.0,
+          credit_amount: 0.0,
+          debit_ledger: "TELEPHONE EXPENSES",
+          credit_ledger: "CASH",
+          status: "Settled",
+        },
+      ],
+    });
+
+    render(<MiscTransactions />);
+
+    await waitFor(() => {
+      expect(screen.getByText("KVT BSNL BILL")).toBeInTheDocument();
+    });
+    const cards = screen.getByTestId("report-table-cards");
+    expect(cards).toBeInTheDocument();
+    expect(cards.className).toContain("w-full");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Options" })).toBeInTheDocument();
   });
 });

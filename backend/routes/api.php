@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\WarrantyClaimController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\SettingController;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -42,6 +43,10 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    // Shop-wide settings (read: any user, write: admin/developer)
+    Route::get('/settings', [SettingController::class, 'index']);
+    Route::put('/settings', [SettingController::class, 'update']);
     
     // Products & Battery Serial Numbers
     Route::apiResource('products', ProductController::class);
