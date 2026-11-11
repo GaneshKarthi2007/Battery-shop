@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { settingsApi, type ShopSettings, type ShopSettingsUpdate } from '../api/settingsApi';
 
 interface DeveloperFeatures {
     editProfile: boolean;
@@ -32,12 +33,57 @@ export function formatServiceLogId(prefix: string | undefined, id: string | numb
     return `${prefix ?? ''}${value}`;
 }
 
+export type SettingsSyncStatus = 'idle' | 'loading' | 'saving' | 'saved' | 'error';
+
 interface DeveloperContextType {
     features: DeveloperFeatures;
     toggleFeature: (featureName: keyof DeveloperFeatures) => void;
     shopConfig: ShopConfig;
     updateShopConfig: (newConfig: Partial<ShopConfig>) => void;
+    /** State of the last server sync of shopConfig (settings are stored on the backend and shared across devices). */
+    settingsSyncStatus: SettingsSyncStatus;
+    settingsSyncError: string | null;
+    /** Re-fetch shop settings from the server (called automatically on mount and after login). */
+    refreshShopConfig: () => Promise<void>;
 }
+
+/** Window event dispatched by AuthContext after a successful login so settings can be re-fetched. */
+export const AUTH_CHANGED_EVENT = 'auth:changed';
+
+/** Map between the camelCase ShopConfig used by the UI and the snake_case settings API. */
+const SHOP_CONFIG_TO_SETTINGS: Record<keyof ShopConfig, keyof ShopSettings> = {
+    name: 'shop_name',
+    phone: 'shop_phone',
+    address: 'shop_address',
+    gst: 'shop_gst',
+    email: 'shop_email',
+    serviceLogIdPrefix: 'service_log_id_prefix',
+};
+
+export function settingsToShopConfig(settings: Partial<ShopSettings> | null | undefined, base: ShopConfig): ShopConfig {
+    if (!settings) return base;
+    const next: ShopConfig = { ...base };
+    (Object.keys(SHOP_CONFIG_TO_SETTINGS) as (keyof ShopConfig)[]).forEach((cfgKey) => {
+        const apiKey = SHOP_CONFIG_TO_SETTINGS[cfgKey];
+        const value = settings[apiKey];
+        // null/undefined on the server = "not set yet": keep the local/default value
+        if (value !== null && value !== undefined) {
+            (next as any)[cfgKey] = cfgKey === 'serviceLogIdPrefix' ? sanitizeServiceLogIdPrefix(value) : value;
+        }
+    });
+    return next;
+}
+
+export function shopConfigToSettings(patch: Partial<ShopConfig>): ShopSettingsUpdate {
+    const out: ShopSettingsUpdate = {};
+    (Object.keys(patch) as (keyof ShopConfig)[]).forEach((cfgKey) => {
+        const apiKey = SHOP_CONFIG_TO_SETTINGS[cfgKey];
+        if (apiKey) out[apiKey] = (patch[cfgKey] ?? '') as string;
+    });
+    return out;
+}
+
+const SAVE_DEBOUNCE_MS = 600;
 
 const defaultFeatures: DeveloperFeatures = {
     editProfile: true, // Enabled by default
@@ -94,6 +140,63 @@ export function DeveloperProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('developer_shop_config', JSON.stringify(shopConfig));
     }, [shopConfig]);
 
+    // ---- Server sync: settings live on the backend so every device sees the same values ----
+    const [settingsSyncStatus, setSettingsSyncStatus] = useState<SettingsSyncStatus>('idle');
+    const [settingsSyncError, setSettingsSyncError] = useState<string | null>(null);
+    const pendingPatchRef = useRef<ShopSettingsUpdate>({});
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const hasAuthToken = () => {
+        try { return !!localStorage.getItem('auth_token'); } catch { return false; }
+    };
+
+    const refreshShopConfig = useCallback(async () => {
+        if (!hasAuthToken()) return;
+        try {
+            const settings = await settingsApi.getSettings();
+            setShopConfig(prev => settingsToShopConfig(settings, prev));
+            setSettingsSyncStatus('idle');
+            setSettingsSyncError(null);
+        } catch (e: any) {
+            // Offline / server down: keep using the cached localStorage copy
+            setSettingsSyncStatus('error');
+            setSettingsSyncError(e?.message || 'Could not load settings from server');
+        }
+    }, []);
+
+    useEffect(() => {
+        // Defer the initial fetch out of the effect body (avoids sync setState-in-effect)
+        queueMicrotask(() => { refreshShopConfig(); });
+        const onAuthChanged = () => { refreshShopConfig(); };
+        window.addEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+        return () => {
+            window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        };
+    }, [refreshShopConfig]);
+
+    const flushPendingSave = useCallback(async () => {
+        const patch = pendingPatchRef.current;
+        pendingPatchRef.current = {};
+        if (Object.keys(patch).length === 0 || !hasAuthToken()) return;
+        setSettingsSyncStatus('saving');
+        try {
+            const settings = await settingsApi.updateSettings(patch);
+            setShopConfig(prev => settingsToShopConfig(settings, prev));
+            setSettingsSyncStatus('saved');
+            setSettingsSyncError(null);
+        } catch (e: any) {
+            setSettingsSyncStatus('error');
+            setSettingsSyncError(e?.message || 'Could not save settings to server');
+        }
+    }, []);
+
+    const queueSave = useCallback((patch: Partial<ShopConfig>) => {
+        pendingPatchRef.current = { ...pendingPatchRef.current, ...shopConfigToSettings(patch) };
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => { flushPendingSave(); }, SAVE_DEBOUNCE_MS);
+    }, [flushPendingSave]);
+
     const toggleFeature = (featureName: keyof DeveloperFeatures) => {
         setFeatures(prev => ({
             ...prev,
@@ -102,17 +205,19 @@ export function DeveloperProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updateShopConfig = (newConfig: Partial<ShopConfig>) => {
-        setShopConfig(prev => {
-            const next = { ...prev, ...newConfig };
-            if (newConfig.serviceLogIdPrefix !== undefined) {
-                next.serviceLogIdPrefix = sanitizeServiceLogIdPrefix(newConfig.serviceLogIdPrefix);
-            }
-            return next;
-        });
+        const clean: Partial<ShopConfig> = { ...newConfig };
+        if (newConfig.serviceLogIdPrefix !== undefined) {
+            clean.serviceLogIdPrefix = sanitizeServiceLogIdPrefix(newConfig.serviceLogIdPrefix);
+        }
+        setShopConfig(prev => ({ ...prev, ...clean }));
+        queueSave(clean);
     };
 
     return (
-        <DeveloperContext.Provider value={{ features, toggleFeature, shopConfig, updateShopConfig }}>
+        <DeveloperContext.Provider value={{
+            features, toggleFeature, shopConfig, updateShopConfig,
+            settingsSyncStatus, settingsSyncError, refreshShopConfig,
+        }}>
             {children}
         </DeveloperContext.Provider>
     );

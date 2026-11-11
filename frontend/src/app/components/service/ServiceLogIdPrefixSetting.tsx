@@ -1,4 +1,4 @@
-import { Hash } from "lucide-react";
+import { Hash, Cloud, CloudOff, Loader2 } from "lucide-react";
 import { useDeveloper, formatServiceLogId } from "../../contexts/DeveloperContext";
 
 interface Props {
@@ -11,7 +11,7 @@ interface Props {
  * Shared by the Developer console and the Admin Settings page so both roles can set the prefix.
  */
 export function ServiceLogIdPrefixSetting({ accent = "purple" }: Props) {
-    const { shopConfig, updateShopConfig } = useDeveloper();
+    const { shopConfig, updateShopConfig, settingsSyncStatus, settingsSyncError } = useDeveloper();
     const prefix = shopConfig.serviceLogIdPrefix ?? "";
     const iconBg = accent === "blue" ? "bg-blue-100 text-blue-600" : "bg-purple-100 text-purple-600";
     const ring = accent === "blue" ? "focus:ring-blue-500" : "focus:ring-purple-500";
@@ -25,7 +25,7 @@ export function ServiceLogIdPrefixSetting({ accent = "purple" }: Props) {
                 <div>
                     <h3 className="font-bold text-gray-900">Service Log ID Prefix</h3>
                     <p className="text-xs text-gray-500">
-                        Text shown in front of the Service Log ID number on the New Service form and service screens. Leave blank for plain numbers.
+                        Text shown in front of the Service Log ID number on the New Service form and service screens. Saved on the server, so every device sees the same prefix. Leave blank for plain numbers.
                     </p>
                 </div>
             </div>
@@ -42,8 +42,21 @@ export function ServiceLogIdPrefixSetting({ accent = "purple" }: Props) {
                         placeholder="E.g., SRV-"
                     />
                 </div>
-                <div className="text-sm text-gray-600">
-                    Preview: <span data-testid="service-log-id-prefix-preview" className="font-mono font-bold text-gray-900">{formatServiceLogId(prefix, 1)}</span>
+                <div className="text-sm text-gray-600 space-y-1">
+                    <div>
+                        Preview: <span data-testid="service-log-id-prefix-preview" className="font-mono font-bold text-gray-900">{formatServiceLogId(prefix, 1)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium" data-testid="service-log-id-prefix-sync">
+                        {settingsSyncStatus === 'saving' || settingsSyncStatus === 'loading' ? (
+                            <><Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" /> <span className="text-gray-500">Syncing with server…</span></>
+                        ) : settingsSyncStatus === 'error' ? (
+                            <><CloudOff className="w-3.5 h-3.5 text-red-500" /> <span className="text-red-600">{settingsSyncError || 'Not saved to server'}</span></>
+                        ) : settingsSyncStatus === 'saved' ? (
+                            <><Cloud className="w-3.5 h-3.5 text-emerald-500" /> <span className="text-emerald-600">Saved for all devices</span></>
+                        ) : (
+                            <><Cloud className="w-3.5 h-3.5 text-gray-400" /> <span className="text-gray-500">Shared across all devices</span></>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

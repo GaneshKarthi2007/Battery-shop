@@ -70,9 +70,10 @@ app/
     NotificationController.php   ← User notifications (list, mark read)
     ReportController.php         ← Reports index + CSV/PDF downloads
     UserController.php           ← Staff listing
+    SettingController.php        ← Shop-wide settings (GET any user, PUT admin/developer)
   Models/
     User, Product, Sale, SaleItem, Service, ServiceProcessFlow,
-    ExchangeRecord, UpiPayment, GpsPhoto, Receipt, Notification
+    ExchangeRecord, UpiPayment, GpsPhoto, Receipt, Notification, Setting
   Services/
     WatermarkService.php         ← GPS photo watermarking (business logic goes here)
   Providers/
