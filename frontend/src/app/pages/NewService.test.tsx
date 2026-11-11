@@ -45,6 +45,31 @@ describe("NewService Component", () => {
         (apiClient.get as any).mockResolvedValue({ next_log_id: 1 });
     });
 
+    it("renders every field and the submit button inside one compact card", () => {
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        const card = screen.getByTestId("new-service-card");
+        // All inputs live in the same card (no separate section cards to scroll through)
+        expect(card).toContainElement(screen.getByLabelText(/Service Log ID/i));
+        expect(card).toContainElement(screen.getByRole("button", { name: /Complaint Type/i }));
+        expect(card).toContainElement(screen.getByPlaceholderText("SMR"));
+        expect(card).toContainElement(screen.getByPlaceholderText("+91"));
+        expect(card).toContainElement(screen.getByLabelText(/Service Address/i));
+        expect(card).toContainElement(screen.getByLabelText(/Issue Description/i));
+        expect(card).toContainElement(screen.getByRole("button", { name: /Record Voice Note/i }));
+        expect(card).toContainElement(screen.getByRole("button", { name: /Initialize Service Entry/i }));
+        expect(card).toContainElement(screen.getByRole("button", { name: /Discard/i }));
+
+        // Only one white card wrapper in the form
+        expect(document.querySelectorAll('[data-testid="new-service-card"]')).toHaveLength(1);
+        // Service Address is a single-line input, not a textarea
+        expect(screen.getByLabelText(/Service Address/i).tagName).toBe("INPUT");
+    });
+
     it("does not render a prefix chip when no Service Log ID prefix is configured", () => {
         render(
             <BrowserRouter>
