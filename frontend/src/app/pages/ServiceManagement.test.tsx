@@ -32,8 +32,8 @@ vi.mock("../contexts/AuthContext", () => ({
 const mockServices = [
     {
         id: 101,
-        service_code: "SRV-00101",
-        log_id: "SRV-00101",
+        service_code: "101",
+        log_id: "101",
         customer_name: "Rajesh Kumar",
         contact_number: "9876543210",
         vehicle_details: "Hyundai i20 (TN 38 AB 1234)",
@@ -62,7 +62,7 @@ describe("ServiceManagement Component Minimal View", () => {
 
         await waitFor(() => {
             expect(screen.getByText("Rajesh Kumar")).toBeInTheDocument();
-            expect(screen.getByText("SRV-00101")).toBeInTheDocument();
+            expect(screen.getByText("#101")).toBeInTheDocument();
             expect(screen.getByText("9876543210")).toBeInTheDocument();
             expect(screen.getByText("₹450")).toBeInTheDocument();
         });

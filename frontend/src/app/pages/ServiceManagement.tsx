@@ -234,7 +234,7 @@ export function ServiceManagement() {
                               {service.customer_name}
                             </h3>
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-black bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50">
-                              {service.log_id || service.service_code || ('SRV-' + String(service.id).padStart(5, '0'))}
+                              {service.log_id ? `#${service.log_id}` : (service.service_code ? `#${service.service_code}` : `#${service.id}`)}
                             </span>
                           </div>
                           <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${config.color} whitespace-nowrap`}>

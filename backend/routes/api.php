@@ -52,6 +52,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/sales/{sale}/pdf', [SalesController::class, 'downloadPdf']);
 
     // Services
+    Route::get('/services/next-log-id', [ServiceController::class, 'nextLogId']);
     Route::apiResource('services', ServiceController::class);
     Route::post('/services/{service}/pickup', [ServiceController::class, 'pickUp']);
     Route::post('/services/{service}/voice-note', [ServiceController::class, 'uploadVoiceNote']);
@@ -72,6 +73,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('warranty-claims', WarrantyClaimController::class);
 
     // Customer Profiles & Ledger
+    Route::get('/customers/next-log-id', [CustomerController::class, 'nextLogId']);
+    Route::post('/customers', [CustomerController::class, 'store']);
     Route::get('/customers', [CustomerController::class, 'index']);
     Route::get('/customers/{identifier}', [CustomerController::class, 'show']);
 

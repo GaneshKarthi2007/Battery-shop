@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Users, Plus, Loader2, Lock, ArrowLeft, Trash2, ShieldCheck, Code, UserCheck, Briefcase } from "lucide-react";
 import { apiClient } from "../api/client";
 import { useNavigate } from "react-router";
+import { useAuth } from "../contexts/AuthContext";
 
 export function UserManagement() {
     const navigate = useNavigate();
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState<any[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
 
@@ -95,7 +97,11 @@ export function UserManagement() {
                 </button>
                 <div>
                     <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase">User Management</h1>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Create & manage system accounts (Manager, Staff, Admin, Developer)</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        {currentUser?.role === 'admin'
+                            ? "Create & manage system accounts (Staff, Manager, Admin)"
+                            : "Create & manage system accounts (Staff, Manager, Admin, Developer)"}
+                    </p>
                 </div>
             </div>
 
@@ -155,7 +161,9 @@ export function UserManagement() {
                                 <option value="staff">Staff - Standard Access</option>
                                 <option value="manager">Manager - Operations & Store Oversight Access</option>
                                 <option value="admin">Admin - Full Access</option>
-                                <option value="developer">Developer - System Config & Dev Access</option>
+                                {currentUser?.role === 'developer' && (
+                                    <option value="developer">Developer - System Config & Dev Access</option>
+                                )}
                             </select>
                         </div>
 
@@ -191,15 +199,16 @@ export function UserManagement() {
                             <div className="text-red-500 text-sm mb-3 font-medium">{deleteError}</div>
                         )}
 
-                        {loadingUsers ? (
+
+                                {loadingUsers ? (
                             <div className="flex items-center justify-center py-8">
                                 <Loader2 className="w-6 h-6 text-purple-600 animate-spin" />
                             </div>
-                        ) : users.length === 0 ? (
+                        ) : (currentUser?.role === 'admin' ? users.filter(u => u.role !== 'developer') : users).length === 0 ? (
                             <p className="text-gray-500 text-sm text-center py-4">No other users found or failed to load.</p>
                         ) : (
                             <div className="space-y-3">
-                                {users.map(u => (
+                                {(currentUser?.role === 'admin' ? users.filter(u => u.role !== 'developer') : users).map(u => (
                                     <div key={u.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-100 dark:border-[#2E3B55] rounded-xl">
                                         <div>
                                             <p className="font-bold text-gray-900 dark:text-white text-sm">{u.name}</p>

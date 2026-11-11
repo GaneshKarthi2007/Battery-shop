@@ -418,7 +418,7 @@ export function ServiceDetails() {
                             </div>
                             <div>
                                 <div className="flex items-center gap-3 flex-wrap">
-                                    <h1 className="text-2xl lg:text-3xl font-black text-gray-900">Service #{service.service_code || service.log_id || ('SRV-' + String(service.id).padStart(5, '0'))}</h1>
+                                    <h1 className="text-2xl lg:text-3xl font-black text-gray-900">Service #{service.log_id || service.service_code || service.id}</h1>
                                     {service.parent_id && (
                                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
                                             <RefreshCw className="w-3 h-3" />

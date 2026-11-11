@@ -13,6 +13,49 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
+    public function nextLogId()
+    {
+        return response()->json([
+            'next_log_id' => Customer::getNextLogId(),
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'vehicle_number' => 'nullable|string|max:50',
+            'address' => 'nullable|string',
+            'log_id' => 'nullable|string',
+            'customer_code' => 'nullable|string',
+        ]);
+
+        $manualLogId = $request->input('log_id') ?? $request->input('customer_code');
+        if (!empty($manualLogId)) {
+            $clean = preg_replace('/\D/', '', (string)$manualLogId);
+            if ($clean === '') {
+                return response()->json(['message' => 'Log ID must be an integer.'], 422);
+            }
+            $customerCode = (string)(int)$clean;
+            if (Customer::where('customer_code', $customerCode)->exists()) {
+                return response()->json(['message' => "Customer Log ID #{$customerCode} is already in use."], 422);
+            }
+        } else {
+            $customerCode = (string) Customer::getNextLogId();
+        }
+
+        $customer = Customer::create([
+            'customer_code' => $customerCode,
+            'name' => $validated['name'],
+            'phone' => $validated['phone'] ?? null,
+            'vehicle_number' => $validated['vehicle_number'] ?? null,
+            'address' => $validated['address'] ?? null,
+        ]);
+
+        return response()->json($customer, 201);
+    }
+
     public function index(Request $request)
     {
         $search = trim($request->get('search', ''));
@@ -29,11 +72,13 @@ class CustomerController extends Controller
                   ->orWhere('phone', 'like', "%{$search}%")
                   ->orWhere('vehicle_number', 'like', "%{$search}%");
 
-                // If user enters pure numbers e.g. "00001" or "1", also match customer_code suffix
-                $numericSuffix = ltrim(preg_replace('/[^0-9]/', '', $search), '0');
+                // If user enters pure numbers e.g. "1" or "15", also match customer_code suffix / integer
+                $numericSuffix = preg_replace('/\D/', '', $search);
                 if ($numericSuffix !== '') {
-                    $padded = 'CUST-' . str_pad($numericSuffix, 5, '0', STR_PAD_LEFT);
-                    $q->orWhere('customer_code', $padded);
+                    $intVal = (string)(int)$numericSuffix;
+                    $q->orWhere('customer_code', $intVal)
+                      ->orWhere('id', (int)$intVal)
+                      ->orWhere('customer_code', 'CUST-' . str_pad($intVal, 5, '0', STR_PAD_LEFT));
                 }
             });
         }
@@ -118,12 +163,21 @@ class CustomerController extends Controller
     public function show(Request $request, string $identifier)
     {
         $identifier = trim(urldecode($identifier));
+        $cleanDigits = preg_replace('/\D/', '', $identifier);
 
-        // 1. First look up in Customer master by customer_code (log ID), phone, or name
-        $customer = Customer::where('customer_code', $identifier)
+        // 1. First look up in Customer master by customer_code (log ID), phone, name, or numeric ID
+        $query = Customer::where('customer_code', $identifier)
             ->orWhere('phone', $identifier)
-            ->orWhere('name', $identifier)
-            ->first();
+            ->orWhere('name', $identifier);
+
+        if ($cleanDigits !== '') {
+            $intId = (string)(int)$cleanDigits;
+            $query->orWhere('customer_code', $intId)
+                  ->orWhere('id', (int)$intId)
+                  ->orWhere('customer_code', 'CUST-' . str_pad($intId, 5, '0', STR_PAD_LEFT));
+        }
+
+        $customer = $query->first();
 
         $code = $customer?->customer_code;
         $name = $customer?->name;

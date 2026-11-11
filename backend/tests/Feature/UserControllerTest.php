@@ -220,4 +220,54 @@ class UserControllerTest extends TestCase
 
         $this->assertDatabaseHas('users', ['id' => $developer->id]);
     }
+
+    public function test_admin_cannot_see_developer_users(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        User::factory()->create(['name' => 'Secret Dev', 'role' => 'developer']);
+        User::factory()->create(['name' => 'Regular Staff', 'role' => 'staff']);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/users');
+        $response->assertOk()
+            ->assertJsonMissing(['name' => 'Secret Dev'])
+            ->assertJsonFragment(['name' => 'Regular Staff']);
+    }
+
+    public function test_admin_cannot_create_developer_user(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+
+        $response = $this->postJson('/api/users', [
+            'name' => 'Sneaky Dev',
+            'email' => 'sneakydev@example.com',
+            'password' => 'secret123',
+            'role' => 'developer',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['role']);
+    }
+
+    public function test_admin_cannot_modify_or_delete_developer_user(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $dev = User::factory()->create(['name' => 'Master Dev', 'role' => 'developer']);
+
+        Sanctum::actingAs($admin);
+
+        // Cannot update
+        $updateRes = $this->putJson("/api/users/{$dev->id}", [
+            'name' => 'Hacked Dev',
+        ]);
+        $updateRes->assertStatus(403);
+
+        // Cannot delete
+        $delRes = $this->deleteJson("/api/users/{$dev->id}");
+        $delRes->assertStatus(403);
+
+        $this->assertDatabaseHas('users', ['id' => $dev->id]);
+    }
 }

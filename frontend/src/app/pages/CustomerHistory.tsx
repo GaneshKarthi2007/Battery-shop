@@ -269,7 +269,7 @@ export function CustomerHistory() {
                 <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search by Customer ID (CUST-00001), name, or phone number..."
+                  placeholder="Search by Customer Log ID (e.g. 1), name, or phone number..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-[#1E293B] border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -310,7 +310,7 @@ export function CustomerHistory() {
                                 {displayName}
                               </h3>
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-black bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50">
-                                {cust.log_id || cust.customer_code || "CUST-00000"}
+                                {cust.log_id ? `#${cust.log_id}` : (cust.customer_code ? `#${cust.customer_code}` : `#${cust.id || 1}`)}
                               </span>
                             </div>
                             <div className="flex items-center gap-3 text-xs font-medium text-gray-500 mt-0.5">
@@ -376,7 +376,7 @@ export function CustomerHistory() {
                         </h2>
                         <div className="flex items-center justify-center gap-2 mt-1">
                           <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-black bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50">
-                            {profile.log_id || profile.customer_code || "CUST-00000"}
+                            {profile.log_id ? `#${profile.log_id}` : (profile.customer_code ? `#${profile.customer_code}` : `#${profile.id || 1}`)}
                           </span>
                           <button
                             type="button"

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 
 class Customer extends Model
 {
@@ -22,14 +21,38 @@ class Customer extends Model
 
     public function getLogIdAttribute(): string
     {
-        return $this->customer_code ?: ('CUST-' . str_pad($this->id, 5, '0', STR_PAD_LEFT));
+        if ($this->customer_code) {
+            $digits = preg_replace('/\D/', '', (string)$this->customer_code);
+            return $digits !== '' ? (string)(int)$digits : (string)$this->customer_code;
+        }
+        return (string) $this->id;
+    }
+
+    /**
+     * Determine next sequential integer log ID.
+     * Takes maximum of existing numeric codes and IDs, plus 1.
+     */
+    public static function getNextLogId(): int
+    {
+        $maxFromCode = self::query()
+            ->whereNotNull('customer_code')
+            ->pluck('customer_code')
+            ->map(function ($code) {
+                $digits = preg_replace('/\D/', '', (string)$code);
+                return $digits !== '' ? (int)$digits : 0;
+            })
+            ->max() ?? 0;
+
+        $maxFromId = (int) self::max('id');
+
+        return max($maxFromCode, $maxFromId, 0) + 1;
     }
 
     /**
      * Ensure a customer exists in the master record and return the Customer model.
-     * Generates a solid log ID (e.g. CUST-00001) if new.
+     * Supports manual log ID or generates next integer log ID.
      */
-    public static function ensureCustomer(?string $name, ?string $phone, ?string $vehicleNumber = null, ?string $address = null): ?self
+    public static function ensureCustomer(?string $name, ?string $phone, ?string $vehicleNumber = null, ?string $address = null, ?string $manualLogId = null): ?self
     {
         $name = trim($name ?? '');
         $phone = trim($phone ?? '');
@@ -42,7 +65,20 @@ class Customer extends Model
             $name = 'Customer ' . ($phone ?: 'Guest');
         }
 
-        // Look up by phone if provided, otherwise by name
+        // Look up by manualLogId if provided
+        if (!empty($manualLogId)) {
+            $cleanLogId = preg_replace('/\D/', '', (string)$manualLogId);
+            if ($cleanLogId !== '') {
+                $intLogId = (string)(int)$cleanLogId;
+                $existing = self::where('customer_code', $intLogId)
+                    ->orWhere('customer_code', 'CUST-' . str_pad($intLogId, 5, '0', STR_PAD_LEFT))
+                    ->first();
+                if ($existing) {
+                    return $existing;
+                }
+            }
+        }
+
         $query = self::query();
         if (!empty($phone)) {
             $query->where('phone', $phone);
@@ -69,14 +105,11 @@ class Customer extends Model
             return $customer;
         }
 
-        // Generate next solid customer log ID: CUST-00001, CUST-00002, etc.
-        $nextNum = self::count() + 1;
-        $customerCode = 'CUST-' . str_pad($nextNum, 5, '0', STR_PAD_LEFT);
-
-        // Guarantee uniqueness in case of gaps
-        while (self::where('customer_code', $customerCode)->exists()) {
-            $nextNum++;
-            $customerCode = 'CUST-' . str_pad($nextNum, 5, '0', STR_PAD_LEFT);
+        if (!empty($manualLogId)) {
+            $clean = preg_replace('/\D/', '', (string)$manualLogId);
+            $customerCode = $clean !== '' ? (string)(int)$clean : (string) self::getNextLogId();
+        } else {
+            $customerCode = (string) self::getNextLogId();
         }
 
         return self::create([

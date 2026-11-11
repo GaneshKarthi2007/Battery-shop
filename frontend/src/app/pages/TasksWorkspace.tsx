@@ -387,7 +387,7 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                       
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-black font-mono text-gray-900 dark:text-white">
-                          {job.log_id || job.service_code || ('SRV-' + String(job.id).padStart(5, '0'))}
+                          #{job.log_id || job.service_code || job.id}
                         </span>
                         <div className="flex gap-2">
                           {isUrgent && (
@@ -451,7 +451,7 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                       Complaint Details
                     </h2>
                     <h3 className="text-xl font-black font-mono text-gray-955 dark:text-white tracking-tighter">
-                      {selectedJob.log_id || selectedJob.service_code || ('SRV-' + String(selectedJob.id).padStart(5, '0'))}
+                      #{selectedJob.log_id || selectedJob.service_code || selectedJob.id}
                     </h3>
                   </div>
                   <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
