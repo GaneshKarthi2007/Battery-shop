@@ -14,6 +14,14 @@ vi.mock("../api/client", () => ({
     BASE_URL: "http://localhost:8000/api",
 }));
 
+let mockCurrentUser = { role: "developer" };
+
+vi.mock("../contexts/AuthContext", () => ({
+    useAuth: () => ({
+        user: mockCurrentUser,
+    }),
+}));
+
 const mockUsers = [
     { id: 1, name: "Dev User", email: "dev@example.com", role: "developer" },
     { id: 2, name: "Admin User", email: "admin@example.com", role: "admin" },
@@ -26,7 +34,32 @@ describe("UserManagement Component", () => {
         (apiClient.get as any).mockResolvedValue(mockUsers);
     });
 
+    
+    it("hides developer users and developer role option when logged in as admin", async () => {
+        mockCurrentUser = { role: "admin" };
+        render(
+            <BrowserRouter>
+                <UserManagement />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText("Admin User")).toBeInTheDocument();
+            expect(screen.getByText("Staff User")).toBeInTheDocument();
+        });
+
+        // Developer user must be hidden from admin
+        expect(screen.queryByText("Dev User")).not.toBeInTheDocument();
+
+        // Developer role option must not exist in role dropdown for admin
+        const roleSelect = screen.getByLabelText("System Role") as HTMLSelectElement;
+        const options = Array.from(roleSelect.options).map(o => o.value);
+        expect(options).not.toContain("developer");
+        expect(options).toEqual(["staff", "manager", "admin"]);
+    });
+
     it("renders page header and lists existing users with roles", async () => {
+        mockCurrentUser = { role: "developer" };
         render(
             <BrowserRouter>
                 <UserManagement />

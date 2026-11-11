@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { Users, Search, Phone, Car, ChevronRight, ArrowLeft, ShieldCheck, Code, UserCheck, Plus, Trash2, Loader2, MessageSquare } from "lucide-react";
+import { Users, Search, Phone, Car, ChevronRight, ArrowLeft, ShieldCheck, Code, UserCheck, Plus, Trash2, Loader2, MessageSquare, Copy, Check } from "lucide-react";
 import { apiClient } from "../api/client";
 import { CircleLoader } from "../components/ui/CircleLoader";
 import { useAuth } from "../contexts/AuthContext";
 
 interface CustomerSummary {
+  id?: number;
+  customer_code?: string;
+  log_id?: string;
   name: string;
   phone: string;
   total_purchases: number;
@@ -18,6 +21,9 @@ interface CustomerSummary {
 
 interface CustomerDetail {
   profile: {
+    id?: number;
+    customer_code?: string;
+    log_id?: string;
     name: string;
     phone: string;
     vehicle_number: string;
@@ -81,6 +87,7 @@ export function CustomerHistory() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"sales" | "services" | "exchanges" | "claims">("sales");
   const [showDetailView, setShowDetailView] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   // --- System Users State ---
   const [users, setUsers] = useState<any[]>([]);
@@ -262,7 +269,7 @@ export function CustomerHistory() {
                 <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search by customer name or phone number..."
+                  placeholder="Search by Customer Log ID (e.g. 1), name, or phone number..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-[#1E293B] border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -298,9 +305,14 @@ export function CustomerHistory() {
                             {initial}
                           </div>
                           <div className="min-w-0">
-                            <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 truncate group-hover:text-blue-600 transition-colors">
-                              {displayName}
-                            </h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 truncate group-hover:text-blue-600 transition-colors">
+                                {displayName}
+                              </h3>
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-black bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50">
+                                {cust.log_id ? `#${cust.log_id}` : (cust.customer_code ? `#${cust.customer_code}` : `#${cust.id || 1}`)}
+                              </span>
+                            </div>
                             <div className="flex items-center gap-3 text-xs font-medium text-gray-500 mt-0.5">
                               <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-blue-500" /> {formattedPhone}</span>
                               <span className="hidden sm:inline">• {cust.batteries_purchased} Batteries</span>
@@ -362,6 +374,23 @@ export function CustomerHistory() {
                         <h2 className="text-2xl font-black text-gray-900 dark:text-gray-100 uppercase tracking-tight">
                           {getCustomerDisplayName(profile.name)}
                         </h2>
+                        <div className="flex items-center justify-center gap-2 mt-1">
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-black bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50">
+                            {profile.log_id ? `#${profile.log_id}` : (profile.customer_code ? `#${profile.customer_code}` : `#${profile.id || 1}`)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(profile.log_id || profile.customer_code || "");
+                              setCopiedCode(true);
+                              setTimeout(() => setCopiedCode(false), 2000);
+                            }}
+                            className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                            title="Copy Customer ID"
+                          >
+                            {copiedCode ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
 
                         {/* Clean Phone Number without 91 prefix */}
                         <p className="text-sm font-bold text-gray-500 mt-1">
@@ -473,7 +502,7 @@ export function CustomerHistory() {
                           customerDetail.services.map((srv) => (
                             <div key={srv.id} className="p-4 bg-gray-50 dark:bg-[#1E293B]/50 rounded-xl border border-gray-100 dark:border-gray-800 flex items-center justify-between">
                               <div>
-                                <span className="text-xs font-bold text-gray-900 dark:text-gray-100 block">SRV-{String(srv.id).padStart(5, '0')} — {srv.complaint_type || srv.vehicle_details}</span>
+                                <span className="text-xs font-bold text-gray-900 dark:text-gray-100 block">{srv.log_id || srv.service_code || ('SRV-' + String(srv.id).padStart(5, '0'))} — {srv.complaint_type || srv.vehicle_details}</span>
                                 <span className="text-[11px] text-gray-400">{new Date(srv.created_at).toLocaleDateString('en-IN')}</span>
                               </div>
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-blue-100 text-blue-700">{srv.status}</span>

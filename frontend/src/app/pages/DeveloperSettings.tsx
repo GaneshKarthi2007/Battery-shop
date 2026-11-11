@@ -1,6 +1,6 @@
 import { useDeveloper } from "../contexts/DeveloperContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { Settings, Edit2, ShieldCheck, ToggleLeft, ToggleRight, Moon, Sun, Users, ChevronRight, FileText, Bell } from "lucide-react";
+import { Settings, Edit2, ShieldCheck, Hash, ToggleLeft, ToggleRight, Moon, Sun, Users, ChevronRight, FileText, Bell } from "lucide-react";
 import { useNavigate } from "react-router";
 
 export function DeveloperSettings() {
@@ -29,6 +29,30 @@ export function DeveloperSettings() {
                 </div>
 
                 <div className="p-6 space-y-4">
+                                        {/* Toggle: Manual Log ID Entry */}
+                    <div className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl border border-gray-200">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600">
+                                <Hash className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Manual Log ID Entry</h3>
+                                <p className="text-xs text-gray-500">Allow entering previous customer and service log IDs manually as pure integers</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => toggleFeature('manualLogId')}
+                            className="text-gray-400 hover:text-purple-600 transition-colors"
+                            aria-label="Toggle Manual Log ID"
+                        >
+                            {features.manualLogId ? (
+                                <ToggleRight className="w-10 h-10 text-purple-600" />
+                            ) : (
+                                <ToggleLeft className="w-10 h-10" />
+                            )}
+                        </button>
+                    </div>
+
                     {/* Toggle: Edit Profile */}
                     <div className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl border border-gray-200">
                         <div className="flex items-center gap-4">

@@ -8,6 +8,15 @@ import {
   X,
   Filter,
   RotateCcw,
+  Wallet,
+  CreditCard,
+  Receipt,
+  RefreshCw,
+  Wrench,
+  CheckCircle2,
+  Clock,
+  Tag,
+  Sparkles,
 } from "lucide-react";
 import { CircleLoader } from "../../components/ui/CircleLoader";
 
@@ -27,13 +36,22 @@ export interface SearchPanelField<T> {
   placeholder?: string;
 }
 
+export interface QuickFilterChip {
+  id?: string;
+  key: string;
+  value: string;
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+}
+
 interface ReportTableProps<T extends Record<string, any>> {
   columns: ColDef<T>[];
   data: T[];
   loading?: boolean;
   searchPlaceholder?: string;
-  searchFields?: (keyof T)[];
+  searchFields?: (keyof T | string)[];
   searchPanelFields?: SearchPanelField<T>[];
+  quickFilterChips?: QuickFilterChip[];
   toolbar?: ReactNode;
   emptyMessage?: string;
   rowKey?: (row: T, i: number) => string | number;
@@ -42,6 +60,20 @@ interface ReportTableProps<T extends Record<string, any>> {
 
 type SortDir = "asc" | "desc" | null;
 
+// Helper to pick a contextual WhatsApp-style icon for filter chips
+function getChipIcon(label: string, value: string) {
+  const text = `${label} ${value}`.toLowerCase();
+  if (text.includes("cash")) return Wallet;
+  if (text.includes("upi") || text.includes("card") || text.includes("credit")) return CreditCard;
+  if (text.includes("sale") || text.includes("bill")) return Receipt;
+  if (text.includes("exchange")) return RefreshCw;
+  if (text.includes("service")) return Wrench;
+  if (text.includes("settled") || text.includes("completed")) return CheckCircle2;
+  if (text.includes("pending") || text.includes("clock")) return Clock;
+  if (text.includes("journal")) return Tag;
+  return Sparkles;
+}
+
 export function ReportTable<T extends Record<string, any>>({
   columns,
   data,
@@ -49,6 +81,7 @@ export function ReportTable<T extends Record<string, any>>({
   searchPlaceholder = "Search records...",
   searchFields = [],
   searchPanelFields = [],
+  quickFilterChips,
   toolbar,
   emptyMessage = "No matching records found.",
   rowKey,
@@ -56,9 +89,41 @@ export function ReportTable<T extends Record<string, any>>({
 }: ReportTableProps<T>) {
   const [search, setSearch] = useState("");
   const [panelFilters, setPanelFilters] = useState<Record<string, string>>({});
+  const [activeChip, setActiveChip] = useState<{ key: string; value: string } | null>(null);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [showSearchPanel, setShowSearchPanel] = useState(initialShowSearchPanel);
+
+  // Automatically derive WhatsApp-style search filter chips from searchPanelFields or props
+  const filterChips = useMemo<QuickFilterChip[]>(() => {
+    if (quickFilterChips && quickFilterChips.length > 0) {
+      return quickFilterChips;
+    }
+
+    const derived: QuickFilterChip[] = [];
+    const seen = new Set<string>();
+
+    searchPanelFields.forEach((field) => {
+      if (field.type === "select" && field.options) {
+        field.options.forEach((opt) => {
+          // Skip empty placeholder option like "-Select-"
+          if (!opt.value || opt.value.trim() === "" || opt.label.includes("-Select")) return;
+          const chipKey = `${String(field.key)}:${opt.value}`;
+          if (!seen.has(chipKey)) {
+            seen.add(chipKey);
+            derived.push({
+              key: String(field.key),
+              value: opt.value,
+              label: opt.label,
+              icon: getChipIcon(opt.label, opt.value),
+            });
+          }
+        });
+      }
+    });
+
+    return derived;
+  }, [quickFilterChips, searchPanelFields]);
 
   const handleSort = (key: string) => {
     if (sortKey !== key) {
@@ -79,8 +144,33 @@ export function ReportTable<T extends Record<string, any>>({
     }));
   };
 
+  const handleChipClick = (chip: { key: string; value: string }) => {
+    if (chip.key === "_all") {
+      setActiveChip(null);
+      setPanelFilters({});
+      return;
+    }
+
+    // Toggle chip: if already active, turn it off
+    if (activeChip && activeChip.key === chip.key && activeChip.value === chip.value) {
+      setActiveChip(null);
+      setPanelFilters((prev) => {
+        const next = { ...prev };
+        delete next[chip.key];
+        return next;
+      });
+    } else {
+      setActiveChip({ key: chip.key, value: chip.value });
+      setPanelFilters((prev) => ({
+        ...prev,
+        [chip.key]: chip.value,
+      }));
+    }
+  };
+
   const handleResetFilters = () => {
     setSearch("");
+    setActiveChip(null);
     setPanelFilters({});
   };
 
@@ -91,15 +181,33 @@ export function ReportTable<T extends Record<string, any>>({
   const filtered = useMemo(() => {
     let rows = [...data];
 
-    // Quick text search filter across specified searchFields
-    if (search.trim() && searchFields.length > 0) {
-      const q = search.toLowerCase();
-      rows = rows.filter((row) =>
-        searchFields.some((f) => String(row[f] ?? "").toLowerCase().includes(q))
-      );
+    // WhatsApp-Style Universal Live Search
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      rows = rows.filter((row) => {
+        // First check specified searchFields
+        if (searchFields.length > 0) {
+          const matched = searchFields.some((f) => {
+            const val = row[f as string];
+            return val !== undefined && val !== null && String(val).toLowerCase().includes(q);
+          });
+          if (matched) return true;
+        }
+
+        // Also check all common record fields (universal search like WhatsApp)
+        return Object.values(row).some((val) => {
+          if (val === undefined || val === null || typeof val === "object") return false;
+          // Format date or numbers for comparison
+          if (String(val).toLowerCase().includes(q)) return true;
+          if (typeof val === "number" && !isNaN(parseFloat(q)) && Math.abs(val - parseFloat(q)) < 0.01) {
+            return true;
+          }
+          return false;
+        });
+      });
     }
 
-    // Typed Search Panel filters
+    // Typed Search Panel and Chip filters
     for (const [key, filterVal] of Object.entries(panelFilters)) {
       if (!filterVal || filterVal.trim() === "") continue;
       const targetVal = filterVal.trim().toLowerCase();
@@ -139,7 +247,7 @@ export function ReportTable<T extends Record<string, any>>({
         const cmp =
           typeof av === "number" && typeof bv === "number"
             ? av - bv
-            : String(av).localeCompare(String(bv));
+            : String(av).localeCompare(String(bv), undefined, { numeric: true });
         return sortDir === "asc" ? cmp : -cmp;
       });
     }
@@ -163,29 +271,31 @@ export function ReportTable<T extends Record<string, any>>({
 
   return (
     <div className="flex flex-col bg-white dark:bg-[#15161E] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden">
-      {/* Table Toolbar Header matching reference UI with HIDE/SHOW SEARCH PANEL */}
+      {/* Table Toolbar Header with WhatsApp-style search input */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-gray-100 dark:border-[#2E3B55] bg-gray-50/70 dark:bg-[#0D1B2A]/70">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <div className="relative flex-1 max-w-full sm:max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full pl-9 pr-8 py-2 text-xs font-medium bg-white dark:bg-[#1B263B] border border-gray-200 dark:border-[#2E3B55] rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-900 dark:text-white placeholder:text-gray-400 transition-all shadow-sm"
+              className="w-full pl-9.5 pr-8 py-2 text-xs font-medium bg-white dark:bg-[#1B263B] border border-gray-200 dark:border-[#2E3B55] rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-900 dark:text-white placeholder:text-gray-400 transition-all shadow-xs"
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                title="Clear search"
+                aria-label="Clear search"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 ml-2">
+          <div className="hidden sm:flex items-center gap-1.5 ml-2 shrink-0">
             <span className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-bold">
               {filtered.length} record{filtered.length !== 1 ? "s" : ""}
             </span>
@@ -200,11 +310,11 @@ export function ReportTable<T extends Record<string, any>>({
         <div className="flex items-center gap-3 justify-end shrink-0">
           {toolbar}
 
-          {/* Reference Image 2: Link toggle "HIDE SEARCH PANEL" / "SHOW SEARCH PANEL" */}
+          {/* Desktop-only Link toggle "HIDE SEARCH PANEL" / "SHOW SEARCH PANEL" (Hidden on mobile responsive) */}
           {searchPanelFields.length > 0 && (
             <button
               onClick={() => setShowSearchPanel((prev) => !prev)}
-              className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 uppercase tracking-wider transition-colors flex items-center gap-1.5"
+              className="hidden lg:flex text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 uppercase tracking-wider transition-colors items-center gap-1.5"
             >
               <Filter className="w-3.5 h-3.5" />
               <span>{showSearchPanel ? "HIDE SEARCH PANEL" : "SHOW SEARCH PANEL"}</span>
@@ -213,7 +323,63 @@ export function ReportTable<T extends Record<string, any>>({
         </div>
       </div>
 
-      {/* Main Container: Table on Left + Outlined Search Panel on Right */}
+      {/* WhatsApp Search Module: Horizontal Scrolling Search Category Filter Chips */}
+      {filterChips.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-2 px-4 sm:px-5 border-b border-gray-100 dark:border-[#2E3B55] bg-white/60 dark:bg-[#15161E]/60 select-none">
+          {/* "All" reset chip */}
+          <button
+            type="button"
+            onClick={() => handleChipClick({ key: "_all", value: "_all" })}
+            className={`px-3 py-1 rounded-full text-xs font-bold tracking-tight transition-all shrink-0 flex items-center gap-1.5 border cursor-pointer ${
+              activeChip === null
+                ? "bg-blue-600 dark:bg-blue-600 text-white border-blue-600 shadow-xs"
+                : "bg-gray-100/80 dark:bg-[#1B263B] text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-200/70 dark:hover:bg-gray-700"
+            }`}
+          >
+            <span>All</span>
+          </button>
+
+          {/* Contextual WhatsApp-style module filter chips */}
+          {filterChips.map((chip) => {
+            const isChipActive =
+              activeChip?.key === chip.key && activeChip?.value === chip.value;
+            const Icon = chip.icon || Tag;
+
+            return (
+              <button
+                key={`${chip.key}-${chip.value}`}
+                type="button"
+                onClick={() => handleChipClick(chip)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold tracking-tight transition-all shrink-0 flex items-center gap-1.5 border cursor-pointer ${
+                  isChipActive
+                    ? "bg-blue-600 dark:bg-blue-600 text-white border-blue-600 shadow-xs font-bold scale-[1.02]"
+                    : "bg-white dark:bg-[#1B263B] text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                }`}
+              >
+                <Icon className={`w-3 h-3 ${isChipActive ? "text-white" : "text-gray-400"}`} />
+                <span>{chip.label}</span>
+                {isChipActive && (
+                  <X className="w-3 h-3 ml-0.5 text-white/90 hover:text-white" />
+                )}
+              </button>
+            );
+          })}
+
+          {/* Quick Clear All button if active filters exist */}
+          {activeFiltersCount > 0 && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="ml-auto text-[11px] font-bold text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors shrink-0 flex items-center gap-1 pl-2"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Clear</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Main Container: Table on Left + Desktop Outlined Search Panel on Right */}
       <div className="flex flex-col lg:flex-row relative">
         {/* Table Content Area */}
         <div className="flex-1 min-w-0 overflow-x-auto relative min-h-[300px]">
@@ -262,9 +428,11 @@ export function ReportTable<T extends Record<string, any>>({
                         col.className ?? ""
                       }`}
                     >
-                      {col.render
-                        ? col.render(row, i)
-                        : String(row[col.key as string] ?? "—")}
+                      {col.render ? (
+                        col.render(row, i)
+                      ) : (
+                        <span>{String(row[col.key as string] ?? "-")}</span>
+                      )}
                     </td>
                   ))}
                 </tr>
@@ -273,18 +441,18 @@ export function ReportTable<T extends Record<string, any>>({
                 <tr>
                   <td
                     colSpan={columns.length + 1}
-                    className="py-16 text-center text-gray-400 dark:text-gray-500 text-sm font-medium"
+                    className="px-6 py-14 text-center text-gray-400 dark:text-gray-500"
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 stroke-[1.5]" />
-                      <p>{emptyMessage}</p>
+                      <p className="text-sm font-semibold">{emptyMessage}</p>
                       {activeFiltersCount > 0 && (
                         <button
                           onClick={handleResetFilters}
-                          className="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-1"
+                          className="mt-2 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                         >
                           <RotateCcw className="w-3 h-3" />
-                          <span>Clear search filters</span>
+                          Clear search and filters
                         </button>
                       )}
                     </div>
@@ -295,16 +463,14 @@ export function ReportTable<T extends Record<string, any>>({
           </table>
         </div>
 
-        {/* Search Panel (matching Reference Image 2: media_1793533739175_71f21b54.png) */}
-        {searchPanelFields.length > 0 && showSearchPanel && (
-          <aside
-            className="w-full lg:w-72 xl:w-80 shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-[#2E3B55] bg-gray-50/40 dark:bg-[#0E1726]/60 flex flex-col"
-          >
-            {/* Panel Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-[#2E3B55] bg-white dark:bg-[#15161E]">
+        {/* Desktop-only Search Panel (Hidden on mobile responsive as requested) */}
+        {showSearchPanel && searchPanelFields.length > 0 && (
+          <aside className="hidden lg:flex flex-col w-72 border-l border-gray-200 dark:border-[#2E3B55] bg-gray-50/50 dark:bg-[#0D1B2A]/50 shrink-0 animate-in fade-in-50 duration-200">
+            {/* Header of Search Panel */}
+            <div className="p-4 border-b border-gray-200 dark:border-[#2E3B55] bg-white dark:bg-[#15161E] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Search className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Search</h3>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Search</h3>
               </div>
               <div className="flex items-center gap-2">
                 {activeFiltersCount > 0 && (
@@ -319,7 +485,7 @@ export function ReportTable<T extends Record<string, any>>({
                 )}
                 <button
                   onClick={() => setShowSearchPanel(false)}
-                  className="lg:hidden p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
                   title="Close search panel"
                 >
                   <X className="w-4 h-4" />

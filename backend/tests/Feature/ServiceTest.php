@@ -92,6 +92,56 @@ class ServiceTest extends TestCase
         $response->assertStatus(200);
         $this->assertCount(1, $response->json());
         $this->assertEquals($s2->id, $response->json()[0]['id']);
+
+        // Search by solid service log ID
+        $s1Code = $s1->fresh()->service_code;
+        $this->assertNotNull($s1Code);
+        $this->assertTrue(ctype_digit($s1Code));
+        $response = $this->getJson("/api/services?search={$s1Code}");
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json());
+        $this->assertEquals($s1->id, $response->json()[0]['id']);
+    }
+
+    public function test_manual_service_log_id_and_next_sequential_id()
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        Sanctum::actingAs($staff);
+
+        // Check next log id endpoint
+        $nextRes = $this->getJson('/api/services/next-log-id');
+        $nextRes->assertStatus(200);
+
+        // Create a service with manual integer log ID 100
+        $createRes = $this->postJson('/api/services', [
+            'customer_name' => 'Kannan',
+            'contact_number' => '9894127693',
+            'log_id' => '100',
+        ]);
+        $createRes->assertStatus(201)
+            ->assertJsonPath('service_code', '100')
+            ->assertJsonPath('log_id', '100');
+
+        // Next auto-generated log ID must now automatically be 101
+        $nextResAfter = $this->getJson('/api/services/next-log-id');
+        $nextResAfter->assertStatus(200)
+            ->assertJsonPath('next_log_id', 101);
+
+        // Reject duplicate log ID
+        $dupRes = $this->postJson('/api/services', [
+            'customer_name' => 'Duplicate',
+            'contact_number' => '9894127694',
+            'log_id' => '100',
+        ]);
+        $dupRes->assertStatus(422);
+
+        // Reject non-integer log ID
+        $invalidRes = $this->postJson('/api/services', [
+            'customer_name' => 'Invalid',
+            'contact_number' => '9894127695',
+            'log_id' => 'abc',
+        ]);
+        $invalidRes->assertStatus(422);
     }
 
     public function test_view_selected_complaint_details()
@@ -113,6 +163,15 @@ class ServiceTest extends TestCase
         $response->assertJsonFragment([
             'customer_name' => 'Rajesh',
             'complaint_type' => 'Dead Battery',
+        ]);
+
+        // Route binding test using solid log ID (SRV-xxxxx)
+        $srvCode = $service->fresh()->service_code;
+        $responseCode = $this->getJson("/api/services/{$srvCode}");
+        $responseCode->assertStatus(200);
+        $responseCode->assertJsonFragment([
+            'customer_name' => 'Rajesh',
+            'service_code' => $srvCode,
         ]);
     }
 

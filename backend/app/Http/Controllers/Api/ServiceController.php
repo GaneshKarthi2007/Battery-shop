@@ -9,16 +9,37 @@ use Illuminate\Http\Request;
 
 class ServiceController extends Controller
 {
+    public function nextLogId()
+    {
+        return response()->json([
+            'next_log_id' => Service::getNextLogId(),
+        ]);
+    }
+
     public function index(Request $request)
     {
         $query = Service::with(['assignedStaff', 'processFlows', 'processFlows.staff'])->latest();
 
         if ($request->has('search')) {
-            $search = $request->query('search');
+            $search = trim($request->query('search'));
             $query->where(function($q) use ($search) {
-                $q->where('contact_number', 'like', "%{$search}%")
-                  ->orWhere('customer_name', 'like', "%{$search}%")
-                  ->orWhere('id', 'like', "%{$search}%");
+                $q->where('customer_name', 'like', "%{$search}%")
+                  ->orWhere('service_code', $search)
+                  ->orWhere('customer_code', $search);
+
+                if (strlen($search) >= 3) {
+                    $q->orWhere('contact_number', 'like', "%{$search}%");
+                } elseif ($search !== '') {
+                    $q->orWhere('contact_number', $search);
+                }
+
+                $digits = preg_replace('/\D/', '', $search);
+                if ($digits !== '') {
+                    $intId = (int)$digits;
+                    $q->orWhere('id', $intId)
+                      ->orWhere('service_code', (string)$intId)
+                      ->orWhere('service_code', 'SRV-' . str_pad($intId, 5, '0', STR_PAD_LEFT));
+                }
             });
         }
 
@@ -156,6 +177,10 @@ class ServiceController extends Controller
             'pickup_date' => 'nullable|date',
             'assigned_to' => 'nullable|exists:users,id',
             'sub_status' => 'nullable|string',
+            'service_code' => 'nullable|string',
+            'log_id' => 'nullable|string',
+            'customer_code' => 'nullable|string',
+            'customer_log_id' => 'nullable|string',
         ]);
 
         if (empty($validated['customer_name'])) {
@@ -163,6 +188,41 @@ class ServiceController extends Controller
         }
         if (empty($validated['vehicle_details'])) {
             $validated['vehicle_details'] = 'N/A';
+        }
+
+        // Handle manual or sequential Service Log ID
+        $manualServiceLogId = $request->input('log_id') ?? $request->input('service_code');
+        if (!empty($manualServiceLogId)) {
+            $cleanServiceId = preg_replace('/\D/', '', (string)$manualServiceLogId);
+            if ($cleanServiceId === '') {
+                return response()->json(['message' => 'Service Log ID must be an integer.'], 422);
+            }
+            $cleanServiceId = (string)(int)$cleanServiceId;
+            if (Service::where('service_code', $cleanServiceId)->orWhere('id', (int)$cleanServiceId)->exists()) {
+                return response()->json(['message' => "Service Log ID #{$cleanServiceId} is already in use."], 422);
+            }
+            $validated['service_code'] = $cleanServiceId;
+        } else {
+            $validated['service_code'] = (string) Service::getNextLogId();
+        }
+
+        // Handle manual Customer Log ID if provided
+        $manualCustomerLogId = $request->input('customer_log_id') ?? $request->input('customer_code');
+        if (!empty($manualCustomerLogId)) {
+            $cleanCustId = preg_replace('/\D/', '', (string)$manualCustomerLogId);
+            if ($cleanCustId !== '') {
+                $cleanCustId = (string)(int)$cleanCustId;
+                $customer = \App\Models\Customer::ensureCustomer(
+                    $validated['customer_name'] ?? null,
+                    $validated['contact_number'] ?? null,
+                    $validated['vehicle_details'] ?? null,
+                    $validated['address'] ?? null,
+                    $cleanCustId
+                );
+                if ($customer) {
+                    $validated['customer_code'] = $customer->customer_code;
+                }
+            }
         }
 
         if (isset($validated['assigned_to']) && $validated['assigned_to']) {
@@ -181,6 +241,8 @@ class ServiceController extends Controller
         if ($duplicate) {
             return response()->json($duplicate->load('assignedStaff'), 200);
         }
+
+        unset($validated['log_id'], $validated['customer_log_id']);
 
         $service = Service::create($validated);
 

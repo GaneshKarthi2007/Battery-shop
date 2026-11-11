@@ -9,6 +9,9 @@ vi.mock("../api/client", () => ({
       if (url.includes('/customers/')) {
         return Promise.resolve({
           profile: {
+            id: 1,
+            customer_code: "1",
+            log_id: "1",
             name: "Kumar",
             phone: "9876543210",
             vehicle_number: "TN-37-AB-1234",
@@ -27,6 +30,9 @@ vi.mock("../api/client", () => ({
       }
       return Promise.resolve([
         {
+          id: 1,
+          customer_code: "1",
+          log_id: "1",
           name: "Kumar",
           phone: "9876543210",
           total_purchases: 42500,
@@ -61,6 +67,7 @@ describe("CustomerHistory Component", () => {
 
     expect(screen.getByText(/User & Customer Profiles & History/i)).toBeInTheDocument();
     expect(screen.getByText(/System Users/i)).toBeInTheDocument();
+    expect(await screen.findByText("#1")).toBeInTheDocument();
   });
 
   it("removes System Users tab for manager role", async () => {

@@ -24,6 +24,9 @@ import { CircleLoader } from "../components/ui/CircleLoader";
 
 interface ServiceRequest {
     id: number;
+    service_code?: string;
+    log_id?: string;
+    customer_code?: string;
     customer_name: string;
     contact_number: string;
     vehicle_details: string;
@@ -415,7 +418,7 @@ export function ServiceDetails() {
                             </div>
                             <div>
                                 <div className="flex items-center gap-3 flex-wrap">
-                                    <h1 className="text-2xl lg:text-3xl font-black text-gray-900">Service #{service.id}</h1>
+                                    <h1 className="text-2xl lg:text-3xl font-black text-gray-900">Service #{service.log_id || service.service_code || service.id}</h1>
                                     {service.parent_id && (
                                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
                                             <RefreshCw className="w-3 h-3" />
@@ -469,7 +472,7 @@ export function ServiceDetails() {
                         </div>
                         <div className="p-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {infoCard(<User className="w-4 h-4 text-blue-500" />, "Customer Name", service.customer_name)}
+                                {infoCard(<User className="w-4 h-4 text-blue-500" />, "Customer Name", `${service.customer_name} (${service.customer_code || "CUST-00000"})`)}
                                 {infoCard(<Phone className="w-4 h-4 text-green-500" />, "Contact Number", service.contact_number)}
                                 {service.vehicle_details && infoCard(<Car className="w-4 h-4 text-purple-500" />, "Vehicle", service.vehicle_details)}
                                 {service.address && infoCard(<MapPin className="w-4 h-4 text-red-500" />, "Address", service.address)}

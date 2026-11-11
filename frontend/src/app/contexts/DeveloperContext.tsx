@@ -8,6 +8,7 @@ interface DeveloperFeatures {
     serviceViewToggle: boolean;
     reportExport: boolean;
     pushNotifications: boolean;
+    manualLogId: boolean;
 }
 
 export interface ShopConfig {
@@ -33,6 +34,7 @@ const defaultFeatures: DeveloperFeatures = {
     serviceViewToggle: true,
     reportExport: true, // Enabled by default
     pushNotifications: true, // Defaultly toggled ON
+    manualLogId: true, // Defaultly enabled for manual previous records
 };
 
 const defaultShopConfig: ShopConfig = {

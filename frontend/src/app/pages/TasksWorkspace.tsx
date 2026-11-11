@@ -14,6 +14,9 @@ import { Button } from "../components/Button";
 
 export interface ServiceRecord {
   id: number;
+  service_code?: string;
+  log_id?: string;
+  customer_code?: string;
   customer_name: string;
   contact_number: string;
   address?: string;
@@ -103,12 +106,16 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
   const filteredJobs = tabJobs.filter((job) => {
     const query = searchQuery.trim().toLowerCase();
     if (query) {
+      const srvCode = (job.service_code || job.log_id || `srv-${job.id}`).toLowerCase();
+      const custCode = (job.customer_code || "").toLowerCase();
       const logStr = `log-${job.id}`;
       const idStr = String(job.id);
       const phoneStr = job.contact_number || "";
       const nameStr = job.customer_name?.toLowerCase() || "";
       
       const matchesSearch = 
+        srvCode.includes(query) ||
+        custCode.includes(query) ||
         logStr.includes(query) || 
         idStr.includes(query) || 
         phoneStr.includes(query) ||
@@ -379,8 +386,8 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                       )}
                       
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-black text-gray-900 dark:text-white">
-                          LOG-{job.id}
+                        <span className="text-sm font-black font-mono text-gray-900 dark:text-white">
+                          #{job.log_id || job.service_code || job.id}
                         </span>
                         <div className="flex gap-2">
                           {isUrgent && (
@@ -443,8 +450,8 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                     <h2 className="text-xs font-black text-blue-500 uppercase tracking-[0.2em] mb-1">
                       Complaint Details
                     </h2>
-                    <h3 className="text-xl font-black text-gray-955 dark:text-white tracking-tighter">
-                      LOG-{selectedJob.id}
+                    <h3 className="text-xl font-black font-mono text-gray-955 dark:text-white tracking-tighter">
+                      #{selectedJob.log_id || selectedJob.service_code || selectedJob.id}
                     </h3>
                   </div>
                   <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
