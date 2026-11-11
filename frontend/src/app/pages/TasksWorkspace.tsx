@@ -31,6 +31,7 @@ export interface ServiceRecord {
   complaint_type?: string;
   complaint_details?: string;
   voice_note?: string;
+  voice_note_url?: string | null;
   pickup_date?: string;
   assigned_to?: number;
   assigned_at?: string;
@@ -566,7 +567,7 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                         Admin Voice Attachment
                       </p>
                       <AudioPlayer
-                        src={getMediaUrl(selectedJob.voice_note)}
+                        src={getMediaUrl(selectedJob.voice_note_url ?? selectedJob.voice_note)}
                         label="Voice Instruction"
                       />
                     </div>

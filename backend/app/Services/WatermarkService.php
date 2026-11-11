@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -11,13 +10,17 @@ use Illuminate\Support\Str;
  */
 class WatermarkService
 {
+    public function __construct(
+        private readonly MediaStorage $media = new MediaStorage()
+    ) {}
+
     /**
      * Process the uploaded image:
      *  1. Load into GD
      *  2. Render a semi-transparent bar at the bottom with date/time + lat/lng
-     *  3. Save to public disk under gps_photos/
+     *  3. Save to the media disk (see MediaStorage) under gps_photos/
      *
-     * @return string  Relative path stored on the public disk (e.g. gps_photos/abc123.jpg)
+     * @return string  Relative path stored on the media disk (e.g. gps_photos/abc123.jpg)
      */
     public function applyAndStore(
         UploadedFile $file,
@@ -31,8 +34,7 @@ class WatermarkService
             !function_exists('imagecreatefromwebp') || 
             !function_exists('imagejpeg')) {
             $filename = 'gps_photos/' . \Illuminate\Support\Str::uuid() . '.' . ($file->getClientOriginalExtension() ?: 'jpg');
-            Storage::disk('public')->put($filename, file_get_contents($file->getRealPath()));
-            return $filename;
+            return $this->media->put($filename, file_get_contents($file->getRealPath()));
         }
 
         // --- 1. Create GD image from upload ---
@@ -87,9 +89,10 @@ class WatermarkService
         imagejpeg($source, $tmpPath, 85); // 85 % quality
         imagedestroy($source);
 
-        Storage::disk('public')->put($filename, file_get_contents($tmpPath));
-        @unlink($tmpPath);
-
-        return $filename;
+        try {
+            return $this->media->put($filename, file_get_contents($tmpPath));
+        } finally {
+            @unlink($tmpPath);
+        }
     }
 }

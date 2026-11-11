@@ -66,7 +66,8 @@ frontend/  ──►  backend/  (Laravel REST API)  ──►  MySQL / SQLite
    React 18 SPA         ├─ Auth: Sanctum bearer tokens
                         ├─ Roles: `role` column on users (admin, staff, developer, ...)
                         ├─ Routes: /api/* (single versionless namespace in routes/api.php)
-                        └─ Media: local storage + WatermarkService for GPS-tagged photos
+                        └─ Media: MediaStorage → MEDIA_DISK (local `public` in dev, Supabase bucket in prod)
+                                  + WatermarkService for GPS-tagged photos
 ```
 
 - The backend is the **single source of truth**. The frontend never embeds business logic that belongs in the API.

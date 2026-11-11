@@ -60,7 +60,35 @@ return [
             'report' => false,
         ],
 
+        // Supabase Storage via its S3-compatible API (Dashboard → Project Settings → Storage).
+        // The bucket must be marked "Public" so `url` links can be opened without auth.
+        'supabase' => [
+            'driver' => 's3',
+            'key' => env('SUPABASE_S3_ACCESS_KEY_ID'),
+            'secret' => env('SUPABASE_S3_SECRET_ACCESS_KEY'),
+            'region' => env('SUPABASE_S3_REGION', 'ap-south-1'),
+            'bucket' => env('SUPABASE_BUCKET'),
+            'endpoint' => env('SUPABASE_S3_ENDPOINT'),
+            'url' => env('SUPABASE_PUBLIC_URL'),
+            'use_path_style_endpoint' => true,
+            'throw' => true,
+            'report' => true,
+        ],
+
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Media Disk
+    |--------------------------------------------------------------------------
+    |
+    | The disk that uploaded media (voice notes, GPS photos, transaction
+    | attachments) is written to. Use "public" for local development and
+    | "supabase" in production. Accessed through App\Services\MediaStorage.
+    |
+    */
+
+    'media_disk' => env('MEDIA_DISK', 'public'),
 
     /*
     |--------------------------------------------------------------------------

@@ -49,8 +49,8 @@ class GpsPhoto extends Model
     /**
      * Accessor: full public URL of the stored image.
      */
-    public function getImageUrlAttribute(): string
+    public function getImageUrlAttribute(): ?string
     {
-        return asset('storage/' . $this->image_path);
+        return app(\App\Services\MediaStorage::class)->url($this->image_path);
     }
 }

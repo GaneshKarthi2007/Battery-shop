@@ -36,6 +36,7 @@ export interface MiscTransactionRecord {
   credit_entries?: TransactionEntry[];
   debit_entries?: TransactionEntry[];
   attachment_path?: string | null;
+  attachment_url?: string | null;
   bank_name?: string | null;
   cheque_no?: string | null;
   cheque_date?: string | null;
