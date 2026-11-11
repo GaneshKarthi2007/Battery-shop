@@ -13,10 +13,8 @@ export function NewService() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [manualServiceId, setManualServiceId] = useState("");
-    const [manualCustomerId, setManualCustomerId] = useState("");
-    const [suggestedServiceId, setSuggestedServiceId] = useState<number | null>(null);
-    const [suggestedCustomerId, setSuggestedCustomerId] = useState<number | null>(null);
-    const [formData, setFormData] = useState({
+        const [suggestedServiceId, setSuggestedServiceId] = useState<number | null>(null);
+        const [formData, setFormData] = useState({
         customer_name: "",
         contact_number: "",
         address: "",
@@ -47,10 +45,7 @@ export function NewService() {
         Promise.resolve(apiClient.get<{ next_log_id: number }>('/services/next-log-id'))
             .then(res => { if (res && res.next_log_id) setSuggestedServiceId(res.next_log_id); })
             .catch(() => {});
-        Promise.resolve(apiClient.get<{ next_log_id: number }>('/customers/next-log-id'))
-            .then(res => { if (res && res.next_log_id) setSuggestedCustomerId(res.next_log_id); })
-            .catch(() => {});
-    }, []);
+            }, []);
 
     useEffect(() => {
         return () => {
@@ -92,6 +87,11 @@ export function NewService() {
                 throw new Error("Please enter Contact Number");
             }
 
+            // Do not auto generate log id until developer gives permission
+            if (!features.autoGenerateServiceLogId && !manualServiceId.trim()) {
+                throw new Error("Please enter Service Log ID (Auto-generation permission is not enabled by developer)");
+            }
+
             if (isCustomMode && !formData.complaint_type.trim()) {
                 throw new Error("Please specify the custom complaint type");
             }
@@ -104,15 +104,12 @@ export function NewService() {
                 const payload: any = {
                     ...formData,
                     customer_name: customerName,
-                    status: "Pending"
+                    status: "Pending",
+                    allow_auto_id: Boolean(features.autoGenerateServiceLogId),
                 };
                 if (manualServiceId.trim()) {
                     payload.service_code = manualServiceId.trim();
                     payload.log_id = manualServiceId.trim();
-                }
-                if (manualCustomerId.trim()) {
-                    payload.customer_code = manualCustomerId.trim();
-                    payload.customer_log_id = manualCustomerId.trim();
                 }
                 const response = await apiClient.post<any>("/services", payload);
                 serviceId = response.id;
@@ -163,47 +160,30 @@ export function NewService() {
             </div>
 
                         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-                {/* Manual Log ID Entry Section (Enabled via Developer Module) */}
-                {features.manualLogId && (
-                    <div className="bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-4 rounded-2xl space-y-3">
-                        <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs uppercase tracking-wider">
-                            <Hash className="w-4 h-4 text-amber-600" />
-                            <span>Manual Log IDs (Integer Only - Leave blank for Auto)</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label htmlFor="manual-service-log-id" className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                                    Service Log ID
-                                </label>
-                                <input
-                                    id="manual-service-log-id"
-                                    aria-label="Service Log ID"
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={manualServiceId}
-                                    onChange={(e) => setManualServiceId(e.target.value.replace(/[^0-9]/g, ''))}
-                                    placeholder={suggestedServiceId ? `Auto: #${suggestedServiceId}` : "E.g. 1, 2, 55"}
-                                    className="w-full px-3 py-2 bg-white dark:bg-[#0D1B2A] border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="manual-customer-log-id" className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                                    Customer Log ID
-                                </label>
-                                <input
-                                    id="manual-customer-log-id"
-                                    aria-label="Customer Log ID"
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={manualCustomerId}
-                                    onChange={(e) => setManualCustomerId(e.target.value.replace(/[^0-9]/g, ''))}
-                                    placeholder={suggestedCustomerId ? `Auto: #${suggestedCustomerId}` : "E.g. 1, 2, 55"}
-                                    className="w-full px-3 py-2 bg-white dark:bg-[#0D1B2A] border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                                />
-                            </div>
+                {/* Service Log ID Text Box */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-xs overflow-hidden">
+                    <div className="p-3.5 sm:p-4">
+                        <label htmlFor="service-log-id" className="text-[11px] font-bold text-gray-600 uppercase tracking-wider ml-0.5 block mb-1">
+                            Service Log ID {!features.autoGenerateServiceLogId && <span className="text-red-500">*</span>}
+                        </label>
+                        <div className="relative group">
+                            <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 group-focus-within:text-blue-500 transition-colors" />
+                            <Input
+                                id="service-log-id"
+                                aria-label="Service Log ID"
+                                type="text"
+                                inputMode="numeric"
+                                value={manualServiceId}
+                                onChange={(e) => {
+                                    setManualServiceId(e.target.value.replace(/[^0-9]/g, ''));
+                                    if (error) setError("");
+                                }}
+                                placeholder={features.autoGenerateServiceLogId ? (suggestedServiceId ? `Auto: #${suggestedServiceId}` : "Enter Service Log ID (Optional)") : "Enter Service Log ID (e.g. 1)"}
+                                className="h-10 sm:h-11 pl-10 text-sm font-mono font-bold bg-gray-50/50 hover:bg-white focus:bg-white border-gray-100 rounded-xl group-focus-within:border-blue-200 group-focus-within:ring-2 group-focus-within:ring-blue-50"
+                            />
                         </div>
                     </div>
-                )}
+                </div>
                 {/* Customer Section Card */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-xs overflow-hidden">
                     <div className="px-4 py-2.5 bg-gray-50/80 border-b border-gray-100 flex items-center gap-2">

@@ -181,6 +181,7 @@ class ServiceController extends Controller
             'log_id' => 'nullable|string',
             'customer_code' => 'nullable|string',
             'customer_log_id' => 'nullable|string',
+            'allow_auto_id' => 'sometimes|boolean',
         ]);
 
         if (empty($validated['customer_name'])) {
@@ -192,6 +193,8 @@ class ServiceController extends Controller
 
         // Handle manual or sequential Service Log ID
         $manualServiceLogId = $request->input('log_id') ?? $request->input('service_code');
+        $allowAutoId = $request->boolean('allow_auto_id', true);
+
         if (!empty($manualServiceLogId)) {
             $cleanServiceId = preg_replace('/\D/', '', (string)$manualServiceLogId);
             if ($cleanServiceId === '') {
@@ -202,6 +205,8 @@ class ServiceController extends Controller
                 return response()->json(['message' => "Service Log ID #{$cleanServiceId} is already in use."], 422);
             }
             $validated['service_code'] = $cleanServiceId;
+        } elseif (!$allowAutoId) {
+            return response()->json(['message' => 'Service Log ID is required because auto-generation permission is not enabled by developer.'], 422);
         } else {
             $validated['service_code'] = (string) Service::getNextLogId();
         }
@@ -242,7 +247,7 @@ class ServiceController extends Controller
             return response()->json($duplicate->load('assignedStaff'), 200);
         }
 
-        unset($validated['log_id'], $validated['customer_log_id']);
+        unset($validated['log_id'], $validated['customer_log_id'], $validated['allow_auto_id']);
 
         $service = Service::create($validated);
 
