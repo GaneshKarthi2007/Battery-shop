@@ -23,20 +23,55 @@ vi.mock("../api/client", () => ({
     BASE_URL: "http://localhost:8000/api",
 }));
 
+let mockFeatures = { enableContactActions: false, autoGenerateServiceLogId: false };
+
 vi.mock("../contexts/DeveloperContext", () => ({
     useDeveloper: () => ({
-        features: { enableContactActions: false, manualLogId: true },
+        features: mockFeatures,
     }),
 }));
 
 describe("NewService Component", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockFeatures = { enableContactActions: false, autoGenerateServiceLogId: false };
         (apiClient.get as any).mockResolvedValue({ next_log_id: 1 });
     });
 
-    
-    it("allows manual integer log ID entry when manualLogId is enabled in developer features", async () => {
+    it("renders Service Log ID text box and does not render Customer Log ID", () => {
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        expect(screen.getByRole("heading", { name: /New Service/i })).toBeInTheDocument();
+        expect(screen.getByLabelText(/Service Log ID/i)).toBeInTheDocument();
+        expect(screen.queryByLabelText(/Customer Log ID/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Manual Log IDs \(Integer Only - Leave blank for Auto\)/i)).not.toBeInTheDocument();
+    });
+
+    it("shows error when auto-generation is disabled and Service Log ID is not entered", async () => {
+        mockFeatures.autoGenerateServiceLogId = false;
+
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        const phoneInput = screen.getByPlaceholderText("+91");
+        fireEvent.change(phoneInput, { target: { value: "9876543210" } });
+
+        fireEvent.click(screen.getByRole("button", { name: /Initialize Service Entry/i }));
+
+        await waitFor(() => {
+            expect(screen.getByText(/Please enter Service Log ID/i)).toBeInTheDocument();
+        });
+        expect(apiClient.post).not.toHaveBeenCalled();
+    });
+
+    it("allows manual integer service log ID and strips non-numeric characters", async () => {
         (apiClient.post as any).mockResolvedValue({
             id: 100,
             service_code: "100",
@@ -51,17 +86,11 @@ describe("NewService Component", () => {
             </BrowserRouter>
         );
 
-        // Check manual inputs are present
-        expect(screen.getByText(/Manual Log IDs/i)).toBeInTheDocument();
         const serviceLogInput = screen.getByLabelText(/Service Log ID/i);
-        const customerLogInput = screen.getByLabelText(/Customer Log ID/i);
 
-        // Type numbers and non-numbers; non-numbers must be rejected
+        // Type characters; non-digits must be stripped immediately
         fireEvent.change(serviceLogInput, { target: { value: "100abc" } });
         expect(serviceLogInput).toHaveValue("100");
-
-        fireEvent.change(customerLogInput, { target: { value: "50xyz" } });
-        expect(customerLogInput).toHaveValue("50");
 
         const phoneInput = screen.getByPlaceholderText("+91");
         fireEvent.change(phoneInput, { target: { value: "9876543210" } });
@@ -74,43 +103,14 @@ describe("NewService Component", () => {
                 expect.objectContaining({
                     service_code: "100",
                     log_id: "100",
-                    customer_code: "50",
-                    customer_log_id: "50",
+                    contact_number: "9876543210",
                 })
             );
         });
     });
 
-    it("renders compact service registration form with only Contact Number marked mandatory", () => {
-        render(
-            <BrowserRouter>
-                <NewService />
-            </BrowserRouter>
-        );
-
-        expect(screen.getByRole("heading", { name: /New Service/i })).toBeInTheDocument();
-        expect(screen.getByText(/Customer Information/i)).toBeInTheDocument();
-        expect(screen.getByText(/Contact Number \*/i)).toBeInTheDocument();
-        expect(screen.getByText(/^Full Name$/i)).toBeInTheDocument();
-        expect(screen.getByText(/Service Details/i)).toBeInTheDocument();
-    });
-
-    it("shows error when submitting without Contact Number", async () => {
-        render(
-            <BrowserRouter>
-                <NewService />
-            </BrowserRouter>
-        );
-
-        fireEvent.click(screen.getByRole("button", { name: /Initialize Service Entry/i }));
-
-        await waitFor(() => {
-            expect(screen.getByText(/Please enter Contact Number/i)).toBeInTheDocument();
-        });
-        expect(apiClient.post).not.toHaveBeenCalled();
-    });
-
-    it("allows submitting service entry with only Contact Number", async () => {
+    it("allows auto-generating service log ID when developer grants permission", async () => {
+        mockFeatures.autoGenerateServiceLogId = true;
         (apiClient.post as any).mockResolvedValue({
             id: 999,
             customer_name: "Customer",
@@ -133,14 +133,9 @@ describe("NewService Component", () => {
                 "/services",
                 expect.objectContaining({
                     contact_number: "9876543210",
-                    customer_name: "Customer",
+                    allow_auto_id: true,
                 })
             );
-        });
-
-        await waitFor(() => {
-            expect(screen.getByText(/Log Created/i)).toBeInTheDocument();
-            expect(screen.getByText("#999")).toBeInTheDocument();
         });
     });
 });

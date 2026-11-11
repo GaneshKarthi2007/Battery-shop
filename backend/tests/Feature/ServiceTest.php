@@ -142,6 +142,15 @@ class ServiceTest extends TestCase
             'log_id' => 'abc',
         ]);
         $invalidRes->assertStatus(422);
+
+        // Do not auto-generate when developer has not allowed it (allow_auto_id is false)
+        $noAutoRes = $this->postJson('/api/services', [
+            'customer_name' => 'No Auto',
+            'contact_number' => '9894127696',
+            'allow_auto_id' => false,
+        ]);
+        $noAutoRes->assertStatus(422)
+            ->assertJsonFragment(['message' => 'Service Log ID is required because auto-generation permission is not enabled by developer.']);
     }
 
     public function test_view_selected_complaint_details()
