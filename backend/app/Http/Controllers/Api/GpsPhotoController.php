@@ -4,15 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\GpsPhoto;
+use App\Services\MediaStorage;
 use App\Services\WatermarkService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class GpsPhotoController extends Controller
 {
     public function __construct(
-        private readonly WatermarkService $watermark
+        private readonly WatermarkService $watermark,
+        private readonly MediaStorage $media
     ) {}
 
     /**
@@ -46,7 +47,7 @@ class GpsPhotoController extends Controller
             'service_id'  => 'nullable|integer|exists:services,id',
         ]);
 
-        // Apply watermark and store image on public disk
+        // Apply watermark and store image on the media disk
         $imagePath = $this->watermark->applyAndStore(
             file:       $request->file('image'),
             latitude:   (float) $validated['latitude'],
@@ -91,7 +92,7 @@ class GpsPhotoController extends Controller
         }
 
         // Remove image file from disk
-        Storage::disk('public')->delete($gpsPhoto->image_path);
+        $this->media->delete($gpsPhoto->image_path);
 
         $gpsPhoto->delete();
 

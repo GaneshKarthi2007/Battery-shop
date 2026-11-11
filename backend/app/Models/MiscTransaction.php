@@ -37,6 +37,16 @@ class MiscTransaction extends Model
         'credit_amount' => 'float',
     ];
 
+    protected $appends = ['attachment_url'];
+
+    /**
+     * Accessor: full public URL of the attachment (null when none).
+     */
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        return app(\App\Services\MediaStorage::class)->url($this->attachment_path);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'created_by');

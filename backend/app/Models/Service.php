@@ -20,7 +20,7 @@ class Service extends Model
         'billed_at' => 'datetime',
     ];
 
-    protected $appends = ['log_id', 'display_log_id'];
+    protected $appends = ['log_id', 'display_log_id', 'voice_note_url'];
 
     public static function getNextLogId(): int
     {
@@ -63,6 +63,14 @@ class Service extends Model
     public function getDisplayLogIdAttribute(): string
     {
         return Setting::serviceLogIdPrefix() . $this->log_id;
+    }
+
+    /**
+     * Accessor: full public URL of the service-level voice note (null when none).
+     */
+    public function getVoiceNoteUrlAttribute(): ?string
+    {
+        return app(\App\Services\MediaStorage::class)->url($this->voice_note);
     }
 
     public function getLogIdAttribute(): string

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MiscTransaction;
+use App\Services\MediaStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class MiscTransactionController extends Controller
 {
@@ -119,7 +119,7 @@ class MiscTransactionController extends Controller
 
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('misc-transactions', 'public');
+            $attachmentPath = app(MediaStorage::class)->store($request->file('attachment'), 'misc-transactions');
         }
 
         $count = MiscTransaction::count();
@@ -167,9 +167,7 @@ class MiscTransactionController extends Controller
      */
     public function destroy(MiscTransaction $miscTransaction)
     {
-        if ($miscTransaction->attachment_path) {
-            Storage::disk('public')->delete($miscTransaction->attachment_path);
-        }
+        app(MediaStorage::class)->delete($miscTransaction->attachment_path);
 
         $miscTransaction->delete();
 

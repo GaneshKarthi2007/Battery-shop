@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Service;
 use App\Models\ServiceProcessFlow;
+use App\Services\MediaStorage;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
@@ -395,7 +396,7 @@ class ServiceController extends Controller
         });
     }
 
-    public function uploadVoiceNote(Request $request, Service $service)
+    public function uploadVoiceNote(Request $request, Service $service, MediaStorage $media)
     {
         $request->validate([
             'voice_note' => 'required|file|max:20480',
@@ -403,7 +404,7 @@ class ServiceController extends Controller
         ]);
 
         if ($request->hasFile('voice_note')) {
-            $path = $request->file('voice_note')->store('voice_notes', 'public');
+            $path = $media->store($request->file('voice_note'), 'voice_notes');
             $user = $request->user();
             $notes = $request->input('notes');
 
@@ -600,7 +601,7 @@ class ServiceController extends Controller
         });
     }
 
-    public function deleteProcessFlow(\App\Models\ServiceProcessFlow $flow)
+    public function deleteProcessFlow(\App\Models\ServiceProcessFlow $flow, MediaStorage $media)
     {
         $user = auth()->user();
         
@@ -609,9 +610,7 @@ class ServiceController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if ($flow->voice_note) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($flow->voice_note);
-        }
+        $media->delete($flow->voice_note);
 
         $flow->delete();
 

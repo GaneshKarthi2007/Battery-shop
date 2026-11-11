@@ -76,6 +76,7 @@ app/
     ExchangeRecord, UpiPayment, GpsPhoto, Receipt, Notification, Setting
   Services/
     WatermarkService.php         ← GPS photo watermarking (business logic goes here)
+    MediaStorage.php             ← media disk wrapper (local public / Supabase bucket)
   Providers/
 routes/
   api.php          ← every /api/* route (login + Sanctum-protected group)
@@ -91,6 +92,7 @@ tests/Feature, tests/Unit
 - **API surface is un-versioned.** All routes are in `routes/api.php` under `/api/…`. Don't invent a `V1/`/`V2/` namespace — add controllers directly under `app/Http/Controllers/Api/`.
 - **External I/O is faked in tests:** if you add HTTP calls, storage, or push notifications, fake them (`Http::fake([...])`, `Storage::fake()`). Never hit real services in tests.
 - **Media / GPS photos:** photo uploads flow through `GpsPhotoController` → `WatermarkService`. Keep image processing there, not in the controller.
+- **Media storage:** every upload/delete/URL goes through `App\Services\MediaStorage`, which writes to `config('filesystems.media_disk')` (`MEDIA_DISK`: `public` locally, `supabase` in production). Never call `Storage::disk('public')` directly for media. Store relative paths in the DB and expose a `*_url` accessor. In tests use `config(['filesystems.media_disk' => 'supabase'])` + `Storage::fake('supabase', ['url' => ...])`.
 
 ---
 

@@ -44,6 +44,7 @@ interface ServiceRequest {
     assigned_at?: string;
     resolved_at?: string;
     voice_note?: string;
+    voice_note_url?: string | null;
     payment_status?: 'pending' | 'verified';
     sub_status?: string;
     status_updated_at?: string;
@@ -93,6 +94,7 @@ interface ServiceProcessFlowRecord {
     sub_status: string;
     notes?: string;
     voice_note?: string;
+    voice_note_url?: string | null;
     created_at: string;
     staff?: {
         id: number;
@@ -520,7 +522,7 @@ export function ServiceDetails() {
                             {service.voice_note && (
                                 <div className="mt-4 animate-in fade-in slide-in-from-top-2">
                                     <AudioPlayer
-                                        src={getMediaUrl(service.voice_note)}
+                                        src={getMediaUrl(service.voice_note_url ?? service.voice_note)}
                                         label="Initial Complaint Voice Note"
                                     />
                                 </div>
@@ -631,7 +633,7 @@ export function ServiceDetails() {
                                                                 {flow.voice_note && (
                                                                     <div className="mt-2">
                                                                         <AudioPlayer
-                                                                            src={getMediaUrl(flow.voice_note)}
+                                                                            src={getMediaUrl(flow.voice_note_url ?? flow.voice_note)}
                                                                             label="Status Update Audio"
                                                                             className="!p-2 border-amber-200/50 bg-white/50"
                                                                         />
