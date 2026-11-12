@@ -230,4 +230,43 @@ describe("NewService Component", () => {
             );
         });
     });
+
+    it("keeps the full contact number visible on mobile (Copy action is not overlaid on the input)", () => {
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        const phoneInput = screen.getByPlaceholderText("+91");
+        fireEvent.change(phoneInput, { target: { value: "+91 98765 43210" } });
+
+        const copyBtn = screen.getByTitle("Copy to Clipboard");
+        const actions = screen.getByTestId("contact-actions");
+        expect(actions).toContainElement(copyBtn);
+
+        // Actions must not live inside the input's wrapper (where they covered the digits)
+        expect(phoneInput.parentElement).not.toContainElement(copyBtn);
+        expect(actions.className).not.toMatch(/absolute/);
+        // No large right padding reserved for an overlay
+        expect(phoneInput.className).not.toMatch(/pr-14|pr-20/);
+        expect(phoneInput).toHaveValue("+91 98765 43210");
+        // Label is still wired to the input
+        expect(screen.getByLabelText(/Contact Number/i)).toBe(phoneInput);
+    });
+
+    it("shows Call/WhatsApp actions outside the input when contact actions are enabled", () => {
+        mockFeatures = { enableContactActions: true, autoGenerateServiceLogId: false };
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        const phoneInput = screen.getByPlaceholderText("+91");
+        fireEvent.change(phoneInput, { target: { value: "9876543210" } });
+
+        expect(phoneInput.parentElement).not.toContainElement(screen.getByTitle("Call Customer"));
+        expect(phoneInput.parentElement).not.toContainElement(screen.getByTitle("WhatsApp Customer"));
+    });
 });
