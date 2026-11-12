@@ -269,4 +269,29 @@ describe("NewService Component", () => {
         expect(phoneInput.parentElement).not.toContainElement(screen.getByTitle("Call Customer"));
         expect(phoneInput.parentElement).not.toContainElement(screen.getByTitle("WhatsApp Customer"));
     });
+
+    it("uses a full-height, roomy layout on mobile (card fills the screen, name/contact stacked)", () => {
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        const card = screen.getByTestId("new-service-card");
+        // Card stretches to fill the viewport on mobile; desktop keeps the compact block layout
+        expect(card.className).toMatch(/(^|\s)flex-1(\s|$)/);
+        expect(card.className).toMatch(/sm:block/);
+        expect(card.closest("form")?.className).toMatch(/flex-1/);
+        expect(card.closest("form")?.parentElement?.className).toMatch(/min-h-\[calc\(100dvh/);
+
+        // Name and contact number are on separate rows on mobile, side by side from sm up
+        const nameRow = screen.getByPlaceholderText("SMR").closest(".grid") as HTMLElement;
+        expect(nameRow).toContainElement(screen.getByPlaceholderText("+91"));
+        expect(nameRow.className).toMatch(/grid-cols-1/);
+        expect(nameRow.className).toMatch(/sm:grid-cols-2/);
+
+        // Bigger touch targets on mobile
+        expect(screen.getByPlaceholderText("+91").className).toMatch(/h-11/);
+        expect(screen.getByPlaceholderText("SMR").className).toMatch(/h-11/);
+    });
 });
