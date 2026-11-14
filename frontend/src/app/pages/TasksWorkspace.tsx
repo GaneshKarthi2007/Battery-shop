@@ -74,9 +74,9 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
       setLoading(true);
       setError(null);
       const data = await apiClient.get<ServiceRecord[]>('/services');
-      setServices(data);
+      setServices(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      setError("Unable to load tasks.");
+      setError(err.response?.data?.message || err.message || "Unable to load tasks.");
       console.error(err.message || "Failed to load services");
     } finally {
       setLoading(false);
@@ -94,10 +94,10 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
         return s.status === 'Pending' && !s.assigned_to;
       }
       if (activeTab === "assigned") {
-        return s.assigned_to === user?.id && s.status === 'In Progress';
+        return Number(s.assigned_to) === Number(user?.id) && s.status === 'In Progress';
       }
       if (activeTab === "history") {
-        return s.assigned_to === user?.id && (s.status === 'Completed' || s.status === 'Converted to Order');
+        return Number(s.assigned_to) === Number(user?.id) && (s.status === 'Completed' || s.status === 'Converted to Order');
       }
       return false;
     });
@@ -227,8 +227,8 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
 
   // Badge calculations for tabs
   const availableCount = services.filter(s => s.status === 'Pending' && !s.assigned_to).length;
-  const activeCount = services.filter(s => s.assigned_to === user?.id && s.status === 'In Progress').length;
-  const completedCount = services.filter(s => s.assigned_to === user?.id && (s.status === 'Completed' || s.status === 'Converted to Order')).length;
+  const activeCount = services.filter(s => Number(s.assigned_to) === Number(user?.id) && s.status === 'In Progress').length;
+  const completedCount = services.filter(s => Number(s.assigned_to) === Number(user?.id) && (s.status === 'Completed' || s.status === 'Converted to Order')).length;
 
   return (
     <div className="space-y-6 pb-24 text-gray-900 dark:text-white">
@@ -686,3 +686,5 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+
