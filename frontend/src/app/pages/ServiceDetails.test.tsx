@@ -53,6 +53,7 @@ const mockServiceData = {
     contact_number: "9876543210",
     vehicle_details: "Toyota Fortuner",
     status: "In Progress" as const,
+    sub_status: "Battery Testing",
     service_charge: 0,
     complaint_type: "Dead Battery",
     complaint_details: "Battery not cranking the engine",
@@ -103,16 +104,100 @@ describe("ServiceDetails Page Component", () => {
 
         // Staff Toolbox is present
         expect(screen.getByText("Staff Toolbox")).toBeInTheDocument();
-        expect(screen.getByText("Update Status & Payment")).toBeInTheDocument();
     });
 
-    it("allows staff to input service charge, select Cash or UPI, and complete the service", async () => {
+    it("hides payment module during In Progress and shows Complete Task & Request New Battery buttons", async () => {
+        render(
+            <MemoryRouter initialEntries={["/service/1"]}>
+                <Routes>
+                    <Route path="/service/:id" element={<ServiceDetails />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText("Service #SRV-1")).toBeInTheDocument();
+        });
+
+        // Payment inputs should NOT be visible during In Progress
+        expect(screen.queryByLabelText("Service Charge Amount")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /Confirm & Save Payment/i })).not.toBeInTheDocument();
+
+        // Complete Task & Request New Battery buttons are shown instead
+        expect(screen.getByRole("button", { name: /Complete Task/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Request New Battery/i })).toBeInTheDocument();
+    });
+
+    it("shows payment module after completing task, allowing staff to record charge and Cash/UPI", async () => {
+        (apiClient.put as any)
+            .mockResolvedValueOnce({
+                ...mockServiceData,
+                status: "Completed",
+            })
+            .mockResolvedValueOnce({
+                ...mockServiceData,
+                status: "Completed",
+                service_charge: 350,
+                payment_method: "UPI",
+                payment_status: "verified",
+            });
+
+        render(
+            <MemoryRouter initialEntries={["/service/1"]}>
+                <Routes>
+                    <Route path="/service/:id" element={<ServiceDetails />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText("Service #SRV-1")).toBeInTheDocument();
+        });
+
+        // Click Complete Task
+        const completeTaskBtn = screen.getByRole("button", { name: /Complete Task/i });
+        fireEvent.click(completeTaskBtn);
+
+        await waitFor(() => {
+            expect(apiClient.put).toHaveBeenCalledWith("/services/1", { status: "Completed" });
+        });
+
+        // Payment module now appears!
+        await waitFor(() => {
+            expect(screen.getByLabelText("Service Charge Amount")).toBeInTheDocument();
+        });
+
+        // Enter service charge
+        const chargeInput = screen.getByLabelText("Service Charge Amount");
+        fireEvent.change(chargeInput, { target: { value: "350" } });
+
+        // Select UPI
+        const upiButton = screen.getByRole("button", { name: /UPI/i });
+        fireEvent.click(upiButton);
+
+        // Click Confirm & Save Payment
+        const savePaymentBtn = screen.getByRole("button", { name: /Confirm & Save Payment/i });
+        fireEvent.click(savePaymentBtn);
+
+        await waitFor(() => {
+            expect(apiClient.put).toHaveBeenCalledWith("/services/1", {
+                service_charge: 350,
+                payment_method: "UPI",
+                payment_status: "verified",
+            });
+        });
+
+        // Verifies completed state summary card
+        await waitFor(() => {
+            expect(screen.getByText("Task Completed Successfully")).toBeInTheDocument();
+            expect(screen.getByText("UPI")).toBeInTheDocument();
+        });
+    });
+
+    it("handles sub-status dropdown: tick is non-clickable when unchanged, and supports manual entry via Others", async () => {
         (apiClient.put as any).mockResolvedValue({
             ...mockServiceData,
-            status: "Completed",
-            service_charge: 350,
-            payment_method: "UPI",
-            payment_status: "verified",
+            sub_status: "Custom Stage Test",
         });
 
         render(
@@ -127,31 +212,43 @@ describe("ServiceDetails Page Component", () => {
             expect(screen.getByText("Service #SRV-1")).toBeInTheDocument();
         });
 
-        // Enter service charge
-        const chargeInput = screen.getByLabelText("Service Charge Amount");
-        fireEvent.change(chargeInput, { target: { value: "350" } });
+        const tickBtn = screen.getByLabelText("Confirm Sub-Status");
+        // Initially, selected status equals service.sub_status ("Battery Testing"), so tick is disabled
+        expect(tickBtn).toBeDisabled();
 
-        // Select UPI
-        const upiButton = screen.getByRole("button", { name: /UPI/i });
-        fireEvent.click(upiButton);
+        const selectDropdown = screen.getByLabelText("Update Sub-Status") as HTMLSelectElement;
+        expect(selectDropdown.value).toBe("Battery Testing");
 
-        // Click Complete Task
-        const completeBtn = screen.getByRole("button", { name: /Complete Task & Record Payment/i });
-        fireEvent.click(completeBtn);
+        // Select "Others"
+        fireEvent.change(selectDropdown, { target: { value: "Others" } });
+        expect(selectDropdown.value).toBe("Others");
+
+        // Custom text input appears; tick remains disabled while empty
+        const customInput = screen.getByLabelText("Custom Sub-Status");
+        expect(customInput).toBeInTheDocument();
+        expect(tickBtn).toBeDisabled();
+
+        // Enter custom text
+        fireEvent.change(customInput, { target: { value: "Custom Stage Test" } });
+        // Now tick button is clickable
+        expect(tickBtn).not.toBeDisabled();
+
+        // Click tick button to apply
+        fireEvent.click(tickBtn);
 
         await waitFor(() => {
             expect(apiClient.put).toHaveBeenCalledWith("/services/1", {
-                status: "Completed",
-                service_charge: 350,
-                payment_method: "UPI",
-                payment_status: "verified",
+                sub_status: "Custom Stage Test",
+                notes: "",
             });
         });
 
-        // Verifies completed state view
+        // The newly entered sub-status is added to the dropdown options and selected
         await waitFor(() => {
-            expect(screen.getByText("Task Completed Successfully")).toBeInTheDocument();
-            expect(screen.getByText("UPI")).toBeInTheDocument();
+            expect(screen.getByRole("option", { name: "Custom Stage Test" })).toBeInTheDocument();
+            expect(selectDropdown.value).toBe("Custom Stage Test");
+            // Since previous and current now match, tick is non-clickable again
+            expect(tickBtn).toBeDisabled();
         });
     });
 

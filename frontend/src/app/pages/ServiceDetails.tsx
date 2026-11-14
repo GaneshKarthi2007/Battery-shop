@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useServiceLogIdPrefix, formatServiceLogId } from "../contexts/DeveloperContext";
 import { useParams, useNavigate } from "react-router";
-import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, AlertTriangle, Zap, MapPin, Mic, CreditCard, ShoppingCart, ShoppingBag, RefreshCw, Activity, Trash2, CheckCheck, FileText, Download, Receipt, Phone, Car, BatteryFull, TrendingUp, Camera } from "lucide-react";
+import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, AlertTriangle, Zap, MapPin, Mic, CreditCard, ShoppingCart, ShoppingBag, RefreshCw, Activity, Trash2, CheckCheck, FileText, Download, Receipt, Phone, Car, BatteryFull, TrendingUp, Camera, Check } from "lucide-react";
 import { Button } from "../components/Button";
 import { ContactActions } from "../components/ui/ContactActions";
 import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
@@ -142,6 +142,10 @@ export function ServiceDetails() {
     const [revisitData, setRevisitData] = useState({ complaint_type: "", complaint_details: "", issue: "" });
     const [staffNote, setStaffNote] = useState("");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [subStatusList, setSubStatusList] = useState<string[]>(SUB_STATUS_OPTIONS);
+    const [selectedSubStatus, setSelectedSubStatus] = useState<string>("");
+    const [customSubStatus, setCustomSubStatus] = useState<string>("");
+    const [isEditingPayment, setIsEditingPayment] = useState<boolean>(false);
 
     useEffect(() => {
         fetchService();
@@ -162,9 +166,18 @@ export function ServiceDetails() {
             setLoading(true);
             const data = await apiClient.get<ServiceRequest>(`/services/${id}`);
             setService(data);
+            setSelectedSubStatus(data.sub_status || "");
+            if (data.sub_status && !SUB_STATUS_OPTIONS.includes(data.sub_status)) {
+                setSubStatusList(prev => prev.includes(data.sub_status!) ? prev : [...prev, data.sub_status!]);
+            }
             setTempCharge(data.service_charge ? data.service_charge.toString() : "0");
             if (data.payment_method === "UPI" || data.payment_method === "Cash") {
                 setPaymentType(data.payment_method);
+            }
+            if (data.status === "Completed" && (!data.payment_method || data.payment_status !== "verified")) {
+                setIsEditingPayment(true);
+            } else {
+                setIsEditingPayment(false);
             }
         } catch (err: any) {
             setError(err.message || "Failed to load service details");
@@ -173,7 +186,29 @@ export function ServiceDetails() {
         }
     };
 
-    const handleCompleteService = async () => {
+    const handleCompleteTask = async () => {
+        if (!service) return;
+        setUpdating(true);
+        try {
+            const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, {
+                status: "Completed"
+            });
+            setService(updated);
+            setIsEditingPayment(true);
+            addNotification({
+                type: "SERVICE",
+                title: "Task Completed",
+                message: `Service #${service.id} marked as completed. Please record payment.`,
+                role: "staff"
+            });
+        } catch (err: any) {
+            alert(err.message || "Failed to complete task");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleSavePayment = async () => {
         if (!service) return;
         const charge = tempCharge !== "" ? Number(tempCharge) : 0;
         if (isNaN(charge) || charge < 0) {
@@ -183,7 +218,6 @@ export function ServiceDetails() {
         setUpdating(true);
         try {
             const payload: any = {
-                status: "Completed",
                 service_charge: charge,
                 payment_method: paymentType,
                 payment_status: "verified"
@@ -191,14 +225,15 @@ export function ServiceDetails() {
             const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, payload);
             setService(updated);
             setTempCharge(updated.service_charge ? updated.service_charge.toString() : "0");
+            setIsEditingPayment(false);
             addNotification({
                 type: "SERVICE",
-                title: "Service Completed",
-                message: `Service #${service.id} (${service.customer_name}) marked as completed by staff. Paid via ${paymentType}.`,
-                role: "admin"
+                title: "Payment Recorded",
+                message: `Payment of ₹${charge} recorded via ${paymentType} for Service #${service.id}.`,
+                role: "staff"
             });
         } catch (err: any) {
-            alert(err.message || "Failed to complete service");
+            alert(err.message || "Failed to record payment");
         } finally {
             setUpdating(false);
         }
@@ -233,6 +268,10 @@ export function ServiceDetails() {
                 notes: staffNote 
             });
             setService(updated);
+            setSelectedSubStatus(updated.sub_status || "");
+            if (updated.sub_status && !SUB_STATUS_OPTIONS.includes(updated.sub_status)) {
+                setSubStatusList(prev => prev.includes(updated.sub_status!) ? prev : [...prev, updated.sub_status!]);
+            }
             setTempCharge(updated.service_charge ? updated.service_charge.toString() : "0");
             setStaffNote("");
             addNotification({ type: "SERVICE", title: "Progress Updated", message: `Status updated to: ${subStatus}`, role: "staff" });
@@ -241,6 +280,24 @@ export function ServiceDetails() {
         } finally {
             setUpdating(false);
         }
+    };
+
+    const effectiveSubStatus = selectedSubStatus === "Others" ? customSubStatus.trim() : selectedSubStatus;
+    const currentSavedSubStatus = service?.sub_status || "";
+    const isSameSubStatus = effectiveSubStatus === currentSavedSubStatus;
+    const isTickDisabled = updating || !effectiveSubStatus || isSameSubStatus;
+
+    const handleConfirmSubStatus = async () => {
+        if (isTickDisabled) return;
+        const statusToApply = effectiveSubStatus;
+        if (selectedSubStatus === "Others" && statusToApply) {
+            if (!subStatusList.includes(statusToApply)) {
+                setSubStatusList(prev => [...prev, statusToApply]);
+            }
+            setSelectedSubStatus(statusToApply);
+            setCustomSubStatus("");
+        }
+        await handleUpdateSubStatus(statusToApply);
     };
 
     const handleAssignStaff = async (staffId: number) => {
@@ -567,17 +624,47 @@ export function ServiceDetails() {
                                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
                                     Update Sub-Status
                                 </label>
-                                <select
-                                    aria-label="Update Sub-Status"
-                                    className="w-full px-3 py-2 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs font-bold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                    value={service.sub_status || ""}
-                                    onChange={(e) => handleUpdateSubStatus(e.target.value)}
-                                >
-                                    <option value="">Select progress stage...</option>
-                                    {SUB_STATUS_OPTIONS.map((opt) => (
-                                        <option key={opt} value={opt}>{opt}</option>
-                                    ))}
-                                </select>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        aria-label="Update Sub-Status"
+                                        className="flex-1 min-w-0 px-3 py-2 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs font-bold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                        value={selectedSubStatus}
+                                        onChange={(e) => {
+                                            setSelectedSubStatus(e.target.value);
+                                            if (e.target.value !== "Others") {
+                                                setCustomSubStatus("");
+                                            }
+                                        }}
+                                    >
+                                        <option value="">Select progress stage...</option>
+                                        {subStatusList.map((opt) => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                        <option value="Others">Others</option>
+                                    </select>
+                                    <button
+                                        type="button"
+                                        aria-label="Confirm Sub-Status"
+                                        title={isTickDisabled ? "No changes to save" : "Confirm Sub-Status"}
+                                        disabled={isTickDisabled}
+                                        onClick={handleConfirmSubStatus}
+                                        className="h-9 w-9 flex-shrink-0 flex items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-600"
+                                    >
+                                        <Check className="w-4 h-4 stroke-[2.5]" />
+                                    </button>
+                                </div>
+                                {selectedSubStatus === "Others" && (
+                                    <div className="mt-2">
+                                        <input
+                                            type="text"
+                                            aria-label="Custom Sub-Status"
+                                            placeholder="Type custom sub-status..."
+                                            value={customSubStatus}
+                                            onChange={(e) => setCustomSubStatus(e.target.value)}
+                                            className="w-full px-3 py-2 bg-gray-50 dark:bg-[#0D1B2A] border border-blue-300 dark:border-blue-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div>
@@ -642,97 +729,132 @@ export function ServiceDetails() {
 
                             {service.status === "In Progress" && (
                                 <div className="space-y-3">
-                                    <div className="bg-gray-50 dark:bg-[#0D1B2A] p-3 rounded-xl border border-gray-200 dark:border-[#2E3B55] space-y-2.5">
-                                        <div className="flex items-center justify-between">
-                                            <label htmlFor="service-charge-input" className="text-[11px] font-bold text-gray-700 dark:text-gray-300">
-                                                Service Charge Amount (₹)
-                                            </label>
-                                            <span className="text-[10px] text-gray-400">Enter final charge</span>
-                                        </div>
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-gray-400 text-sm">₹</span>
-                                            <input
-                                                id="service-charge-input"
-                                                aria-label="Service Charge Amount"
-                                                type="number"
-                                                inputMode="numeric"
-                                                value={tempCharge}
-                                                onChange={(e) => setTempCharge(e.target.value)}
-                                                placeholder="0"
-                                                className="w-full pl-7 pr-3 py-2 bg-white dark:bg-[#15161E] border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1.5">
-                                                Payment Method
-                                            </label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPaymentType("Cash")}
-                                                    className={`py-2 px-3 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
-                                                        paymentType === "Cash"
-                                                            ? "border-emerald-600 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-                                                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 bg-white dark:bg-transparent"
-                                                    }`}
-                                                >
-                                                    💵 Cash
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPaymentType("UPI")}
-                                                    className={`py-2 px-3 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
-                                                        paymentType === "UPI"
-                                                            ? "border-emerald-600 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-                                                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 bg-white dark:bg-transparent"
-                                                    }`}
-                                                >
-                                                    📱 UPI
-                                                </button>
-                                            </div>
-                                        </div>
+                                    <div className="p-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 rounded-xl text-center">
+                                        <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
+                                            Task In Progress
+                                        </p>
+                                        <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">
+                                            Complete task when servicing is done, or request new battery replacement.
+                                        </p>
                                     </div>
 
                                     <Button
-                                        onClick={handleCompleteService}
+                                        onClick={handleCompleteTask}
+                                        disabled={updating}
                                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs"
                                     >
                                         <CheckCircle className="w-4 h-4" />
-                                        Complete Task & Record Payment
+                                        Complete Task
                                     </Button>
 
                                     <Button
                                         onClick={handleConvertToOrder}
+                                        disabled={updating}
                                         variant="outline"
                                         className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
                                     >
                                         <ShoppingCart className="w-3.5 h-3.5" />
-                                        Request New Battery Replacement
+                                        Request New Battery
                                     </Button>
                                 </div>
                             )}
 
                             {service.status === "Completed" && (
-                                <div className="p-4 bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-xl space-y-3">
-                                    <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
-                                        <CheckCircle className="w-5 h-5 text-emerald-600" />
-                                        <span className="font-bold text-xs uppercase tracking-wide">Task Completed Successfully</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                        <div className="p-2.5 bg-white dark:bg-[#0D1B2A] rounded-lg border border-emerald-100 dark:border-emerald-900/30">
-                                            <p className="text-[10px] text-gray-400 uppercase font-bold">Service Charge</p>
-                                            <p className="text-sm font-black text-gray-900 dark:text-white mt-0.5">₹{Number(service.service_charge).toLocaleString('en-IN')}</p>
+                                <div className="space-y-3">
+                                    {(!isEditingPayment && service.payment_status === "verified" && service.payment_method) ? (
+                                        <div className="p-4 bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-xl space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
+                                                    <CheckCircle className="w-5 h-5 text-emerald-600" />
+                                                    <span className="font-bold text-xs uppercase tracking-wide">Task Completed Successfully</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsEditingPayment(true)}
+                                                    className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
+                                                >
+                                                    Edit
+                                                </button>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                                <div className="p-2.5 bg-white dark:bg-[#0D1B2A] rounded-lg border border-emerald-100 dark:border-emerald-900/30">
+                                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Service Charge</p>
+                                                    <p className="text-sm font-black text-gray-900 dark:text-white mt-0.5">₹{Number(service.service_charge).toLocaleString('en-IN')}</p>
+                                                </div>
+                                                <div className="p-2.5 bg-white dark:bg-[#0D1B2A] rounded-lg border border-emerald-100 dark:border-emerald-900/30">
+                                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Payment Method</p>
+                                                    <p className="text-sm font-black text-emerald-700 dark:text-emerald-400 mt-0.5">{service.payment_method || paymentType || "Cash"}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                                                <CheckCheck className="w-3.5 h-3.5" />
+                                                Payment status: Verified
+                                            </div>
                                         </div>
-                                        <div className="p-2.5 bg-white dark:bg-[#0D1B2A] rounded-lg border border-emerald-100 dark:border-emerald-900/30">
-                                            <p className="text-[10px] text-gray-400 uppercase font-bold">Payment Method</p>
-                                            <p className="text-sm font-black text-emerald-700 dark:text-emerald-400 mt-0.5">{service.payment_method || paymentType || "Cash"}</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="bg-gray-50 dark:bg-[#0D1B2A] p-3 rounded-xl border border-gray-200 dark:border-[#2E3B55] space-y-2.5">
+                                                <div className="flex items-center justify-between">
+                                                    <label htmlFor="service-charge-input" className="text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                                                        Service Charge Amount (₹)
+                                                    </label>
+                                                    <span className="text-[10px] text-gray-400">Enter final charge</span>
+                                                </div>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-gray-400 text-sm">₹</span>
+                                                    <input
+                                                        id="service-charge-input"
+                                                        aria-label="Service Charge Amount"
+                                                        type="number"
+                                                        inputMode="numeric"
+                                                        value={tempCharge}
+                                                        onChange={(e) => setTempCharge(e.target.value)}
+                                                        placeholder="0"
+                                                        className="w-full pl-7 pr-3 py-2 bg-white dark:bg-[#15161E] border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1.5">
+                                                        Payment Method
+                                                    </label>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPaymentType("Cash")}
+                                                            className={`py-2 px-3 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                                                                paymentType === "Cash"
+                                                                    ? "border-emerald-600 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                                                    : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 bg-white dark:bg-transparent"
+                                                            }`}
+                                                        >
+                                                            💵 Cash
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPaymentType("UPI")}
+                                                            className={`py-2 px-3 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                                                                paymentType === "UPI"
+                                                                    ? "border-emerald-600 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                                                    : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 bg-white dark:bg-transparent"
+                                                            }`}
+                                                        >
+                                                            📱 UPI
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <Button
+                                                onClick={handleSavePayment}
+                                                disabled={updating}
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs"
+                                            >
+                                                <CheckCircle className="w-4 h-4" />
+                                                Confirm & Save Payment
+                                            </Button>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
-                                        <CheckCheck className="w-3.5 h-3.5" />
-                                        Payment status: Verified
-                                    </div>
+                                    )}
                                 </div>
                             )}
 
