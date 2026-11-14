@@ -528,16 +528,6 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                   </div>
                 </div>
 
-                {/* Vehicle details */}
-                <div className="space-y-4 pt-2">
-                  <h4 className="text-[10px] font-black text-gray-400 dark:text-white/40 uppercase tracking-[0.2em] mb-3">
-                    D. Vehicle Information
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <DetailRow label="Vehicle Details" value={selectedJob.vehicle_details || "N/A"} />
-                  </div>
-                </div>
-
                 {/* Battery Info */}
                 <div className="space-y-4 pt-2">
                   <h4 className="text-[10px] font-black text-gray-400 dark:text-white/40 uppercase tracking-[0.2em] mb-3">
