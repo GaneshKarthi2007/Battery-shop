@@ -361,5 +361,34 @@ class ServiceTest extends TestCase
             'customer_name' => 'Customer',
         ]);
     }
+
+    public function test_staff_can_load_tasks_and_services_list()
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        Sanctum::actingAs($staff);
+
+        Service::create([
+            'customer_name' => 'Task Customer 1',
+            'contact_number' => '9894127699',
+            'vehicle_details' => 'Honda Activa',
+            'status' => 'Pending',
+        ]);
+
+        Service::create([
+            'customer_name' => 'Task Customer 2',
+            'contact_number' => '9894127698',
+            'vehicle_details' => 'Maruti Swift',
+            'status' => 'In Progress',
+            'assigned_to' => $staff->id,
+        ]);
+
+        $response = $this->getJson('/api/services');
+        $response->assertStatus(200);
+        $data = $response->json();
+
+        $this->assertCount(2, $data);
+        $this->assertArrayHasKey('display_log_id', $data[0]);
+        $this->assertArrayHasKey('log_id', $data[0]);
+    }
 }
 

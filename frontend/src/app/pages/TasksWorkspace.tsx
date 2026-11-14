@@ -8,7 +8,7 @@ import { useNavigate } from "react-router";
 import {
   ClipboardList, Search, Clock, Phone,
   Inbox, MessageSquare, Loader2, ArrowLeft, Wrench, CheckCircle2,
-  Eye
+  Eye, Calendar, X
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../components/Button";
@@ -54,7 +54,7 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
   const [takingId, setTakingId] = useState<number | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"All" | "Pending" | "Urgent" | "Oldest" | "Newest">("All");
+  const [searchDate, setSearchDate] = useState("");
   const [activeTab, setActiveTab] = useState<"available" | "assigned" | "history">(defaultTab);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
 
@@ -74,9 +74,9 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
       setLoading(true);
       setError(null);
       const data = await apiClient.get<ServiceRecord[]>('/services');
-      setServices(data);
+      setServices(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      setError("Unable to load tasks.");
+      setError(err.response?.data?.message || err.message || "Unable to load tasks.");
       console.error(err.message || "Failed to load services");
     } finally {
       setLoading(false);
@@ -94,10 +94,11 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
         return s.status === 'Pending' && !s.assigned_to;
       }
       if (activeTab === "assigned") {
-        return s.assigned_to === user?.id && s.status === 'In Progress';
+        return Number(s.assigned_to) === Number(user?.id) && s.status === 'In Progress';
       }
       if (activeTab === "history") {
-        return s.assigned_to === user?.id && (s.status === 'Completed' || s.status === 'Converted to Order');
+        // Display all previous entries without any filter
+        return s.status === 'Completed' || s.status === 'Converted to Order';
       }
       return false;
     });
@@ -105,7 +106,20 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
 
   const tabJobs = getTabJobs();
 
-  // Search & Filter within active tab
+  const getLocalDateString = (isoString?: string) => {
+    if (!isoString) return "";
+    try {
+      const d = new Date(isoString);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return "";
+    }
+  };
+
+  // Search & Date Filter within active tab
   const filteredJobs = tabJobs.filter((job) => {
     const query = searchQuery.trim().toLowerCase();
     if (query) {
@@ -126,31 +140,23 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
         
       if (!matchesSearch) return false;
     }
-    
-    if (filterType === "Urgent") {
-      return (
-        job.complaint_type?.toLowerCase().includes("dead") || 
-        job.complaint_details?.toLowerCase().includes("urgent") ||
-        job.complaint_type?.toLowerCase().includes("warranty")
-      );
-    }
-    
-    if (filterType === "Pending") {
-      return job.status.toLowerCase() === "pending";
+
+    if (searchDate) {
+      const createdDate = getLocalDateString(job.created_at);
+      const resolvedDate = getLocalDateString(job.resolved_at);
+      const pickupDate = getLocalDateString(job.pickup_date);
+      if (createdDate !== searchDate && resolvedDate !== searchDate && pickupDate !== searchDate) {
+        return false;
+      }
     }
     
     return true;
   });
 
-  // Sort jobs
+  // Sort jobs (newest first)
   const sortedJobs = [...filteredJobs].sort((a, b) => {
     const dateA = new Date(a.created_at).getTime();
     const dateB = new Date(b.created_at).getTime();
-    
-    if (filterType === "Oldest") {
-      return dateA - dateB;
-    }
-    // Default to Newest
     return dateB - dateA;
   });
 
@@ -158,7 +164,7 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
   const handleTabChange = (tab: "available" | "assigned" | "history") => {
     setActiveTab(tab);
     setSearchQuery("");
-    setFilterType("All");
+    setSearchDate("");
     setSelectedJob(null);
     if (tab === "available") navigate("/available-jobs");
     if (tab === "assigned") navigate("/assigned-jobs");
@@ -227,8 +233,8 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
 
   // Badge calculations for tabs
   const availableCount = services.filter(s => s.status === 'Pending' && !s.assigned_to).length;
-  const activeCount = services.filter(s => s.assigned_to === user?.id && s.status === 'In Progress').length;
-  const completedCount = services.filter(s => s.assigned_to === user?.id && (s.status === 'Completed' || s.status === 'Converted to Order')).length;
+  const activeCount = services.filter(s => Number(s.assigned_to) === Number(user?.id) && s.status === 'In Progress').length;
+  const completedCount = services.filter(s => s.status === 'Completed' || s.status === 'Converted to Order').length;
 
   return (
     <div className="space-y-6 pb-24 text-gray-900 dark:text-white">
@@ -324,33 +330,54 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
           {/* Master Panel */}
           <div className={`space-y-4 lg:col-span-5 ${isMobileView && selectedJob ? "hidden" : "block"}`}>
             
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search complaints..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-[#0D121F] border border-gray-250 dark:border-[#25314D] rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 dark:text-white font-bold"
-              />
-            </div>
+            {/* Search & Date Filter */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by ID, name, mobile..."
+                  aria-label="Search complaints"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-11 pr-8 py-3 bg-white dark:bg-[#0D121F] border border-gray-250 dark:border-[#25314D] rounded-2xl text-xs sm:text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 dark:text-white font-bold"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
 
-            {/* Filter Pills */}
-            <div className="flex flex-wrap gap-2 py-1">
-              {(["All", "Pending", "Urgent", "Oldest", "Newest"] as const).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setFilterType(type)}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${
-                    filterType === type
-                      ? "bg-blue-500 text-white border-blue-500 shadow-sm"
-                      : "bg-white dark:bg-[#0D121F] text-gray-500 dark:text-white/40 border-gray-200 dark:border-[#25314D] hover:bg-gray-50 dark:hover:bg-white/[0.02]"
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
+              {/* Date-wise search at right side of search bar */}
+              <div className="relative flex-shrink-0">
+                <div className="flex items-center bg-white dark:bg-[#0D121F] border border-gray-250 dark:border-[#25314D] rounded-2xl px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
+                  <Calendar className="w-4 h-4 text-gray-400 mr-1.5 flex-shrink-0 hidden sm:block" />
+                  <input
+                    type="date"
+                    aria-label="Date Search"
+                    value={searchDate}
+                    onChange={(e) => setSearchDate(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-gray-900 dark:text-white outline-none cursor-pointer py-1.5"
+                  />
+                  {searchDate && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchDate("")}
+                      className="ml-1 text-gray-400 hover:text-red-500 p-1"
+                      aria-label="Clear date filter"
+                      title="Clear date"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* List */}
@@ -528,16 +555,6 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                   </div>
                 </div>
 
-                {/* Vehicle details */}
-                <div className="space-y-4 pt-2">
-                  <h4 className="text-[10px] font-black text-gray-400 dark:text-white/40 uppercase tracking-[0.2em] mb-3">
-                    D. Vehicle Information
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <DetailRow label="Vehicle Details" value={selectedJob.vehicle_details || "N/A"} />
-                  </div>
-                </div>
-
                 {/* Battery Info */}
                 <div className="space-y-4 pt-2">
                   <h4 className="text-[10px] font-black text-gray-400 dark:text-white/40 uppercase tracking-[0.2em] mb-3">
@@ -686,3 +703,5 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+

@@ -305,6 +305,7 @@ class ServiceController extends Controller
             'vehicle_details' => 'sometimes|string',
             'status' => 'sometimes|string',
             'service_charge' => 'sometimes|numeric',
+            'payment_method' => 'nullable|string',
             'battery_brand' => 'nullable|string',
             'battery_model' => 'nullable|string',
             'battery_capacity' => 'nullable|string',
@@ -318,6 +319,12 @@ class ServiceController extends Controller
             'sub_status' => 'nullable|string',
         ]);
 
+        if (isset($validated['payment_method'])) {
+            $validated['payment_method'] = in_array(strtoupper($validated['payment_method']), ['UPI', 'CASH']) 
+                ? ucfirst(strtolower($validated['payment_method'])) 
+                : 'Cash';
+        }
+
         if ((isset($validated['status']) && $validated['status'] !== $service->status) || 
             (isset($validated['sub_status']) && $validated['sub_status'] !== $service->sub_status)) {
             $validated['status_updated_at'] = now();
@@ -325,6 +332,11 @@ class ServiceController extends Controller
 
         if (isset($validated['status']) && $validated['status'] === 'Completed' && $service->status !== 'Completed') {
             $validated['resolved_at'] = now();
+            if (!isset($validated['payment_status'])) {
+                $validated['payment_status'] = 'verified';
+                $validated['payment_confirmed_at'] = now();
+                $validated['billed_at'] = now();
+            }
         }
 
         if (isset($validated['sub_status']) && $validated['sub_status'] !== $service->sub_status) {
@@ -468,7 +480,15 @@ class ServiceController extends Controller
                 $service->update(['service_charge' => $request->input('service_charge')]);
             }
 
+            $paymentMethod = $request->input('payment_method', 'Cash');
+            if (in_array(strtoupper($paymentMethod), ['UPI', 'CASH'])) {
+                $paymentMethod = ucfirst(strtolower($paymentMethod));
+            } else {
+                $paymentMethod = 'Cash';
+            }
+
             $service->update([
+                'payment_method' => $paymentMethod,
                 'payment_status' => 'verified',
                 'payment_confirmed_at' => now(),
                 'status' => 'Completed',
@@ -499,7 +519,7 @@ class ServiceController extends Controller
                     'type' => 'Service',
                     'extra_charges' => 0,
                     'discount_amount' => 0,
-                    'payment_method' => 'Cash', // Defaulting to Cash as per UI flow
+                    'payment_method' => $paymentMethod,
                 ]);
 
                 $sale->items()->create([

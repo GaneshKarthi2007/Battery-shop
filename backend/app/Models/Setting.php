@@ -36,7 +36,11 @@ class Setting extends Model
     public static function all_as_array(): array
     {
         if (static::$cache === null) {
-            static::$cache = static::query()->pluck('value', 'key')->toArray();
+            try {
+                static::$cache = static::query()->pluck('value', 'key')->toArray();
+            } catch (\Throwable $e) {
+                static::$cache = [];
+            }
         }
         $out = [];
         foreach (self::KEYS as $key) {
