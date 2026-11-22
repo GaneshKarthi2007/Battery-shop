@@ -10,6 +10,7 @@ import { ReportsHome } from "./pages/ReportsHome";
 import { SalesReportPage } from "./pages/reports/SalesReportPage";
 import { GstReportPage } from "./pages/reports/GstReportPage";
 import { DailyReportPage } from "./pages/reports/DailyReportPage";
+import { GeneralLedgerPage } from "./pages/reports/GeneralLedgerPage";
 import { Settings } from "./pages/Settings";
 import { Profile } from "./pages/Profile";
 import { Checkout } from "./pages/Checkout";
@@ -214,6 +215,22 @@ export const router = createBrowserRouter([
             element: (
               <ProtectedRoute allowedRoles={["admin", "manager"]}>
                 <DailyReportPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "reports/general-ledger",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <GeneralLedgerPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "reports/ledger",
+            element: (
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <GeneralLedgerPage />
               </ProtectedRoute>
             ),
           },

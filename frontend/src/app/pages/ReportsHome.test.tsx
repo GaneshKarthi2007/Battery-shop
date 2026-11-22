@@ -64,4 +64,13 @@ describe("ReportsHome Component", () => {
 
     expect(mockNavigate).toHaveBeenCalledWith("/reports/sales");
   });
+
+  it("navigates to general ledger report when general ledger card is clicked", () => {
+    renderComponent();
+
+    const ledgerBtn = screen.getByText("General Ledger Report");
+    fireEvent.click(ledgerBtn);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/reports/general-ledger");
+  });
 });

@@ -14,6 +14,7 @@ import {
   IndianRupee,
   ShieldCheck,
   Package,
+  BookOpen,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -151,6 +152,16 @@ const REPORT_CATEGORIES: ReportCategory[] = [
         color: "text-indigo-600 dark:text-indigo-400",
         iconBg: "bg-indigo-50 dark:bg-indigo-950/40",
         tag: "Day-by-Day",
+      },
+      {
+        id: "general-ledger-report",
+        label: "General Ledger Report",
+        description: "Detailed debit and credit ledger statement with running balance filtered by date and ledger account",
+        path: "/reports/general-ledger",
+        icon: BookOpen,
+        color: "text-amber-600 dark:text-amber-400",
+        iconBg: "bg-amber-50 dark:bg-amber-950/40",
+        tag: "Debit / Credit",
       },
       {
         id: "revenue-report",

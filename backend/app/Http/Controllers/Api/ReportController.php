@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Sale;
 use App\Models\Service;
+use App\Models\MiscTransaction;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -190,6 +191,283 @@ class ReportController extends Controller
             'invoices' => $sortedInvoices,
             'summary' => $summary,
         ];
+    }
+
+    /**
+     * General Ledger Report: credit and debit statements filtered by date and ledger.
+     */
+    public function generalLedger(Request $request)
+    {
+        $this->checkAccess($request);
+
+        // Ensure sample transactions exist if table is fresh
+        if (MiscTransaction::count() === 0 && class_exists(MiscTransactionController::class)) {
+            app(MiscTransactionController::class)->index(new Request());
+        }
+
+        $ledger = $request->query('ledger', 'All');
+        $from = $request->query('from') ?: $request->query('date_from');
+        $to = $request->query('to') ?: $request->query('date_to');
+        $type = $request->query('type', 'All');
+        $search = $request->query('search');
+
+        // 1. Gather all unique ledgers in the system
+        $allTransactions = MiscTransaction::all();
+        $ledgerSet = collect([
+            'CASH', 'TMB LTD', 'HDFC BANK', 'SBI BANK', 'SALES REVENUE',
+            'TELEPHONE EXPENSES', 'OFFICE CONSUMABLES', 'VEHICLE EXPENSES',
+            'E.B Bill Expenses', 'PROCESSING_CHIT_PAYMENT', 'ADVANCE FROM SUBSCRIPTION',
+            'SGST', 'CGST', 'PURCHASE ACCOUNT', 'RENT EXPENSES', 'BATTERY SCRAP EXPENSES', 'MISC EXPENSES'
+        ]);
+
+        foreach ($allTransactions as $tx) {
+            if ($tx->debit_ledger) {
+                foreach (explode(',', $tx->debit_ledger) as $l) {
+                    $l = trim($l);
+                    if ($l && $l !== 'N/A') $ledgerSet->push($l);
+                }
+            }
+            if ($tx->credit_ledger) {
+                foreach (explode(',', $tx->credit_ledger) as $l) {
+                    $l = trim($l);
+                    if ($l && $l !== 'N/A') $ledgerSet->push($l);
+                }
+            }
+            if (is_array($tx->debit_entries)) {
+                foreach ($tx->debit_entries as $entry) {
+                    if (!empty($entry['ledger'])) $ledgerSet->push(trim($entry['ledger']));
+                }
+            }
+            if (is_array($tx->credit_entries)) {
+                foreach ($tx->credit_entries as $entry) {
+                    if (!empty($entry['ledger'])) $ledgerSet->push(trim($entry['ledger']));
+                }
+            }
+        }
+        $availableLedgers = $ledgerSet->unique()->sort()->values();
+
+        // 2. Calculate Opening Balance before $from
+        $openingBalance = 0.0;
+        if ($from && $ledger !== 'All') {
+            $priorTransactions = MiscTransaction::whereDate('date', '<', $from)->get();
+            foreach ($priorTransactions as $tx) {
+                $debitPart = $this->calculateLedgerAmount($tx, $ledger, 'debit');
+                $creditPart = $this->calculateLedgerAmount($tx, $ledger, 'credit');
+                $openingBalance += ($debitPart - $creditPart);
+            }
+        }
+
+        // 3. Query Transactions in Period
+        $query = MiscTransaction::query();
+        if ($from) {
+            $query->whereDate('date', '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate('date', '<=', $to);
+        }
+        if ($type && $type !== 'All') {
+            $query->whereRaw('LOWER(type) = ?', [strtolower($type)]);
+        }
+        if ($search) {
+            $term = '%' . trim($search) . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('particular', 'like', $term)
+                  ->orWhere('entry_number', 'like', $term)
+                  ->orWhere('debit_ledger', 'like', $term)
+                  ->orWhere('credit_ledger', 'like', $term)
+                  ->orWhere('bank_name', 'like', $term)
+                  ->orWhere('cheque_no', 'like', $term);
+            });
+        }
+
+        $periodTransactions = $query->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
+
+        // 4. Filter by ledger & compute running balance
+        $entries = collect();
+        $runningBalance = $openingBalance;
+        $totalDebit = 0.0;
+        $totalCredit = 0.0;
+
+        foreach ($periodTransactions as $tx) {
+            if ($ledger !== 'All') {
+                $hasDebit = $this->hasLedgerEntry($tx, $ledger, 'debit');
+                $hasCredit = $this->hasLedgerEntry($tx, $ledger, 'credit');
+
+                if (!$hasDebit && !$hasCredit) {
+                    continue;
+                }
+
+                $debitAmount = $this->calculateLedgerAmount($tx, $ledger, 'debit');
+                $creditAmount = $this->calculateLedgerAmount($tx, $ledger, 'credit');
+
+                if ($debitAmount == 0 && $creditAmount == 0) {
+                    if ($hasDebit) $debitAmount = (float) $tx->debit_amount;
+                    if ($hasCredit) $creditAmount = (float) ($tx->credit_amount ?: $tx->debit_amount);
+                }
+
+                $contraLedger = $hasDebit ? $tx->credit_ledger : $tx->debit_ledger;
+            } else {
+                $debitAmount = (float) $tx->debit_amount;
+                $creditAmount = (float) $tx->credit_amount;
+                $contraLedger = $tx->credit_ledger ?: $tx->debit_ledger ?: 'N/A';
+            }
+
+            $totalDebit += $debitAmount;
+            $totalCredit += $creditAmount;
+            $runningBalance += ($debitAmount - $creditAmount);
+
+            $dateStr = $tx->date;
+            if ($dateStr instanceof \DateTimeInterface) {
+                $dateStr = $dateStr->format('Y-m-d');
+            }
+
+            $entries->push([
+                'id' => $tx->id,
+                'entry_number' => $tx->entry_number,
+                'date' => $dateStr,
+                'type' => $tx->type,
+                'particular' => $tx->particular,
+                'debit_ledger' => $tx->debit_ledger,
+                'credit_ledger' => $tx->credit_ledger,
+                'contra_ledger' => $contraLedger ?: 'N/A',
+                'debit' => round($debitAmount, 2),
+                'credit' => round($creditAmount, 2),
+                'running_balance' => round(abs($runningBalance), 2),
+                'balance_type' => $runningBalance >= 0 ? 'Dr' : 'Cr',
+                'bank_name' => $tx->bank_name,
+                'cheque_no' => $tx->cheque_no,
+                'status' => $tx->status ?: 'Settled',
+                'attachment_url' => $tx->attachment_url,
+            ]);
+        }
+
+        $closingBalance = $runningBalance;
+        $closingBalanceType = $closingBalance >= 0 ? 'Dr' : 'Cr';
+
+        return response()->json([
+            'ledger' => $ledger,
+            'date_from' => $from,
+            'date_to' => $to,
+            'opening_balance' => round(abs($openingBalance), 2),
+            'opening_balance_type' => $openingBalance >= 0 ? 'Dr' : 'Cr',
+            'total_debit' => round($totalDebit, 2),
+            'total_credit' => round($totalCredit, 2),
+            'closing_balance' => round(abs($closingBalance), 2),
+            'closing_balance_type' => $closingBalanceType,
+            'count' => $entries->count(),
+            'available_ledgers' => $availableLedgers,
+            'entries' => $entries,
+        ]);
+    }
+
+    /**
+     * Download General Ledger report in CSV format.
+     */
+    public function downloadGeneralLedger(Request $request)
+    {
+        $this->checkAccess($request);
+        $json = $this->generalLedger($request)->getData(true);
+        $entries = $json['entries'] ?? [];
+        $ledgerName = $json['ledger'] ?? 'All';
+
+        $csvHeader = [
+            'Entry #',
+            'Date',
+            'Type',
+            'Particulars',
+            'Contra / Account Ledger',
+            'Debit Ledger',
+            'Credit Ledger',
+            'Debit Amount (INR)',
+            'Credit Amount (INR)',
+            'Running Balance',
+            'Dr/Cr',
+            'Bank / Cheque',
+            'Status'
+        ];
+
+        $callback = function () use ($entries, $csvHeader) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $csvHeader);
+
+            foreach ($entries as $e) {
+                $bankCheque = trim(($e['bank_name'] ?? '') . ' ' . (!empty($e['cheque_no']) ? 'Chq:' . $e['cheque_no'] : ''));
+                fputcsv($file, [
+                    $e['entry_number'],
+                    $e['date'],
+                    $e['type'],
+                    $e['particular'],
+                    $e['contra_ledger'],
+                    $e['debit_ledger'],
+                    $e['credit_ledger'],
+                    $e['debit'],
+                    $e['credit'],
+                    $e['running_balance'],
+                    $e['balance_type'],
+                    $bankCheque ?: 'N/A',
+                    $e['status'],
+                ]);
+            }
+            fclose($file);
+        };
+
+        $safeLedger = preg_replace('/[^a-zA-Z0-9_-]/', '_', $ledgerName);
+        $filename = "General_Ledger_{$safeLedger}_" . date('Y-m-d') . ".csv";
+
+        return response()->stream($callback, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    private function hasLedgerEntry($tx, string $ledger, string $side): bool
+    {
+        $ledgerLower = strtolower(trim($ledger));
+        $field = $side === 'debit' ? 'debit_ledger' : 'credit_ledger';
+        if (str_contains(strtolower($tx->{$field} ?? ''), $ledgerLower)) {
+            return true;
+        }
+
+        $entriesField = $side === 'debit' ? 'debit_entries' : 'credit_entries';
+        if (is_array($tx->{$entriesField})) {
+            foreach ($tx->{$entriesField} as $e) {
+                if (isset($e['ledger']) && strtolower(trim($e['ledger'])) === $ledgerLower) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private function calculateLedgerAmount($tx, string $ledger, string $side): float
+    {
+        $ledgerLower = strtolower(trim($ledger));
+        $entriesField = $side === 'debit' ? 'debit_entries' : 'credit_entries';
+        $sum = 0.0;
+        $found = false;
+
+        if (is_array($tx->{$entriesField})) {
+            foreach ($tx->{$entriesField} as $e) {
+                if (isset($e['ledger']) && strtolower(trim($e['ledger'])) === $ledgerLower) {
+                    $sum += (float) ($e['amount'] ?? 0);
+                    $found = true;
+                }
+            }
+        }
+
+        if (!$found) {
+            $field = $side === 'debit' ? 'debit_ledger' : 'credit_ledger';
+            if (str_contains(strtolower($tx->{$field} ?? ''), $ledgerLower)) {
+                $amountField = $side === 'debit' ? 'debit_amount' : 'credit_amount';
+                $amount = (float) ($tx->{$amountField} ?? 0);
+                if ($amount == 0 && $tx->type === 'Cash' && $side === 'credit') {
+                    $amount = (float) ($tx->debit_amount ?? 0);
+                }
+                return $amount;
+            }
+        }
+
+        return $sum;
     }
 
     private function checkAccess(Request $request)
