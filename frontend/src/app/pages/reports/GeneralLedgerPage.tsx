@@ -9,6 +9,11 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { apiClient, BASE_URL } from "../../api/client";
+import {
+  DateInput,
+  parseDateToApi,
+  formatDisplayDate,
+} from "../../components/DateInput";
 
 export interface GeneralLedgerEntry {
   id: number;
@@ -50,15 +55,7 @@ export interface GeneralLedgerResponse {
   entries: GeneralLedgerEntry[];
 }
 
-export function formatDisplayDate(dateStr?: string | null): string {
-  if (!dateStr) return "-";
-  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr;
-  const parts = dateStr.split("T")[0].split("-");
-  if (parts.length === 3 && parts[0].length === 4) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  }
-  return dateStr;
-}
+export { formatDisplayDate };
 
 export function GeneralLedgerPage() {
   const navigate = useNavigate();
@@ -103,8 +100,8 @@ export function GeneralLedgerPage() {
     try {
       const params = new URLSearchParams();
       if (selectedLedger) params.set("ledger", selectedLedger);
-      if (dateFrom) params.set("from", dateFrom);
-      if (dateTo) params.set("to", dateTo);
+      if (dateFrom) params.set("from", parseDateToApi(dateFrom));
+      if (dateTo) params.set("to", parseDateToApi(dateTo));
       if (selectedType && selectedType !== "All") params.set("type", selectedType);
 
       const res = await apiClient.get<GeneralLedgerResponse>(
@@ -140,8 +137,8 @@ export function GeneralLedgerPage() {
           : null;
       const params = new URLSearchParams();
       if (selectedLedger) params.set("ledger", selectedLedger);
-      if (dateFrom) params.set("from", dateFrom);
-      if (dateTo) params.set("to", dateTo);
+      if (dateFrom) params.set("from", parseDateToApi(dateFrom));
+      if (dateTo) params.set("to", parseDateToApi(dateTo));
       if (selectedType && selectedType !== "All") params.set("type", selectedType);
 
       const res = await window.fetch(
@@ -176,8 +173,8 @@ export function GeneralLedgerPage() {
           : null;
       const params = new URLSearchParams();
       if (selectedLedger) params.set("ledger", selectedLedger);
-      if (dateFrom) params.set("from", dateFrom);
-      if (dateTo) params.set("to", dateTo);
+      if (dateFrom) params.set("from", parseDateToApi(dateFrom));
+      if (dateTo) params.set("to", parseDateToApi(dateTo));
       if (selectedType && selectedType !== "All") params.set("type", selectedType);
 
       const res = await window.fetch(
@@ -291,39 +288,21 @@ export function GeneralLedgerPage() {
 
         {/* 4 Required Filter Controls */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {/* Start Date */}
-          <div>
-            <label
-              htmlFor="date-from"
-              className="block text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1"
-            >
-              Start Date
-            </label>
-            <input
-              id="date-from"
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl outline-none focus:ring-2 focus:ring-amber-500/40 text-gray-900 dark:text-white transition-all"
-            />
-          </div>
+          {/* Start Date with auto-hyphen DD-MM-YYYY typing */}
+          <DateInput
+            id="date-from"
+            label="Start Date"
+            value={dateFrom}
+            onChange={setDateFrom}
+          />
 
-          {/* End Date */}
-          <div>
-            <label
-              htmlFor="date-to"
-              className="block text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1"
-            >
-              End Date
-            </label>
-            <input
-              id="date-to"
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl outline-none focus:ring-2 focus:ring-amber-500/40 text-gray-900 dark:text-white transition-all"
-            />
-          </div>
+          {/* End Date with auto-hyphen DD-MM-YYYY typing */}
+          <DateInput
+            id="date-to"
+            label="End Date"
+            value={dateTo}
+            onChange={setDateTo}
+          />
 
           {/* Ledger Account */}
           <div>

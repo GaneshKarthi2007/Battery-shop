@@ -44,9 +44,11 @@ class ReportController extends Controller
             fputcsv($file, $csvHeader);
 
             foreach ($invoices as $invoice) {
+                $rawDate = $invoice['date'] ?? '';
+                $formattedDate = !empty($rawDate) ? date('d-m-Y', strtotime($rawDate)) : '-';
                 fputcsv($file, [
                     $invoice['invoice_number'],
-                    $invoice['date'],
+                    $formattedDate,
                     $invoice['customer_name'],
                     $invoice['type'],
                     $invoice['items_summary'],
@@ -73,6 +75,14 @@ class ReportController extends Controller
         $to = $request->query('to');
         $type = $request->query('type', 'All');
         $search = $request->query('search');
+
+        // Convert DD-MM-YYYY to Y-m-d if supplied in DD-MM-YYYY format
+        if ($from && preg_match('/^\d{2}-\d{2}-\d{4}$/', $from)) {
+            $from = \DateTime::createFromFormat('d-m-Y', $from)->format('Y-m-d');
+        }
+        if ($to && preg_match('/^\d{2}-\d{2}-\d{4}$/', $to)) {
+            $to = \DateTime::createFromFormat('d-m-Y', $to)->format('Y-m-d');
+        }
 
         // Map "Bills" filter alias to "Sale"
         $effectiveType = $type === 'Bills' ? 'Sale' : $type;
@@ -116,7 +126,8 @@ class ReportController extends Controller
                     'id' => 'sale-' . $sale->id,
                     'raw_id' => $sale->id,
                     'invoice_number' => $prefix . str_pad($sale->id, 5, '0', STR_PAD_LEFT),
-                    'date' => $sale->created_at->toISOString(),
+                    'date' => $sale->created_at->format('d-m-Y'),
+                    'raw_date' => $sale->created_at->toISOString(),
                     'customer_name' => $sale->customer_name,
                     'customer_phone' => $sale->customer_phone,
                     'vehicle_details' => $sale->vehicle_details,
@@ -155,7 +166,8 @@ class ReportController extends Controller
                     'id' => 'service-' . $service->id,
                     'raw_id' => $service->id,
                     'invoice_number' => 'SRV-' . str_pad($service->id, 5, '0', STR_PAD_LEFT),
-                    'date' => $service->created_at->toISOString(),
+                    'date' => $service->created_at->format('d-m-Y'),
+                    'raw_date' => $service->created_at->toISOString(),
                     'customer_name' => $service->customer_name,
                     'customer_phone' => $service->contact_number,
                     'vehicle_details' => $service->vehicle_details,
@@ -218,6 +230,14 @@ class ReportController extends Controller
         $to = $request->query('to') ?: $request->query('date_to');
         $type = $request->query('type', 'All');
         $search = $request->query('search');
+
+        // Convert DD-MM-YYYY to Y-m-d if supplied in DD-MM-YYYY format
+        if ($from && preg_match('/^\d{2}-\d{2}-\d{4}$/', $from)) {
+            $from = \DateTime::createFromFormat('d-m-Y', $from)->format('Y-m-d');
+        }
+        if ($to && preg_match('/^\d{2}-\d{2}-\d{4}$/', $to)) {
+            $to = \DateTime::createFromFormat('d-m-Y', $to)->format('Y-m-d');
+        }
 
         // 1. Gather all unique ledgers in the system
         $allTransactions = MiscTransaction::all();

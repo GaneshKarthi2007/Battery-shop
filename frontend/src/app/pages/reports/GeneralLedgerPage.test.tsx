@@ -106,8 +106,8 @@ describe("GeneralLedgerPage Component", () => {
     const ledgerSelect = screen.getByLabelText(/^ledger$/i);
     const voucherTypeSelect = screen.getByLabelText(/voucher type/i);
 
-    fireEvent.change(startDateInput, { target: { value: "2026-10-01" } });
-    fireEvent.change(endDateInput, { target: { value: "2026-10-31" } });
+    fireEvent.change(startDateInput, { target: { value: "01-10-2026" } });
+    fireEvent.change(endDateInput, { target: { value: "31-10-2026" } });
     await user.selectOptions(ledgerSelect, "CASH");
     await user.selectOptions(voucherTypeSelect, "Cash");
 
