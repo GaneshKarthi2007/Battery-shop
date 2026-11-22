@@ -136,5 +136,37 @@ class GeneralLedgerReportTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
+        
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('Debit (Outgoing)', $content);
+        $this->assertStringContainsString('Credit (Income)', $content);
+        $this->assertStringContainsString('Opening Balance', $content);
+        $this->assertStringContainsString('PETTY EXPENSE', $content);
+    }
+
+    public function test_can_download_general_ledger_pdf(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+
+        MiscTransaction::create([
+            'entry_number' => 'TXN-00001',
+            'date' => '2026-10-15',
+            'type' => 'Cash',
+            'particular' => 'PETTY EXPENSE',
+            'debit_amount' => 500.00,
+            'credit_amount' => 0.00,
+            'debit_ledger' => 'OFFICE CONSUMABLES',
+            'credit_ledger' => 'CASH',
+            'credit_entries' => [['ledger' => 'CASH', 'amount' => 500.00]],
+            'debit_entries' => [['ledger' => 'OFFICE CONSUMABLES', 'amount' => 500.00]],
+            'status' => 'Settled',
+        ]);
+
+        $response = $this->get('/api/reports/general-ledger/pdf?ledger=CASH');
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+        $this->assertStringContainsString('General_Ledger_CASH', $response->headers->get('content-disposition'));
     }
 }

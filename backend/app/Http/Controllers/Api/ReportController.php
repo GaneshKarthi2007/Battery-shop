@@ -199,13 +199,21 @@ class ReportController extends Controller
     public function generalLedger(Request $request)
     {
         $this->checkAccess($request);
+        $data = $this->getGeneralLedgerData($request);
+        return response()->json($data);
+    }
 
+    /**
+     * Prepare structured general ledger report data.
+     */
+    public function getGeneralLedgerData(Request $request): array
+    {
         // Ensure sample transactions exist if table is fresh
         if (MiscTransaction::count() === 0 && class_exists(MiscTransactionController::class)) {
             app(MiscTransactionController::class)->index(new Request());
         }
 
-        $ledger = $request->query('ledger', 'All');
+        $ledger = $request->query('ledger') ?: 'All';
         $from = $request->query('from') ?: $request->query('date_from');
         $to = $request->query('to') ?: $request->query('date_to');
         $type = $request->query('type', 'All');
@@ -287,6 +295,7 @@ class ReportController extends Controller
         $runningBalance = $openingBalance;
         $totalDebit = 0.0;
         $totalCredit = 0.0;
+        $sNo = 1;
 
         foreach ($periodTransactions as $tx) {
             if ($ledger !== 'All') {
@@ -316,15 +325,24 @@ class ReportController extends Controller
             $totalCredit += $creditAmount;
             $runningBalance += ($debitAmount - $creditAmount);
 
+            // Format date strictly as DD-MM-YYYY (e.g. 20-11-2026) matching reference image
             $dateStr = $tx->date;
             if ($dateStr instanceof \DateTimeInterface) {
-                $dateStr = $dateStr->format('Y-m-d');
+                $formattedDate = $dateStr->format('d-m-Y');
+            } elseif (!empty($dateStr)) {
+                $formattedDate = date('d-m-Y', strtotime($dateStr));
+            } else {
+                $formattedDate = '';
             }
+
+            $comments = trim(($tx->bank_name ? $tx->bank_name . ' ' : '') . ($tx->cheque_no ? 'Chq: ' . $tx->cheque_no : ''));
 
             $entries->push([
                 'id' => $tx->id,
+                's_no' => $sNo++,
                 'entry_number' => $tx->entry_number,
-                'date' => $dateStr,
+                'date' => $formattedDate,
+                'raw_date' => $tx->date instanceof \DateTimeInterface ? $tx->date->format('Y-m-d') : (string) $tx->date,
                 'type' => $tx->type,
                 'particular' => $tx->particular,
                 'debit_ledger' => $tx->debit_ledger,
@@ -334,8 +352,10 @@ class ReportController extends Controller
                 'credit' => round($creditAmount, 2),
                 'running_balance' => round(abs($runningBalance), 2),
                 'balance_type' => $runningBalance >= 0 ? 'Dr' : 'Cr',
+                'balance_formatted' => number_format(abs($runningBalance), 2) . ($runningBalance >= 0 ? 'Dr' : 'Cr'),
                 'bank_name' => $tx->bank_name,
                 'cheque_no' => $tx->cheque_no,
+                'comments' => $comments ?: ($tx->status ?: 'Settled'),
                 'status' => $tx->status ?: 'Settled',
                 'attachment_url' => $tx->attachment_url,
             ]);
@@ -344,70 +364,115 @@ class ReportController extends Controller
         $closingBalance = $runningBalance;
         $closingBalanceType = $closingBalance >= 0 ? 'Dr' : 'Cr';
 
-        return response()->json([
+        $displayFrom = $from ? date('d-m-Y', strtotime($from)) : '';
+        $displayTo = $to ? date('d-m-Y', strtotime($to)) : '';
+
+        return [
             'ledger' => $ledger,
-            'date_from' => $from,
-            'date_to' => $to,
+            'type' => $type,
+            'date_from' => $displayFrom,
+            'date_to' => $displayTo,
+            'raw_from' => $from,
+            'raw_to' => $to,
             'opening_balance' => round(abs($openingBalance), 2),
             'opening_balance_type' => $openingBalance >= 0 ? 'Dr' : 'Cr',
+            'total_outgoing' => round($totalDebit, 2),
+            'total_income' => round($totalCredit, 2),
             'total_debit' => round($totalDebit, 2),
             'total_credit' => round($totalCredit, 2),
             'closing_balance' => round(abs($closingBalance), 2),
             'closing_balance_type' => $closingBalanceType,
             'count' => $entries->count(),
             'available_ledgers' => $availableLedgers,
-            'entries' => $entries,
-        ]);
+            'entries' => $entries->toArray(),
+        ];
     }
 
     /**
-     * Download General Ledger report in CSV format.
+     * Download General Ledger report in PDF format.
+     */
+    public function downloadGeneralLedgerPdf(Request $request)
+    {
+        $this->checkAccess($request);
+        $data = $this->getGeneralLedgerData($request);
+
+        $pdf = Pdf::loadView('reports.general_ledger', $data)
+            ->setPaper('a4', 'landscape');
+
+        $safeLedger = preg_replace('/[^a-zA-Z0-9_-]/', '_', $data['ledger']);
+        $filename = "General_Ledger_{$safeLedger}_" . date('Y-m-d') . ".pdf";
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Download General Ledger report in CSV format matching reference image format.
      */
     public function downloadGeneralLedger(Request $request)
     {
         $this->checkAccess($request);
-        $json = $this->generalLedger($request)->getData(true);
-        $entries = $json['entries'] ?? [];
-        $ledgerName = $json['ledger'] ?? 'All';
+        $data = $this->getGeneralLedgerData($request);
+        $entries = $data['entries'] ?? [];
+        $ledgerName = $data['ledger'] ?? 'All';
 
         $csvHeader = [
-            'Entry #',
+            'S.No.',
             'Date',
-            'Type',
+            'A/c / Entry #',
             'Particulars',
-            'Contra / Account Ledger',
-            'Debit Ledger',
-            'Credit Ledger',
-            'Debit Amount (INR)',
-            'Credit Amount (INR)',
-            'Running Balance',
-            'Dr/Cr',
-            'Bank / Cheque',
-            'Status'
+            'Account / Contra Ledger',
+            'Debit (Outgoing)',
+            'Credit (Income)',
+            'Balance',
+            'Comments / Status'
         ];
 
-        $callback = function () use ($entries, $csvHeader) {
+        $callback = function () use ($entries, $csvHeader, $data) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $csvHeader);
 
-            foreach ($entries as $e) {
-                $bankCheque = trim(($e['bank_name'] ?? '') . ' ' . (!empty($e['cheque_no']) ? 'Chq:' . $e['cheque_no'] : ''));
+            // Opening Balance row at the top (matching reference image)
+            $openingDr = $data['opening_balance_type'] === 'Dr' && $data['opening_balance'] > 0 ? $data['opening_balance'] : '';
+            $openingCr = $data['opening_balance_type'] === 'Cr' && $data['opening_balance'] > 0 ? $data['opening_balance'] : '';
+            fputcsv($file, [
+                '-',
+                $data['date_from'] ?: '-',
+                '-',
+                'Opening Balance',
+                '-',
+                $openingDr,
+                $openingCr,
+                $data['opening_balance'] . $data['opening_balance_type'],
+                '-'
+            ]);
+
+            foreach ($entries as $index => $e) {
                 fputcsv($file, [
-                    $e['entry_number'],
+                    $index + 1,
                     $e['date'],
-                    $e['type'],
+                    $e['entry_number'],
                     $e['particular'],
                     $e['contra_ledger'],
-                    $e['debit_ledger'],
-                    $e['credit_ledger'],
-                    $e['debit'],
-                    $e['credit'],
-                    $e['running_balance'],
-                    $e['balance_type'],
-                    $bankCheque ?: 'N/A',
-                    $e['status'],
+                    $e['debit'] > 0 ? $e['debit'] : '',
+                    $e['credit'] > 0 ? $e['credit'] : '',
+                    $e['running_balance'] . $e['balance_type'],
+                    $e['comments'] ?: $e['status'],
                 ]);
             }
+
+            // Totals row at the bottom
+            fputcsv($file, [
+                'Total',
+                '',
+                '',
+                'Total Period Transactions',
+                '',
+                $data['total_outgoing'],
+                $data['total_income'],
+                $data['closing_balance'] . $data['closing_balance_type'],
+                ''
+            ]);
+
             fclose($file);
         };
 
@@ -415,7 +480,7 @@ class ReportController extends Controller
         $filename = "General_Ledger_{$safeLedger}_" . date('Y-m-d') . ".csv";
 
         return response()->stream($callback, 200, [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
