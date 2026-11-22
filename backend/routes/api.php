@@ -159,6 +159,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Reports
     Route::get('/reports', [\App\Http\Controllers\Api\ReportController::class, 'index']);
+    Route::get('/reports/general-ledger', [\App\Http\Controllers\Api\ReportController::class, 'generalLedger']);
+    Route::get('/reports/general-ledger/download', [\App\Http\Controllers\Api\ReportController::class, 'downloadGeneralLedger']);
+    Route::get('/reports/general-ledger/pdf', [\App\Http\Controllers\Api\ReportController::class, 'downloadGeneralLedgerPdf']);
     Route::get('/reports/download', [\App\Http\Controllers\Api\ReportController::class, 'download']);
     Route::get('/reports/download/pdf', [\App\Http\Controllers\Api\ReportController::class, 'downloadPdf']);
 

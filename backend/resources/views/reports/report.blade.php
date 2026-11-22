@@ -83,7 +83,7 @@
             @foreach($invoices as $index => $invoice)
             <tr class="{{ $index % 2 == 0 ? 'row-even' : 'row-odd' }}">
                 <td style="color: #2563eb; font-weight: bold;">{{ $invoice['invoice_number'] }}</td>
-                <td>{{ date('d M, Y', strtotime($invoice['date'])) }}</td>
+                <td>{{ date('d-m-Y', strtotime($invoice['date'])) }}</td>
                 <td>{{ $invoice['customer_name'] }}</td>
                 <td>
                     <span class="badge badge-{{ strtolower($invoice['type']) === 'sale' ? 'sale' : (strtolower($invoice['type']) === 'exchange' ? 'exchange' : 'service') }}">

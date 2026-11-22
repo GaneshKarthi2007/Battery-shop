@@ -31,37 +31,54 @@ describe("ReportsHome Component", () => {
     vi.clearAllMocks();
   });
 
-  it("renders Report Home header and all category cards", () => {
+  it("renders Report Home header and only the 4 active report cards", () => {
     renderComponent();
 
     expect(screen.getByText("Report Home")).toBeInTheDocument();
-    expect(screen.getByText(/Comprehensive reporting hub for sales/i)).toBeInTheDocument();
 
-    // Check categories
-    expect(screen.getByText("Sales & Invoicing")).toBeInTheDocument();
-    expect(screen.getByText("Battery Exchange & Stock")).toBeInTheDocument();
-    expect(screen.getByText("Services & Warranty")).toBeInTheDocument();
-    expect(screen.getByText("Financial & Tax Summary")).toBeInTheDocument();
+    // Verify exactly the 4 required reports are present
+    expect(screen.getByText("General Ledger")).toBeInTheDocument();
+    expect(screen.getByText("Battery Sales & Bills")).toBeInTheDocument();
+    expect(screen.getByText("Estimates & Quotations")).toBeInTheDocument();
+    expect(screen.getByText("Services & Job Orders")).toBeInTheDocument();
+
+    // Verify other categories are no longer shown
+    expect(screen.queryByText("Battery Exchange Report")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stock & Inventory Registry")).not.toBeInTheDocument();
+    expect(screen.queryByText("Warranty Claims & History")).not.toBeInTheDocument();
+    expect(screen.queryByText("GST Tax Return Report")).not.toBeInTheDocument();
+    expect(screen.queryByText("Daily Collection Summary")).not.toBeInTheDocument();
   });
 
   it("filters reports by keyword when typing in search input", async () => {
     renderComponent();
 
-    const searchInput = screen.getByPlaceholderText(/Search reports or category/i);
-    fireEvent.change(searchInput, { target: { value: "GST" } });
+    const searchInput = screen.getByPlaceholderText(/Search reports/i);
+    fireEvent.change(searchInput, { target: { value: "Ledger" } });
 
     await waitFor(() => {
-      expect(screen.getByText(/matching "GST"/i)).toBeInTheDocument();
-      expect(screen.getByText("GST Tax Return Report")).toBeInTheDocument();
+      expect(screen.getByText("General Ledger")).toBeInTheDocument();
+      expect(screen.queryByText("Battery Sales & Bills")).not.toBeInTheDocument();
     });
   });
 
-  it("navigates to relevant report route when category item is clicked", () => {
+  it("navigates to relevant report route when report card is clicked", () => {
     renderComponent();
 
     const salesReportBtn = screen.getByText("Battery Sales & Bills");
     fireEvent.click(salesReportBtn);
-
     expect(mockNavigate).toHaveBeenCalledWith("/reports/sales");
+
+    const ledgerBtn = screen.getByText("General Ledger");
+    fireEvent.click(ledgerBtn);
+    expect(mockNavigate).toHaveBeenCalledWith("/reports/general-ledger");
+
+    const quotesBtn = screen.getByText("Estimates & Quotations");
+    fireEvent.click(quotesBtn);
+    expect(mockNavigate).toHaveBeenCalledWith("/reports/quotations");
+
+    const serviceBtn = screen.getByText("Services & Job Orders");
+    fireEvent.click(serviceBtn);
+    expect(mockNavigate).toHaveBeenCalledWith("/reports/services");
   });
 });
