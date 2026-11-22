@@ -12,7 +12,7 @@ interface User {
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
     logout: () => void;
     isAuthenticated: boolean;
 }
@@ -24,21 +24,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const savedUser = localStorage.getItem("powercell_user");
-        const token = localStorage.getItem("auth_token");
+        const savedUser = localStorage.getItem("powercell_user") || sessionStorage.getItem("powercell_user");
+        const token = localStorage.getItem("auth_token") || sessionStorage.getItem("auth_token");
         if (savedUser && token) {
             try {
                 setUser(JSON.parse(savedUser));
             } catch (e) {
-                console.error("Failed to parse user from localStorage", e);
+                console.error("Failed to parse user from storage", e);
                 localStorage.removeItem("powercell_user");
                 localStorage.removeItem("auth_token");
+                sessionStorage.removeItem("powercell_user");
+                sessionStorage.removeItem("auth_token");
             }
         }
         setLoading(false);
     }, []);
 
-    const login = async (email: string, password: string) => {
+    const login = async (email: string, password: string, rememberMe: boolean = true) => {
         try {
             const response = await apiClient.post<{ access_token: string, user: any }>('/login', { email, password });
             const userData: User = {
@@ -48,8 +50,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 role: response.user.role as UserRole,
             };
             setUser(userData);
-            localStorage.setItem("auth_token", response.access_token);
-            localStorage.setItem("powercell_user", JSON.stringify(userData));
+            if (rememberMe) {
+                localStorage.setItem("auth_token", response.access_token);
+                localStorage.setItem("powercell_user", JSON.stringify(userData));
+                sessionStorage.removeItem("auth_token");
+                sessionStorage.removeItem("powercell_user");
+            } else {
+                sessionStorage.setItem("auth_token", response.access_token);
+                sessionStorage.setItem("powercell_user", JSON.stringify(userData));
+                localStorage.removeItem("auth_token");
+                localStorage.removeItem("powercell_user");
+            }
             // Let DeveloperContext re-fetch shop settings for this session
             window.dispatchEvent(new Event("auth:changed"));
         } catch (error) {
@@ -62,6 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         localStorage.removeItem("powercell_user");
         localStorage.removeItem("auth_token");
+        sessionStorage.removeItem("powercell_user");
+        sessionStorage.removeItem("auth_token");
     };
 
     if (loading) {

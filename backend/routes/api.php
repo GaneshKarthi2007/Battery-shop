@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\WarrantyClaimController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\SettingController;
 use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -34,6 +36,93 @@ Route::post('/login', function (Request $request) {
         'access_token' => $token,
         'token_type' => 'Bearer',
         'user' => $user,
+    ]);
+});
+
+Route::post('/forgot-password', function (Request $request) {
+    $request->validate([
+        'email' => 'required|email',
+    ]);
+
+    $user = User::where('email', $request->email)->first();
+
+    if (! $user) {
+        return response()->json([
+            'message' => 'If an account exists with this email, a reset code has been sent.',
+        ]);
+    }
+
+    $code = (string) random_int(100000, 999999);
+
+    DB::table('password_reset_tokens')->updateOrInsert(
+        ['email' => $user->email],
+        [
+            'token' => Hash::make($code),
+            'created_at' => now(),
+        ]
+    );
+
+    $response = [
+        'message' => 'A password reset code has been sent to your email.',
+    ];
+
+    if (config('app.debug') || app()->environment('testing')) {
+        $response['debug_token'] = $code;
+    }
+
+    return response()->json($response);
+});
+
+Route::post('/reset-password', function (Request $request) {
+    $request->validate([
+        'email' => 'required|email',
+        'token' => 'required|string',
+        'password' => 'required|string|min:6|confirmed',
+    ]);
+
+    $record = DB::table('password_reset_tokens')
+        ->where('email', $request->email)
+        ->first();
+
+    if (! $record) {
+        throw ValidationException::withMessages([
+            'token' => ['Invalid or expired reset code.'],
+        ]);
+    }
+
+    $createdAt = Carbon::parse($record->created_at);
+    if ($createdAt->addMinutes(60)->isPast()) {
+        DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->delete();
+
+        throw ValidationException::withMessages([
+            'token' => ['This reset code has expired. Please request a new one.'],
+        ]);
+    }
+
+    if (! Hash::check($request->token, $record->token) && $request->token !== $record->token) {
+        throw ValidationException::withMessages([
+            'token' => ['Invalid reset code.'],
+        ]);
+    }
+
+    $user = User::where('email', $request->email)->first();
+    if (! $user) {
+        throw ValidationException::withMessages([
+            'email' => ['User not found.'],
+        ]);
+    }
+
+    $user->password = $request->password;
+    $user->save();
+
+    DB::table('password_reset_tokens')
+        ->where('email', $request->email)
+        ->delete();
+
+    return response()->json([
+        'message' => 'Password has been reset successfully. You can now login.',
     ]);
 });
 

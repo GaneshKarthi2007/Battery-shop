@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { User, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { User, Lock, ArrowRight, Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { BatteryLoader } from "../components/ui/BatteryLoader";
+import { ForgotPasswordModal } from "../components/auth/ForgotPasswordModal";
 
 export function Login() {
   const navigate = useNavigate();
@@ -16,20 +16,49 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successNotice, setSuccessNotice] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("powercell_remember_email");
+    const savedRemember = localStorage.getItem("powercell_remember_me");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(savedRemember !== "false");
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccessNotice("");
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
+      if (rememberMe) {
+        localStorage.setItem("powercell_remember_email", email);
+        localStorage.setItem("powercell_remember_me", "true");
+      } else {
+        localStorage.removeItem("powercell_remember_email");
+        localStorage.removeItem("powercell_remember_me");
+      }
       navigate("/");
-    } catch (err: any) {
-      setError(err.message || "Login failed. Please check your credentials.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
+      setError(message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePasswordResetSuccess = (resetEmail: string) => {
+    setEmail(resetEmail);
+    setPassword("");
+    setError("");
+    setSuccessNotice("Password has been reset successfully! Please log in with your new password.");
+    setIsForgotPasswordOpen(false);
   };
 
   return (
@@ -44,8 +73,6 @@ export function Login() {
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
         </>
       )}
-
-      {loading && <BatteryLoader />}
 
       <div className="w-full max-w-md relative z-10">
         {/* Logo and Title */}
@@ -73,6 +100,13 @@ export function Login() {
               </div>
             )}
 
+            {successNotice && (
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-sm rounded-2xl text-center font-bold flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{successNotice}</span>
+              </div>
+            )}
+
             {/* Email Field */}
             <div className="space-y-2">
               <label htmlFor="email" className={`block text-xs font-black uppercase tracking-widest ${isDarkMode ? "text-[#ffffff]" : "text-gray-600"}`}>
@@ -91,6 +125,7 @@ export function Login() {
                     : "bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-600 text-gray-900 placeholder:text-gray-400"
                     }`}
                   required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -113,35 +148,71 @@ export function Login() {
                     : "bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-600 text-gray-900 placeholder:text-gray-400"
                     }`}
                   required
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition-colors focus:outline-none"
+                  disabled={loading}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
 
-            {/* Login Button */}
+            {/* Remember Me and Forgot Password Row */}
+            <div className="flex items-center justify-between text-xs pt-1">
+              <label htmlFor="remember-me" className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  disabled={loading}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-white/20 dark:bg-white/5 dark:focus:ring-blue-400 cursor-pointer"
+                />
+                <span className={`font-bold uppercase tracking-wider ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                  Remember me
+                </span>
+              </label>
+
+              <button
+                type="button"
+                onClick={() => setIsForgotPasswordOpen(true)}
+                disabled={loading}
+                className="font-bold text-xs uppercase tracking-wider text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors focus:outline-none disabled:opacity-50"
+              >
+                Forgot password?
+              </button>
+            </div>
+
+            {/* Login Button with Inline Loader */}
             <Button
               type="submit"
               disabled={loading}
-              className={`w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 ${isDarkMode
+              className={`w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed ${isDarkMode
                 ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white"
                 : "bg-gradient-to-r from-blue-600 to-blue-700 text-white"
                 }`}
             >
-              <span>{loading ? "Authenticating..." : "Login"}</span>
-              {!loading && <ArrowRight className="w-5 h-5" />}
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Authenticating...</span>
+                </>
+              ) : (
+                <>
+                  <span>Login</span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
             </Button>
           </form>
         </div>
 
         {/* Footer */}
         <div className="text-center mt-10 space-y-2 animate-in fade-in duration-1000">
-
           <div className="flex justify-center gap-4">
             <div className="w-1 h-1 rounded-full bg-blue-500/40"></div>
             <div className="w-1 h-1 rounded-full bg-blue-500/40"></div>
@@ -149,6 +220,14 @@ export function Login() {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        initialEmail={email}
+        onSuccess={handlePasswordResetSuccess}
+      />
     </div>
   );
 }

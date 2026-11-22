@@ -14,7 +14,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
         url += `?${queryString}`;
     }
 
-    const token = localStorage.getItem('auth_token');
+    const token = typeof window !== 'undefined'
+        ? (localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'))
+        : null;
     const headers = new Headers(init.headers || {});
     headers.set('Accept', 'application/json');
     if (!headers.has('Content-Type') && !(init.body instanceof FormData)) {
