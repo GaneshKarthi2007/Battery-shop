@@ -6,12 +6,13 @@ import { useAuth } from "../contexts/AuthContext";
 import { getMediaUrl } from "../utils/media";
 import { useNavigate } from "react-router";
 import {
-  ClipboardList, Search, Clock, Phone,
-  Inbox, MessageSquare, Loader2, ArrowLeft, Wrench, CheckCircle2,
+  ClipboardList, Search, Clock,
+  Inbox, Loader2, ArrowLeft, Wrench, CheckCircle2,
   Eye, Calendar, X
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../components/Button";
+import { ContactActions } from "../components/ui/ContactActions";
 
 export interface ServiceRecord {
   id: number;
@@ -37,6 +38,10 @@ export interface ServiceRecord {
   assigned_at?: string;
   resolved_at?: string;
   created_at: string;
+  assigned_staff?: {
+    id: number;
+    name: string;
+  };
 }
 
 interface TasksWorkspaceProps {
@@ -419,7 +424,10 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                         <span className="text-sm font-black font-mono text-gray-900 dark:text-white">
                           #{formatServiceLogId(logIdPrefix, job.log_id || job.service_code || job.id)}
                         </span>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-2">
+                          {job.contact_number && (
+                            <ContactActions phoneNumber={job.contact_number} iconSize={13} />
+                          )}
                           {isUrgent && (
                             <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-red-500/10 text-red-500 border border-red-500/20">
                               Urgent
@@ -484,100 +492,86 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                       #{formatServiceLogId(logIdPrefix, selectedJob.log_id || selectedJob.service_code || selectedJob.id)}
                     </h3>
                   </div>
-                  <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
-                    selectedJob.status === 'Completed'
-                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                      : "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                  }`}>
-                    {selectedJob.status}
-                  </span>
-                </div>
-
-                {/* Complaint Info */}
-                <div className="space-y-4">
-                  <h4 className="text-[10px] font-black text-gray-400 dark:text-white/40 uppercase tracking-[0.2em] mb-3">
-                    A. Complaint Information
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <DetailRow label="Complaint ID" value={String(selectedJob.id)} />
-                    <DetailRow label="Complaint Type" value={selectedJob.complaint_type || "N/A"} />
-                    <DetailRow label="Status" value={selectedJob.status} />
-                    <DetailRow label="Created Date" value={formatDateTime(selectedJob.created_at).date} />
-                    <DetailRow label="Created Time" value={formatDateTime(selectedJob.created_at).time} />
-                    {selectedJob.assigned_at && (
-                      <DetailRow label="Assigned At" value={formatDateTime(selectedJob.assigned_at).date + " " + formatDateTime(selectedJob.assigned_at).time} />
+                  <div className="flex items-center gap-2.5">
+                    {selectedJob.contact_number && (
+                      <ContactActions phoneNumber={selectedJob.contact_number} iconSize={16} />
                     )}
+                    <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
+                      selectedJob.status === 'Completed'
+                        ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                        : "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                    }`}>
+                      {selectedJob.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Rearranged Complaint Details */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Complaint ID */}
+                    <DetailRow
+                      label="Complaint ID"
+                      value={`#${formatServiceLogId(logIdPrefix, selectedJob.log_id || selectedJob.service_code || selectedJob.id)}`}
+                    />
+
+                    {/* Created At (date and time) */}
+                    <DetailRow
+                      label="Created At"
+                      value={`${formatDateTime(selectedJob.created_at).date} · ${formatDateTime(selectedJob.created_at).time}`}
+                    />
+
+                    {/* If after assigned or taken the job: Assigned At and Staff */}
+                    {(selectedJob.assigned_at || selectedJob.assigned_to || selectedJob.status !== 'Pending') && (
+                      <>
+                        <DetailRow
+                          label="Assigned At"
+                          value={
+                            selectedJob.assigned_at
+                              ? `${formatDateTime(selectedJob.assigned_at).date} · ${formatDateTime(selectedJob.assigned_at).time}`
+                              : "Recently Assigned"
+                          }
+                        />
+                        <DetailRow
+                          label="Staff"
+                          value={
+                            selectedJob.assigned_staff?.name ||
+                            (Number(selectedJob.assigned_to) === Number(user?.id) ? user?.name : "") ||
+                            "Assigned Staff"
+                          }
+                        />
+                      </>
+                    )}
+
+                    {/* Customer Name */}
+                    <DetailRow
+                      label="Customer Name"
+                      value={selectedJob.customer_name}
+                    />
+
+                    {/* Mobile Number with inline contact action buttons */}
+                    <div>
+                      <p className="text-[10px] text-gray-400 dark:text-white/30 font-black uppercase tracking-widest mb-0.5">
+                        Mobile Number
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-gray-900 dark:text-white font-mono">
+                          {selectedJob.contact_number}
+                        </span>
+                        <ContactActions phoneNumber={selectedJob.contact_number} iconSize={13} />
+                      </div>
+                    </div>
+
+                    {/* Address */}
                     <div className="sm:col-span-2">
-                      <p className="text-[10px] text-gray-400 dark:text-white/30 font-black uppercase tracking-widest mb-1">
-                        Description / Problem details
-                      </p>
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-[#070A13] border border-gray-100 dark:border-[#25314D] p-4 rounded-2xl">
-                        {selectedJob.complaint_details || "No description provided."}
-                      </p>
+                      <DetailRow
+                        label="Address"
+                        value={selectedJob.address || "N/A"}
+                      />
                     </div>
                   </div>
-                </div>
 
-                {/* Customer Info */}
-                <div className="space-y-4 pt-2">
-                  <h4 className="text-[10px] font-black text-gray-400 dark:text-white/40 uppercase tracking-[0.2em] mb-3">
-                    B. Customer Information
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <DetailRow label="Customer Name" value={selectedJob.customer_name} />
-                    <DetailRow label="Mobile Number" value={selectedJob.contact_number} />
-                    <div className="sm:col-span-2">
-                      <DetailRow label="Address" value={selectedJob.address || "N/A"} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Contact Actions */}
-                <div className="space-y-3 pt-2">
-                  <h4 className="text-[10px] font-black text-gray-400 dark:text-white/40 uppercase tracking-[0.2em] mb-3">
-                    C. Quick Contact Actions
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <a
-                      href={`tel:${selectedJob.contact_number}`}
-                      className="flex items-center justify-center gap-2 py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all shadow-sm active:scale-98"
-                    >
-                      <Phone className="w-4 h-4" /> Call Customer
-                    </a>
-                    <a
-                      href={`https://wa.me/${selectedJob.contact_number.replace(/\D/g, "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all shadow-sm active:scale-98"
-                    >
-                      <MessageSquare className="w-4 h-4" /> WhatsApp Customer
-                    </a>
-                  </div>
-                </div>
-
-                {/* Battery Info */}
-                <div className="space-y-4 pt-2">
-                  <h4 className="text-[10px] font-black text-gray-400 dark:text-white/40 uppercase tracking-[0.2em] mb-3">
-                    E. Battery Information
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <DetailRow label="Battery Brand" value={selectedJob.battery_brand || "N/A"} />
-                    <DetailRow label="Battery Model" value={selectedJob.battery_model || "N/A"} />
-                    <DetailRow label="Battery Capacity" value={selectedJob.battery_capacity ? `${selectedJob.battery_capacity} Ah` : "N/A"} />
-                  </div>
-                </div>
-
-                {/* Service Info */}
-                <div className="space-y-4 pt-2">
-                  <h4 className="text-[10px] font-black text-gray-400 dark:text-white/40 uppercase tracking-[0.2em] mb-3">
-                    F. Service Information
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <DetailRow label="Preferred Date" value={selectedJob.pickup_date ? new Date(selectedJob.pickup_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase() : "N/A"} />
-                    <DetailRow label="Service Charge" value={selectedJob.service_charge > 0 ? `₹${selectedJob.service_charge.toLocaleString()}` : "Free Inspection"} />
-                  </div>
-                  
-                  {/* Voice Note Attachment */}
+                  {/* Optional: Voice note if provided by admin */}
                   {selectedJob.voice_note && (
                     <div className="pt-2">
                       <p className="text-[10px] text-gray-400 dark:text-white/30 font-black uppercase tracking-widest mb-2">

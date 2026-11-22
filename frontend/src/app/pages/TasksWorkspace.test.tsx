@@ -209,4 +209,36 @@ describe("TasksWorkspace Component (Staff View)", () => {
             expect(screen.getByText("Vikas Yadav")).toBeInTheDocument();
         });
     });
+
+    it("displays rounded call and whatsapp contact icons and rearranged complaint details", async () => {
+        (apiClient.get as any).mockResolvedValue(mockServices);
+
+        render(
+            <BrowserRouter>
+                <TasksWorkspace defaultTab="assigned" />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getAllByText("Anita Patel").length).toBeGreaterThan(0);
+        });
+
+        // Verify rounded contact action icons (Call & WhatsApp) are present
+        const callButtons = screen.getAllByTitle("Call Customer");
+        const whatsappButtons = screen.getAllByTitle("Message on WhatsApp");
+        expect(callButtons.length).toBeGreaterThanOrEqual(1);
+        expect(whatsappButtons.length).toBeGreaterThanOrEqual(1);
+
+        // Verify rearranged complaint details fields
+        expect(screen.getByText("Complaint ID")).toBeInTheDocument();
+        expect(screen.getByText("Created At")).toBeInTheDocument();
+        expect(screen.getByText("Assigned At")).toBeInTheDocument();
+        expect(screen.getByText("Staff")).toBeInTheDocument();
+        expect(screen.getByText("Customer Name")).toBeInTheDocument();
+        expect(screen.getByText("Mobile Number")).toBeInTheDocument();
+        expect(screen.getByText("Address")).toBeInTheDocument();
+
+        // Verify values
+        expect(screen.getAllByText("9876543211").length).toBeGreaterThanOrEqual(1);
+    });
 });
