@@ -6,6 +6,13 @@ import { apiClient } from "../api/client";
 import { Input } from "../components/Input";
 import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
 import { useDeveloper, formatServiceLogId } from "../contexts/DeveloperContext";
+import { MinimalConfirmDialog } from "../components/ui/MinimalConfirmDialog";
+import {
+    isValidMobile10,
+    normalizeMobile10,
+    capitalizeEachWord,
+    capitalizeFirstLetter,
+} from "../utils/inputFormatters";
 
 export function NewService() {
     const navigate = useNavigate();
@@ -28,6 +35,7 @@ export function NewService() {
     const [showAudioRecorder, setShowAudioRecorder] = useState(false);
     const [voiceNote, setVoiceNote] = useState<File | null>(null);
     const [isCustomMode, setIsCustomMode] = useState(false);
+    const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
     const complaintTypes = [
         "RO",
@@ -84,9 +92,12 @@ export function NewService() {
             setLoading(true);
             setError("");
 
-            // Validation: Only Contact Number is mandatory
+            // Validation: 10-digit mobile number is mandatory
             if (!formData.contact_number || !formData.contact_number.trim()) {
                 throw new Error("Please enter Contact Number");
+            }
+            if (!isValidMobile10(formData.contact_number)) {
+                throw new Error("Please enter a valid 10-digit mobile number");
             }
 
             // Do not auto generate log id until developer gives permission
@@ -99,13 +110,18 @@ export function NewService() {
             }
 
             let serviceId = createdServiceIdRef.current;
-            const customerName = formData.customer_name.trim() || "Customer";
+            const customerName = capitalizeEachWord(formData.customer_name.trim()) || "Customer";
+            const normalizedPhone = normalizeMobile10(formData.contact_number);
 
             // Step 1: Create Service
             if (!serviceId) {
                 const payload: any = {
                     ...formData,
                     customer_name: customerName,
+                    contact_number: normalizedPhone,
+                    address: capitalizeFirstLetter(formData.address),
+                    complaint_details: capitalizeFirstLetter(formData.complaint_details),
+                    complaint_type: capitalizeEachWord(formData.complaint_type),
                     status: "Pending",
                     allow_auto_id: Boolean(features.autoGenerateServiceLogId),
                 };
@@ -140,13 +156,32 @@ export function NewService() {
         }
     };
 
+    const hasUnsavedInput = Boolean(
+        manualServiceId.trim() ||
+        formData.customer_name.trim() ||
+        formData.contact_number.trim() ||
+        formData.address.trim() ||
+        formData.complaint_details.trim() ||
+        voiceNote
+    );
+
+    const handleLeaveRequest = () => {
+        if (hasUnsavedInput) {
+            setShowDiscardConfirm(true);
+        } else {
+            navigate(-1);
+        }
+    };
+
     return (
         <div className="max-w-3xl mx-auto pb-2 px-0 sm:px-4 flex flex-col min-h-[calc(100dvh-8.25rem)] sm:min-h-0 sm:block animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header */}
             <div className="flex items-center justify-between mb-3 sm:mb-2">
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => navigate(-1)}
+                        type="button"
+                        onClick={handleLeaveRequest}
+                        aria-label="Go back"
                         className="p-2 bg-white hover:bg-gray-50 rounded-xl text-gray-500 hover:text-blue-600 transition-all border border-gray-100 shadow-xs active:scale-95"
                     >
                         <ArrowLeft className="w-4 h-4" />
@@ -268,7 +303,7 @@ export function NewService() {
                                 placeholder="Enter manual entry of complaint type..."
                                 value={formData.complaint_type}
                                 onChange={(e) => {
-                                    setFormData({ ...formData, complaint_type: e.target.value });
+                                    setFormData({ ...formData, complaint_type: capitalizeEachWord(e.target.value) });
                                     if (error) setError("");
                                 }}
                             />
@@ -285,7 +320,7 @@ export function NewService() {
                                     className="h-11 sm:h-10 pl-9 text-sm bg-gray-50/50 hover:bg-white focus:bg-white border-gray-100 rounded-xl group-focus-within:border-blue-200 group-focus-within:ring-2 group-focus-within:ring-blue-50"
                                     placeholder="SMR"
                                     value={formData.customer_name}
-                                    onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                                    onChange={(e) => setFormData({ ...formData, customer_name: capitalizeEachWord(e.target.value) })}
                                 />
                             </div>
                         </div>
@@ -363,7 +398,7 @@ export function NewService() {
                                 className="h-11 sm:h-10 pl-9 text-sm bg-gray-50/50 hover:bg-white focus:bg-white border-gray-100 rounded-xl group-focus-within:border-blue-200 group-focus-within:ring-2 group-focus-within:ring-blue-50 font-medium"
                                 placeholder="Enter complete customer address..."
                                 value={formData.address}
-                                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                onChange={(e) => setFormData({ ...formData, address: capitalizeFirstLetter(e.target.value) })}
                             />
                         </div>
                     </div>
@@ -404,7 +439,7 @@ export function NewService() {
                             className="w-full px-3 py-2 rounded-xl bg-gray-50/50 hover:bg-white focus:bg-white transition-all border border-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-50 focus:border-blue-200 flex-1 sm:flex-none min-h-[120px] sm:min-h-[56px] text-sm font-medium resize-none"
                             placeholder="Briefly explain what's wrong with the battery..."
                             value={formData.complaint_details}
-                            onChange={(e) => setFormData({ ...formData, complaint_details: e.target.value })}
+                            onChange={(e) => setFormData({ ...formData, complaint_details: capitalizeFirstLetter(e.target.value) })}
                         />
                     </div>
 
@@ -418,7 +453,7 @@ export function NewService() {
                     <div className="flex flex-row gap-2 pt-3 sm:pt-1 border-t border-gray-100">
                         <button
                             type="button"
-                            onClick={() => navigate(-1)}
+                            onClick={handleLeaveRequest}
                             className="flex-1 py-3.5 sm:py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold uppercase tracking-wider text-[11px] hover:bg-gray-50 transition-all active:scale-[0.98]"
                         >
                             Discard
@@ -507,6 +542,19 @@ export function NewService() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <MinimalConfirmDialog
+                isOpen={showDiscardConfirm}
+                title="Discard Entry?"
+                message="Your unsaved service entry will be lost."
+                confirmLabel="Discard"
+                cancelLabel="Stay"
+                onConfirm={() => {
+                    setShowDiscardConfirm(false);
+                    navigate(-1);
+                }}
+                onCancel={() => setShowDiscardConfirm(false)}
+            />
         </div>
     );
 }

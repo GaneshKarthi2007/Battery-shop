@@ -98,5 +98,20 @@ describe("MainLayout Sidebar Accordion Behavior", () => {
     expect(screen.queryByText("MISC Transaction")).not.toBeInTheDocument();
     expect(screen.queryByText("Settings")).not.toBeInTheDocument();
   });
+
+  it("renders shop logo instead of software name/financial year, removes active users, and keeps refresh icon", () => {
+    render(
+      <MemoryRouter>
+        <MainLayout />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByAltText("SMR Battery Shop Logo")).toBeInTheDocument();
+    expect(screen.queryByText("SMR Battery Software")).not.toBeInTheDocument();
+    expect(screen.queryByText(/2026\s*[–-]\s*2027/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Refresh page")).toBeInTheDocument();
+    expect(screen.queryByTitle("Active Users")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Active users/i)).not.toBeInTheDocument();
+  });
 });
 

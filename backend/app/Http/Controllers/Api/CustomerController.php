@@ -8,6 +8,7 @@ use App\Models\ExchangeRecord;
 use App\Models\Sale;
 use App\Models\Service;
 use App\Models\WarrantyClaim;
+use App\Support\InputNormalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -45,12 +46,20 @@ class CustomerController extends Controller
             $customerCode = (string) Customer::getNextLogId();
         }
 
+        $normalizedPhone = null;
+        if (!empty($validated['phone'])) {
+            $normalizedPhone = InputNormalizer::normalizeMobile10($validated['phone']);
+            if ($normalizedPhone === null) {
+                return response()->json(['message' => 'Phone number must be a valid 10-digit mobile number.'], 422);
+            }
+        }
+
         $customer = Customer::create([
             'customer_code' => $customerCode,
-            'name' => $validated['name'],
-            'phone' => $validated['phone'] ?? null,
+            'name' => InputNormalizer::capitalizeWords($validated['name']) ?? $validated['name'],
+            'phone' => $normalizedPhone,
             'vehicle_number' => $validated['vehicle_number'] ?? null,
-            'address' => $validated['address'] ?? null,
+            'address' => InputNormalizer::capitalizeFirst($validated['address'] ?? null),
         ]);
 
         return response()->json($customer, 201);

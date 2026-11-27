@@ -294,4 +294,35 @@ describe("NewService Component", () => {
         expect(screen.getByPlaceholderText("+91").className).toMatch(/h-11/);
         expect(screen.getByPlaceholderText("SMR").className).toMatch(/h-11/);
     });
+
+    it("rejects non-10-digit mobile numbers, capitalizes customer name & inputs, and confirms before discarding unsaved entries", async () => {
+        mockFeatures.autoGenerateServiceLogId = true;
+        render(
+            <BrowserRouter>
+                <NewService />
+            </BrowserRouter>
+        );
+
+        const nameInput = screen.getByPlaceholderText("SMR");
+        const phoneInput = screen.getByPlaceholderText("+91");
+        const addressInput = screen.getByLabelText(/Service Address/i);
+
+        fireEvent.change(nameInput, { target: { value: "ganesh kumar" } });
+        fireEvent.change(addressInput, { target: { value: "main street" } });
+        expect(nameInput).toHaveValue("Ganesh Kumar");
+        expect(addressInput).toHaveValue("Main street");
+
+        // Invalid short mobile number
+        fireEvent.change(phoneInput, { target: { value: "12345" } });
+        fireEvent.click(screen.getByRole("button", { name: /Initialize Service Entry/i }));
+        await waitFor(() => {
+            expect(screen.getByText(/Please enter a valid 10-digit mobile number/i)).toBeInTheDocument();
+        });
+        expect(apiClient.post).not.toHaveBeenCalled();
+
+        // Clicking Discard shows minimalistic confirmation
+        fireEvent.click(screen.getByRole("button", { name: /Discard/i }));
+        expect(screen.getByTestId("minimal-confirm-dialog")).toBeInTheDocument();
+        expect(screen.getByText("Discard Entry?")).toBeInTheDocument();
+    });
 });

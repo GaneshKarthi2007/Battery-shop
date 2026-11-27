@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\BatterySerial;
 use App\Models\Sale;
 use App\Models\Product;
+use App\Services\NotificationService;
+use App\Support\InputNormalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -43,14 +45,26 @@ class SalesController extends Controller
             'gst_enabled' => 'sometimes|boolean',
         ]);
 
-        return DB::transaction(function () use ($validated) {
+        $normalizedPhone = null;
+        if (!empty($validated['customer_phone'])) {
+            $normalizedPhone = InputNormalizer::normalizeMobile10($validated['customer_phone']);
+            if ($normalizedPhone === null) {
+                return response()->json(['message' => 'Mobile number must be a valid 10-digit number.'], 422);
+            }
+        }
+
+        $customerName = InputNormalizer::capitalizeWords($validated['customer_name']) ?? $validated['customer_name'];
+        $installAddress = InputNormalizer::capitalizeFirst($validated['installation_address'] ?? null);
+        $vehicleDetails = InputNormalizer::capitalizeFirst($validated['vehicle_details'] ?? null);
+
+        return DB::transaction(function () use ($validated, $request, $normalizedPhone, $customerName, $installAddress, $vehicleDetails) {
             $isQuotation = ($validated['type'] ?? 'Sale') === 'Quotation';
 
             $sale = Sale::create([
-                'customer_name' => $validated['customer_name'],
-                'customer_phone' => $validated['customer_phone'] ?? null,
-                'vehicle_details' => $validated['vehicle_details'] ?? null,
-                'installation_address' => $validated['installation_address'] ?? null,
+                'customer_name' => $customerName,
+                'customer_phone' => $normalizedPhone,
+                'vehicle_details' => $vehicleDetails,
+                'installation_address' => $installAddress,
                 'product_category' => $validated['product_category'] ?? null,
                 'total_amount' => $validated['total_amount'],
                 'type' => $validated['type'] ?? 'Sale',
@@ -112,18 +126,39 @@ class SalesController extends Controller
                     'price' => $itemData['price'],
                 ]);
 
-                // Linked service resets
+                // Linked service updates
                 if (!empty($itemData['service_id']) && !in_array($itemData['service_id'], $processedServices)) {
                     $service = \App\Models\Service::find($itemData['service_id']);
-                    if ($service && $service->status === 'Converted to Order') {
-                        $service->update([
-                            'status' => 'Completed',
-                            'status_updated_at' => now(),
-                            'payment_status' => 'pending'
-                        ]);
+                    if ($service) {
+                        $updates = [];
+                        if ($service->status === 'Converted to Order') {
+                            $updates['status'] = 'Completed';
+                            $updates['status_updated_at'] = now();
+                            $updates['payment_status'] = 'pending';
+                        }
+                        if (!empty($itemData['product_id']) && empty($service->battery_brand)) {
+                            $billedProduct = Product::find($itemData['product_id']);
+                            if ($billedProduct) {
+                                $updates['battery_brand'] = $billedProduct->brand;
+                                $updates['battery_model'] = $billedProduct->model;
+                                $updates['battery_capacity'] = $billedProduct->ah;
+                            }
+                        }
+                        if (!empty($updates)) {
+                            $service->update($updates);
+                        }
                     }
                     $processedServices[] = $itemData['service_id'];
                 }
+            }
+
+            if ($request->user()?->role === 'staff') {
+                $serviceSuffix = !empty($processedServices) ? ' (Service #' . $processedServices[0] . ')' : '';
+                NotificationService::notifyAdmins(
+                    'SALES',
+                    'Staff Billed Product',
+                    "Staff {$request->user()->name} billed ₹{$sale->total_amount} for {$sale->customer_name}{$serviceSuffix}."
+                );
             }
 
             return response()->json($sale->load('items.product', 'items.service', 'batterySerials'), 201);

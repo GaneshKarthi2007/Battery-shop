@@ -120,7 +120,7 @@ button, a, [role="button"] {
     .dark .text-gray-700 { color: #CBD5E1; }
     .dark .text-gray-600 { color: #CBD5E1; }
     .dark .text-gray-500 { color: #94A3B8; }
-    .dark .text-gray-400 { color: #64748B; }
+    .dark .text-gray-400 { color: #7C8DA6; }
     .dark .text-black { color: #FFFFFF; }
     .dark .text-white { color: #FFFFFF; }
     
@@ -161,6 +161,80 @@ button, a, [role="button"] {
 @layer base {
     body {
         @apply bg-[#f8f9fc] dark:bg-[#05050a] text-gray-900 dark:text-gray-100 transition-colors duration-500;
+    }
+}
+
+@layer utilities {
+    /* Unified Dark Mode Surface & Border Normalization (preserves A4 printable invoices & switch thumbs) */
+    .dark .bg-white:not(.a4-sheet):not(.a4-sheet *):not([data-preserve-light]):not(button > .rounded-full) {
+        background-color: #0D121F;
+    }
+    .dark .bg-white\/95:not(.a4-sheet *):not([data-preserve-light]),
+    .dark .bg-white\/90:not(.a4-sheet *):not([data-preserve-light]),
+    .dark .bg-white\/80:not(.a4-sheet *):not([data-preserve-light]) {
+        background-color: rgba(13, 18, 31, 0.92);
+    }
+
+    .dark .to-white:not(.a4-sheet *):not([data-preserve-light]) {
+        --tw-gradient-to: #0D121F;
+    }
+    .dark .via-white:not(.a4-sheet *):not([data-preserve-light]) {
+        --tw-gradient-via: #0D121F;
+    }
+    .dark .from-white:not(.a4-sheet *):not([data-preserve-light]) {
+        --tw-gradient-from: #161D30;
+    }
+    .dark .from-gray-50:not(.a4-sheet *) {
+        --tw-gradient-from: #161D30;
+    }
+    .dark .from-blue-50:not(.a4-sheet *) {
+        --tw-gradient-from: rgba(30, 58, 138, 0.28);
+    }
+    .dark .from-yellow-50:not(.a4-sheet *) {
+        --tw-gradient-from: rgba(113, 63, 18, 0.28);
+    }
+    .dark .from-green-50:not(.a4-sheet *) {
+        --tw-gradient-from: rgba(6, 78, 59, 0.28);
+    }
+    .dark .from-indigo-50:not(.a4-sheet *) {
+        --tw-gradient-from: rgba(49, 46, 129, 0.28);
+    }
+
+    .dark .border-gray-100:not(.a4-sheet *):not(.a4-sheet),
+    .dark .border-gray-200:not(.a4-sheet *):not(.a4-sheet),
+    .dark .border-gray-250:not(.a4-sheet *):not(.a4-sheet) {
+        border-color: #25314D;
+    }
+    .dark .divide-gray-100:not(.a4-sheet *) > :not(:last-child),
+    .dark .divide-gray-200:not(.a4-sheet *) > :not(:last-child) {
+        border-color: #25314D;
+    }
+
+    .dark .bg-red-50:not(.a4-sheet *),
+    .dark .bg-rose-50:not(.a4-sheet *) {
+        background-color: rgba(127, 29, 29, 0.24);
+    }
+    .dark .bg-amber-50:not(.a4-sheet *),
+    .dark .bg-yellow-50:not(.a4-sheet *) {
+        background-color: rgba(120, 53, 15, 0.24);
+    }
+    .dark .bg-green-50:not(.a4-sheet *) {
+        background-color: rgba(6, 78, 59, 0.28);
+    }
+    .dark .bg-indigo-50:not(.a4-sheet *) {
+        background-color: rgba(49, 46, 129, 0.28);
+    }
+    .dark .bg-blue-100:not(.a4-sheet *) {
+        background-color: rgba(30, 58, 138, 0.45);
+    }
+    .dark .bg-green-100:not(.a4-sheet *) {
+        background-color: rgba(6, 95, 70, 0.45);
+    }
+    .dark .bg-yellow-100:not(.a4-sheet *) {
+        background-color: rgba(133, 77, 14, 0.45);
+    }
+    .dark .bg-indigo-100:not(.a4-sheet *) {
+        background-color: rgba(55, 48, 163, 0.45);
     }
 }
 

@@ -58,11 +58,13 @@ class DashboardAnalyticsTest extends TestCase
                 'gstBreakdown',
                 'topSellingBatteries',
                 'trendData',
+                'serviceLogsTrend',
             ]);
 
         $this->assertEquals(1, $response->json('totalCustomers'));
         $this->assertNotEmpty($response->json('recentActivity'));
         $this->assertEquals('Sale', $response->json('recentActivity.0.type'));
         $this->assertEquals('John Doe', $response->json('recentActivity.0.customer_name'));
+        $this->assertIsArray($response->json('serviceLogsTrend'));
     }
 }

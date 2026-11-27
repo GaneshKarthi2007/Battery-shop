@@ -181,6 +181,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
     Route::put('/notifications/{notification}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'clearAll']);
 
     // WebPush Subscriptions
     Route::get('/push-subscriptions/vapid-public-key', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'vapidPublicKey']);

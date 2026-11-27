@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Service;
 use App\Models\ServiceProcessFlow;
 use App\Services\MediaStorage;
+use App\Services\NotificationService;
+use App\Support\InputNormalizer;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
@@ -19,7 +21,7 @@ class ServiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = Service::with(['assignedStaff', 'processFlows', 'processFlows.staff'])->latest();
+        $query = Service::with(['assignedStaff', 'sales', 'processFlows', 'processFlows.staff'])->latest();
 
         if ($request->has('search')) {
             $search = trim($request->query('search'));
@@ -67,15 +69,11 @@ class ServiceController extends Controller
         ]);
 
         // Notify Admins
-        $admins = \App\Models\User::where('role', 'admin')->get();
-        foreach ($admins as $admin) {
-            \App\Models\Notification::create([
-                'user_id' => $admin->id,
-                'type' => 'SERVICE',
-                'title' => 'Conversion Requested',
-                'message' => "Staff requested to convert Service #{$service->id} ({$service->customer_name}) to a new order replacement.",
-            ]);
-        }
+        NotificationService::notifyAdmins(
+            'SERVICE',
+            'Conversion Requested',
+            "Staff requested to convert Service #{$service->id} ({$service->customer_name}) to a new order replacement."
+        );
 
         return response()->json($service->load('assignedStaff'));
     }
@@ -185,11 +183,28 @@ class ServiceController extends Controller
             'allow_auto_id' => 'sometimes|boolean',
         ]);
 
-        if (empty($validated['customer_name'])) {
-            $validated['customer_name'] = 'Customer';
+        $normalizedPhone = InputNormalizer::normalizeMobile10($validated['contact_number']);
+        if ($normalizedPhone === null) {
+            return response()->json(['message' => 'Contact number must be a valid 10-digit mobile number.'], 422);
         }
-        if (empty($validated['vehicle_details'])) {
-            $validated['vehicle_details'] = 'N/A';
+        $validated['contact_number'] = $normalizedPhone;
+
+        $validated['customer_name'] = !empty($validated['customer_name'])
+            ? (InputNormalizer::capitalizeWords($validated['customer_name']) ?? 'Customer')
+            : 'Customer';
+
+        $validated['vehicle_details'] = !empty($validated['vehicle_details'])
+            ? (InputNormalizer::capitalizeFirst($validated['vehicle_details']) ?? 'N/A')
+            : 'N/A';
+
+        if (!empty($validated['address'])) {
+            $validated['address'] = InputNormalizer::capitalizeFirst($validated['address']);
+        }
+        if (!empty($validated['complaint_type'])) {
+            $validated['complaint_type'] = InputNormalizer::capitalizeWords($validated['complaint_type']);
+        }
+        if (!empty($validated['complaint_details'])) {
+            $validated['complaint_details'] = InputNormalizer::capitalizeFirst($validated['complaint_details']);
         }
 
         // Handle manual or sequential Service Log ID
@@ -253,12 +268,18 @@ class ServiceController extends Controller
         $service = Service::create($validated);
 
         if ($service->assigned_to) {
-            \App\Models\Notification::create([
-                'user_id' => $service->assigned_to,
-                'type' => 'SERVICE',
-                'title' => 'New Job Assigned',
-                'message' => "You have been assigned to a new service for {$service->customer_name}.",
-            ]);
+            NotificationService::notifyUser(
+                $service->assigned_to,
+                'SERVICE',
+                'New Job Assigned',
+                "You have been assigned to a new service for {$service->customer_name}."
+            );
+        } elseif ($request->user() && in_array($request->user()->role, ['admin', 'manager'])) {
+            NotificationService::notifyAllStaff(
+                'SERVICE',
+                'New Service Registered',
+                "New job Service #{$service->id} ({$service->customer_name}) is available for pickup."
+            );
         }
 
         return response()->json($service->load('assignedStaff'), 201);
@@ -319,11 +340,36 @@ class ServiceController extends Controller
             'sub_status' => 'nullable|string',
         ]);
 
+        if (isset($validated['contact_number'])) {
+            $normalizedPhone = InputNormalizer::normalizeMobile10($validated['contact_number']);
+            if ($normalizedPhone === null) {
+                return response()->json(['message' => 'Contact number must be a valid 10-digit mobile number.'], 422);
+            }
+            $validated['contact_number'] = $normalizedPhone;
+        }
+        if (isset($validated['customer_name'])) {
+            $validated['customer_name'] = InputNormalizer::capitalizeWords($validated['customer_name']);
+        }
+        if (isset($validated['address'])) {
+            $validated['address'] = InputNormalizer::capitalizeFirst($validated['address']);
+        }
+        if (isset($validated['complaint_details'])) {
+            $validated['complaint_details'] = InputNormalizer::capitalizeFirst($validated['complaint_details']);
+        }
+        if (isset($validated['sub_status'])) {
+            $validated['sub_status'] = InputNormalizer::capitalizeFirst($validated['sub_status']);
+        }
+
         if (isset($validated['payment_method'])) {
             $validated['payment_method'] = in_array(strtoupper($validated['payment_method']), ['UPI', 'CASH']) 
                 ? ucfirst(strtolower($validated['payment_method'])) 
                 : 'Cash';
         }
+
+        $oldStatus = $service->status;
+        $oldSubStatus = $service->sub_status;
+        $oldPaymentStatus = $service->payment_status;
+        $oldCharge = $service->service_charge;
 
         if ((isset($validated['status']) && $validated['status'] !== $service->status) || 
             (isset($validated['sub_status']) && $validated['sub_status'] !== $service->sub_status)) {
@@ -339,12 +385,13 @@ class ServiceController extends Controller
             }
         }
 
+        $formattedNotes = $request->filled('notes') ? InputNormalizer::capitalizeFirst($request->input('notes')) : null;
         if (isset($validated['sub_status']) && $validated['sub_status'] !== $service->sub_status) {
             ServiceProcessFlow::create([
                 'service_id' => $service->id,
                 'sub_status' => $validated['sub_status'],
                 'staff_id' => $user?->id,
-                'notes' => $request->input('notes') // Optional notes if provided
+                'notes' => $formattedNotes,
             ]);
         }
 
@@ -361,12 +408,39 @@ class ServiceController extends Controller
                 'staff_id' => $service->assigned_to,
             ]);
 
-            \App\Models\Notification::create([
-                'user_id' => $service->assigned_to,
-                'type' => 'SERVICE',
-                'title' => 'New Job Assigned',
-                'message' => "You have been assigned to service #{$service->id} for {$service->customer_name}.",
-            ]);
+            NotificationService::notifyUser(
+                $service->assigned_to,
+                'SERVICE',
+                'New Job Assigned',
+                "You have been assigned to service #{$service->id} for {$service->customer_name}."
+            );
+        } elseif ($user && $user->role === 'staff') {
+            if ($oldStatus !== 'Completed' && $service->status === 'Completed') {
+                NotificationService::notifyAdmins(
+                    'SERVICE',
+                    'Service Completed',
+                    "Staff {$user->name} completed Service #{$service->id} ({$service->customer_name})."
+                );
+            } elseif (($service->payment_status === 'verified' && $oldPaymentStatus !== 'verified')
+                || ($request->has('service_charge') && (float)$service->service_charge !== (float)$oldCharge)) {
+                NotificationService::notifyAdmins(
+                    'SERVICE',
+                    'Payment Recorded',
+                    "Staff {$user->name} recorded ₹{$service->service_charge} ({$service->payment_method}) for Service #{$service->id} ({$service->customer_name})."
+                );
+            } elseif (isset($validated['sub_status']) && $validated['sub_status'] !== $oldSubStatus) {
+                NotificationService::notifyAdmins(
+                    'SERVICE',
+                    'Progress Updated',
+                    "Staff {$user->name} updated Service #{$service->id} ({$service->customer_name}) to {$service->sub_status}."
+                );
+            } elseif ($formattedNotes) {
+                NotificationService::notifyAdmins(
+                    'SERVICE',
+                    'Staff Note Added',
+                    "Staff {$user->name} added a note on Service #{$service->id} ({$service->customer_name}): {$formattedNotes}."
+                );
+            }
         }
 
         return response()->json($service->load(['assignedStaff', 'sale']));
@@ -403,6 +477,12 @@ class ServiceController extends Controller
                 'sub_status' => 'Task Picked Up / Commenced',
                 'staff_id' => $user->id,
             ]);
+
+            NotificationService::notifyAdmins(
+                'SERVICE',
+                'Job Picked Up',
+                "Staff {$user->name} accepted Service #{$lockedService->id} ({$lockedService->customer_name})."
+            );
 
             return response()->json($lockedService->load('assignedStaff'));
         });
@@ -459,13 +539,20 @@ class ServiceController extends Controller
                 }
             }
             
-            // Notify Admin
-            \App\Models\Notification::create([
-                'user_id' => 1, // Assuming ID 1 is the main admin
-                'type' => 'SERVICE',
-                'title' => 'New Voice Feedback',
-                'message' => "Voice note recorded for service #{$service->id} ({$service->customer_name}).",
-            ]);
+            // Notify all Admins
+            if ($user && $user->role === 'staff') {
+                NotificationService::notifyAdmins(
+                    'SERVICE',
+                    'New Voice Feedback',
+                    "Staff {$user->name} recorded a voice note for Service #{$service->id} ({$service->customer_name})."
+                );
+            } else {
+                NotificationService::notifyAdmins(
+                    'SERVICE',
+                    'New Voice Feedback',
+                    "Voice note recorded for Service #{$service->id} ({$service->customer_name})."
+                );
+            }
 
             return response()->json($service->load(['assignedStaff', 'sale', 'receipt', 'receipt.product', 'processFlows', 'processFlows.staff']));
         }
@@ -572,12 +659,20 @@ class ServiceController extends Controller
             'contact_number' => $service->contact_number,
             'vehicle_details' => $service->vehicle_details,
             'address' => $service->address,
-            'status' => 'pending',
+            'status' => 'Pending',
             'parent_id' => $service->id,
-            'complaint_type' => $validated['complaint_type'] ?? null,
-            'complaint_details' => $validated['complaint_details'] ?? null,
-            'issue' => $validated['issue'] ?? null,
+            'complaint_type' => InputNormalizer::capitalizeWords($validated['complaint_type'] ?? null),
+            'complaint_details' => InputNormalizer::capitalizeFirst($validated['complaint_details'] ?? null),
+            'issue' => InputNormalizer::capitalizeFirst($validated['issue'] ?? null),
         ]);
+
+        if ($request->user() && in_array($request->user()->role, ['admin', 'manager'])) {
+            NotificationService::notifyAllStaff(
+                'SERVICE',
+                'New Revisit Job Registered',
+                "Admin registered revisit Service #{$newService->id} ({$newService->customer_name}). Available for pickup."
+            );
+        }
 
         return response()->json($newService, 201);
     }

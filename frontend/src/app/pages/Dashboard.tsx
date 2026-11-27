@@ -66,6 +66,12 @@ export interface DashboardData {
     total_revenue: number;
   }>;
   trendData: TrendDataItem[];
+  serviceLogsTrend?: Array<{
+    date: string;
+    day: number;
+    services_count: number;
+    count: number;
+  }>;
   totalStock: number;
   pendingServices: number;
   myActiveJobs: number;
@@ -83,7 +89,7 @@ export function Dashboard() {
   const [timeframe, setTimeframe] = useState<string>(() => {
     return localStorage.getItem("sales_analytics_timeframe") || "today";
   });
-  const [hoveredDay, setHoveredDay] = useState<{ day: number; amount: number } | null>(null);
+  const [hoveredDay, setHoveredDay] = useState<{ day: number; count: number } | null>(null);
 
   const handleTimeframeChange = (newTf: string) => {
     setTimeframe(newTf);
@@ -122,31 +128,32 @@ export function Dashboard() {
     ? (data?.todaySales ?? 0)
     : (data?.filterSales ?? data?.timeframeSales ?? data?.todaySales ?? 0);
 
-  // Monthwise Chart Data normalized across 30 days
-  const rawChartData = data?.trendData || [];
-  const maxRecorded = Math.max(...rawChartData.map((d) => d.sales || 0), 0);
-  const isZeroData = maxRecorded === 0;
-
-  // Build 30 points (days 1 to 30) for the line chart
+  // Monthwise Service Logs Chart Data normalized across 30 days
+  const rawServiceTrend = (data?.serviceLogsTrend && data.serviceLogsTrend.length > 0)
+    ? data.serviceLogsTrend
+    : (data?.trendData || []);
   const daysInGraph = 30;
   const dailyValues: number[] = Array.from({ length: daysInGraph }, (_, i) => {
     const dayNum = i + 1;
-    const match = rawChartData.find((d) => d.day === dayNum);
-    return match ? match.sales : 0;
+    const match = rawServiceTrend.find((d) => d.day === dayNum);
+    return match ? (match.services_count ?? match.count ?? 0) : 0;
   });
 
-  // Calculate SVG line coordinates
+  const maxRecorded = Math.max(...dailyValues, 0);
+  const yMax = Math.max(4, Math.ceil(maxRecorded / 4) * 4);
+  const yTicks = [yMax, Math.round(yMax * 0.75), Math.round(yMax * 0.5), Math.round(yMax * 0.25), 0];
+
+  // Calculate SVG line coordinates (0 at bottom baseline)
   const svgWidth = 600;
   const svgHeight = 160;
-  const midY = 80; // 0.0 baseline
+  const bottomY = svgHeight - 10;
+  const topY = 12;
+  const chartSpanY = bottomY - topY;
 
   const points = dailyValues.map((val, idx) => {
     const x = (idx / (daysInGraph - 1)) * svgWidth;
-    let y = midY;
-    if (!isZeroData && maxRecorded > 0) {
-      y = midY - (val / maxRecorded) * 65;
-    }
-    return { x, y, day: idx + 1, amount: val };
+    const y = yMax > 0 ? bottomY - (val / yMax) * chartSpanY : bottomY;
+    return { x, y, day: idx + 1, count: val };
   });
 
   const pathD = points.reduce((acc, pt, idx) => {
@@ -311,35 +318,33 @@ export function Dashboard() {
 
           {/* 3. Graph and Recent Activity SIDE BY SIDE (Single viewport height, no scroll) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3 items-stretch">
-            {/* Left: Collection Graph */}
+            {/* Left: Service Logs Graph */}
             <div className="lg:col-span-7 bg-white dark:bg-[#15161E] rounded-xl p-3.5 sm:p-4 border border-gray-100 dark:border-[#2E3B55] shadow-2xs flex flex-col justify-between">
               {/* Header */}
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-                    Collection - {currentMonthName}
+                    Service Logs - {currentMonthName}
                   </h2>
                   <p className="text-[11px] text-gray-400 font-normal">
-                    Settled collections only
+                    Registered service logs
                   </p>
                 </div>
                 {/* Hollow cyan status indicator */}
                 <div
                   className="w-3.5 h-3.5 rounded-full border-2 border-[#29B6F6] shrink-0 mt-0.5"
-                  title="Settled collections live sync"
+                  title="Registered service logs live sync"
                 />
               </div>
 
-              {/* Chart Visual with Y-axis (1.0, 0.5, 0.0, -0.5, -1.0) and X-axis (5, 10, 15, 20, 25, 30) */}
+              {/* Chart Visual with Y-axis (0..yMax) and X-axis (5, 10, 15, 20, 25, 30) */}
               <div className="relative pt-1 pb-1">
                 <div className="flex h-36 sm:h-44 w-full">
                   {/* Left Y-Axis Labels */}
                   <div className="flex flex-col justify-between items-end pr-2 pb-5 text-[11px] text-gray-400 font-normal select-none shrink-0 w-7">
-                    <span>1.0</span>
-                    <span>0.5</span>
-                    <span>0.0</span>
-                    <span>-0.5</span>
-                    <span>-1.0</span>
+                    {yTicks.map((tick) => (
+                      <span key={tick}>{tick}</span>
+                    ))}
                   </div>
 
                   {/* SVG Canvas Area */}
@@ -378,7 +383,7 @@ export function Dashboard() {
                             r={hoveredDay?.day === pt.day ? 4 : 2}
                             fill="#5DADE2"
                             className="cursor-pointer transition-all hover:scale-125"
-                            onMouseEnter={() => setHoveredDay({ day: pt.day, amount: pt.amount })}
+                            onMouseEnter={() => setHoveredDay({ day: pt.day, count: pt.count })}
                             onMouseLeave={() => setHoveredDay(null)}
                           />
                         ))}
@@ -387,7 +392,7 @@ export function Dashboard() {
                       {/* Tooltip on hover */}
                       {hoveredDay && (
                         <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[9px] px-2 py-0.5 rounded shadow z-20 pointer-events-none whitespace-nowrap">
-                          Day {hoveredDay.day}: ₹{hoveredDay.amount.toLocaleString()}
+                          Day {hoveredDay.day}: {hoveredDay.count} log{hoveredDay.count === 1 ? "" : "s"}
                         </div>
                       )}
                     </div>

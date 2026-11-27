@@ -85,8 +85,12 @@ describe('Dashboard Component - Wireframe Layout', () => {
       { brand: 'Amaron', model: 'Hilife', ah: '45Ah', total_qty: 8, total_revenue: 36000 },
     ],
     trendData: [
-      { date: 'Nov 01', day: 1, sales: 5000, services: 1200, profit: 1200, count: 2 },
-      { date: 'Nov 05', day: 5, sales: 10400, services: 2000, profit: 2000, count: 4 },
+      { date: 'Nov 01', day: 1, sales: 5000, services: 1200, services_count: 3, profit: 1200, count: 2 },
+      { date: 'Nov 05', day: 5, sales: 10400, services: 2000, services_count: 4, profit: 2000, count: 4 },
+    ],
+    serviceLogsTrend: [
+      { date: 'Nov 01', day: 1, services_count: 3, count: 3 },
+      { date: 'Nov 05', day: 5, services_count: 4, count: 4 },
     ],
     totalStock: 150,
     pendingServices: 7,
@@ -124,16 +128,14 @@ describe('Dashboard Component - Wireframe Layout', () => {
     expect(screen.getByText('42')).toBeInTheDocument(); // totalCustomers
   });
 
-  it('renders Collection graph like reference image with axes and ticks', async () => {
+  it('renders Service Logs graph with axes and ticks instead of Collection', async () => {
     render(<Dashboard />);
 
-    expect(await screen.findByText(/Collection - /i)).toBeInTheDocument();
-    expect(screen.getByText('Settled collections only')).toBeInTheDocument();
-    expect(screen.getByText('1.0')).toBeInTheDocument();
-    expect(screen.getByText('0.5')).toBeInTheDocument();
-    expect(screen.getByText('0.0')).toBeInTheDocument();
-    expect(screen.getByText('-0.5')).toBeInTheDocument();
-    expect(screen.getByText('-1.0')).toBeInTheDocument();
+    expect(await screen.findByText(/Service Logs - /i)).toBeInTheDocument();
+    expect(screen.getByText('Registered service logs')).toBeInTheDocument();
+    expect(screen.queryByText(/Collection - /i)).not.toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+    expect(screen.getByText('0')).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();
     expect(screen.getByText('15')).toBeInTheDocument();

@@ -67,6 +67,21 @@ const mockServices = [
         created_at: "2026-11-14T06:10:00.000Z",
     },
     {
+        id: 5,
+        service_code: "5",
+        log_id: "5",
+        customer_name: "Karthik Nair",
+        contact_number: "9876543299",
+        address: "12 MG Road",
+        vehicle_details: "N/A",
+        status: "In Progress",
+        assigned_to: 2,
+        service_charge: 0,
+        complaint_type: "New Connection",
+        complaint_details: "New inverter battery setup",
+        created_at: "2026-11-14T07:00:00.000Z",
+    },
+    {
         id: 3,
         service_code: "3",
         log_id: "3",
@@ -157,7 +172,7 @@ describe("TasksWorkspace Component (Staff View)", () => {
         });
     });
 
-    it("removes filter pills below search bar and provides date wise search at right side", async () => {
+    it("removes date search filter and filter pills, and filters registered services by text search", async () => {
         (apiClient.get as any).mockResolvedValue(mockServices);
 
         render(
@@ -176,18 +191,94 @@ describe("TasksWorkspace Component (Staff View)", () => {
         expect(screen.queryByRole("button", { name: /^Oldest$/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /^Newest$/i })).not.toBeInTheDocument();
 
-        // Verify date wise search input exists at the right side of search bar
-        const dateInput = screen.getByLabelText("Date Search");
-        expect(dateInput).toBeInTheDocument();
+        // Verify date search filter has been removed
+        expect(screen.queryByLabelText("Date Search")).not.toBeInTheDocument();
+        expect(document.querySelector('input[type="date"]')).toBeNull();
 
-        // Filtering by date
-        fireEvent.change(dateInput, { target: { value: "2026-11-14" } });
+        // Filtering by text search
+        const searchInput = screen.getByLabelText("Search complaints");
+        fireEvent.change(searchInput, { target: { value: "Ramesh" } });
         expect(screen.getAllByText("Ramesh Sharma").length).toBeGreaterThan(0);
 
-        // Filter by non-matching date
-        fireEvent.change(dateInput, { target: { value: "2026-11-01" } });
+        fireEvent.change(searchInput, { target: { value: "NoMatchQuery" } });
         expect(screen.queryByText("Ramesh Sharma")).not.toBeInTheDocument();
         expect(screen.getByText("No jobs match your search parameters.")).toBeInTheDocument();
+
+        fireEvent.click(screen.getByLabelText("Clear search"));
+        expect(screen.getAllByText("Ramesh Sharma").length).toBeGreaterThan(0);
+    });
+
+    it("renders continuous WhatsApp-style chats list without mobile numbers and with mandatory fields", async () => {
+        (apiClient.get as any).mockResolvedValue(mockServices);
+
+        render(
+            <BrowserRouter>
+                <TasksWorkspace defaultTab="assigned" />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getAllByText("Anita Patel").length).toBeGreaterThan(0);
+        });
+
+        const list = screen.getByTestId("services-list");
+        expect(list).toHaveClass("divide-y");
+
+        // Mandatory fields inside main list: log id, customer name, complaint type (New Connection / Service), call icon
+        expect(list).toHaveTextContent("#SRV-5");
+        expect(list).toHaveTextContent("Karthik Nair");
+        expect(list).toHaveTextContent("New Connection");
+        expect(list).toHaveTextContent("#SRV-2");
+        expect(list).toHaveTextContent("Anita Patel");
+        expect(list).toHaveTextContent("Service · Dead");
+
+        // Mobile numbers should NOT be mentioned in the main list
+        expect(list).not.toHaveTextContent("9876543299");
+        expect(list).not.toHaveTextContent("9876543211");
+
+        // Direct call icon links exist inside the main list
+        const callLink = list.querySelector('a[href="tel:+919876543299"]');
+        expect(callLink).not.toBeNull();
+    });
+
+    it("lets staff bill a product directly for an active New Connection task, but not for regular service", async () => {
+        (apiClient.get as any).mockResolvedValue(mockServices);
+
+        render(
+            <BrowserRouter>
+                <TasksWorkspace defaultTab="assigned" />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getAllByText("Karthik Nair").length).toBeGreaterThan(0);
+        });
+
+        // Karthik Nair (newest, New Connection) is auto-selected -> shows Bill Product button
+        const billBtn = screen.getByRole("button", { name: /Bill Product for New Connection/i });
+        expect(billBtn).toBeInTheDocument();
+        fireEvent.click(billBtn);
+
+        expect(mockNavigate).toHaveBeenCalledWith("/sales", {
+            state: expect.objectContaining({
+                fromService: true,
+                isNewConnection: true,
+                serviceId: 5,
+                customerInfo: {
+                    name: "Karthik Nair",
+                    phone: "9876543299",
+                    address: "12 MG Road",
+                },
+                serviceSpecs: expect.objectContaining({
+                    complaint_type: "New Connection",
+                    complaint_details: "New inverter battery setup",
+                }),
+            }),
+        });
+
+        // Selecting Anita Patel (regular service) hides Bill Product button
+        fireEvent.click(screen.getByText("Anita Patel"));
+        expect(screen.queryByRole("button", { name: /Bill Product for New Connection/i })).not.toBeInTheDocument();
     });
 
     it("displays all previous entries without any filtered in history tab", async () => {
@@ -223,6 +314,9 @@ describe("TasksWorkspace Component (Staff View)", () => {
             expect(screen.getAllByText("Anita Patel").length).toBeGreaterThan(0);
         });
 
+        // Select Anita Patel to inspect her details panel
+        fireEvent.click(screen.getByText("Anita Patel"));
+
         // Verify rounded contact action icons (Call & WhatsApp) are present
         const callButtons = screen.getAllByTitle("Call Customer");
         const whatsappButtons = screen.getAllByTitle("Message on WhatsApp");
@@ -240,5 +334,46 @@ describe("TasksWorkspace Component (Staff View)", () => {
 
         // Verify values
         expect(screen.getAllByText("9876543211").length).toBeGreaterThanOrEqual(1);
+
+        // Verify Created At and Assigned At render in smaller compact typography
+        const createdAtValue = screen.getByText("Created At").nextElementSibling;
+        const assignedAtValue = screen.getByText("Assigned At").nextElementSibling;
+        expect(createdAtValue).toHaveClass("text-[10px]");
+        expect(assignedAtValue).toHaveClass("text-[10px]");
+    });
+
+    it("hides the top Available/Active/History bar on mobile when a job is opened and restores it on Back to list", async () => {
+        const originalInnerWidth = window.innerWidth;
+        Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 375 });
+        window.dispatchEvent(new Event("resize"));
+
+        (apiClient.get as any).mockResolvedValue(mockServices);
+
+        render(
+            <BrowserRouter>
+                <TasksWorkspace defaultTab="assigned" />
+            </BrowserRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getAllByText("Anita Patel").length).toBeGreaterThan(0);
+        });
+
+        // Initially on mobile main list, tab bar is visible
+        expect(screen.getByTestId("tasks-tab-bar")).toBeInTheDocument();
+
+        // Click any job in the list
+        fireEvent.click(screen.getByText("Anita Patel"));
+
+        // Top Available/Active/History bar should be hidden inside detail view
+        expect(screen.queryByTestId("tasks-tab-bar")).not.toBeInTheDocument();
+        expect(screen.getByTestId("complaint-details-card")).toBeInTheDocument();
+
+        // Clicking Back to list brings back the top tabs bar
+        fireEvent.click(screen.getByRole("button", { name: /Back to list/i }));
+        expect(screen.getByTestId("tasks-tab-bar")).toBeInTheDocument();
+
+        Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: originalInnerWidth });
+        window.dispatchEvent(new Event("resize"));
     });
 });

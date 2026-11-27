@@ -90,4 +90,58 @@ class SalesTest extends TestCase
         $this->assertEquals(-1, $product->stock);
         $this->assertEquals('out_of_stock', $product->stock_status);
     }
+
+    public function test_staff_can_bill_product_for_new_connection_keeping_service_in_progress()
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        Sanctum::actingAs($staff);
+
+        $product = Product::create([
+            'type' => 'Inverter',
+            'brand' => 'Luminous',
+            'model' => 'RedCharge 18000',
+            'ah' => '150Ah',
+            'price' => 11500,
+            'stock' => 4,
+            'min_stock' => 1,
+            'stock_status' => 'in_stock',
+        ]);
+
+        $service = \App\Models\Service::create([
+            'customer_name' => 'Karthik Nair',
+            'contact_number' => '9876543299',
+            'vehicle_details' => 'N/A',
+            'complaint_type' => 'New Connection',
+            'status' => 'In Progress',
+            'assigned_to' => $staff->id,
+        ]);
+
+        $payload = [
+            'customer_name' => 'Karthik Nair',
+            'customer_phone' => '9876543299',
+            'product_category' => 'New Connection',
+            'type' => 'Sale',
+            'total_amount' => 13570,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'service_id' => $service->id,
+                    'quantity' => 1,
+                    'price' => 11500,
+                ],
+            ],
+        ];
+
+        $response = $this->postJson('/api/sales', $payload);
+        $response->assertStatus(201);
+
+        $service->refresh();
+        $this->assertEquals('In Progress', $service->status);
+        $this->assertEquals('Luminous', $service->battery_brand);
+        $this->assertEquals('RedCharge 18000', $service->battery_model);
+
+        $listResponse = $this->getJson('/api/services');
+        $listResponse->assertStatus(200)
+            ->assertJsonCount(1, '0.sales');
+    }
 }

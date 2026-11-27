@@ -6,17 +6,23 @@ interface ContactActionsProps {
     iconSize?: number;
 }
 
-export function ContactActions({ phoneNumber, className = "", iconSize = 16 }: ContactActionsProps) {
+export function formatDialPhone(phoneNumber: string): string | null {
     if (!phoneNumber) return null;
 
     // Remove any non-digit character first
     let parsedNumber = phoneNumber.replace(/\D/g, "");
 
-    // If the number is exactly 10 digits, it's likely an Indian number missing the country code. 
+    // If the number is exactly 10 digits, it's likely an Indian number missing the country code.
     // Automatically prepend '91'. E.g. "9876543210" -> "919876543210"
     if (parsedNumber.length === 10) {
         parsedNumber = "91" + parsedNumber;
     }
+
+    return parsedNumber || null;
+}
+
+export function ContactActions({ phoneNumber, className = "", iconSize = 16 }: ContactActionsProps) {
+    const parsedNumber = formatDialPhone(phoneNumber);
 
     // If there's an issue parsing or the number is effectively empty after strip, don't show the buttons
     if (!parsedNumber) return null;

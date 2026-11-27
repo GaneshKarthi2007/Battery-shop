@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\GpsPhoto;
 use App\Services\MediaStorage;
+use App\Services\NotificationService;
 use App\Services\WatermarkService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -63,6 +64,15 @@ class GpsPhotoController extends Controller
             'longitude'   => $validated['longitude'],
             'captured_at' => $validated['captured_at'],
         ]);
+
+        if ($request->user()->role === 'staff') {
+            $suffix = !empty($validated['service_id']) ? " for Service #{$validated['service_id']}." : '.';
+            NotificationService::notifyAdmins(
+                'SERVICE',
+                'Job Photo Uploaded',
+                "Staff {$request->user()->name} uploaded a site photo{$suffix}"
+            );
+        }
 
         return response()->json($photo, 201);
     }

@@ -1,17 +1,14 @@
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Settings } from "./Settings";
 import { DeveloperProvider } from "../contexts/DeveloperContext";
+import { ThemeProvider } from "../contexts/ThemeContext";
 
 let mockRole = "admin";
 
 vi.mock("../contexts/AuthContext", () => ({
     useAuth: () => ({ user: { id: 1, name: "Test", role: mockRole } }),
-}));
-
-vi.mock("../contexts/ThemeContext", () => ({
-    useTheme: () => ({ isDarkMode: false, toggleDarkMode: vi.fn() }),
 }));
 
 vi.mock("../components/PushNotificationManager", () => ({
@@ -21,14 +18,18 @@ vi.mock("../components/PushNotificationManager", () => ({
 function renderSettings() {
     return render(
         <DeveloperProvider>
-            <Settings />
+            <ThemeProvider>
+                <Settings />
+            </ThemeProvider>
         </DeveloperProvider>
     );
 }
 
-describe("Settings page - Service Log ID prefix", () => {
+describe("Settings page - Service Log ID prefix & Dark Mode", () => {
     beforeEach(() => {
         localStorage.clear();
+        document.documentElement.classList.remove("dark");
+        document.documentElement.style.colorScheme = "";
         mockRole = "admin";
     });
 
@@ -43,5 +44,28 @@ describe("Settings page - Service Log ID prefix", () => {
         renderSettings();
         expect(screen.queryByRole("heading", { name: /Service Configuration/i })).not.toBeInTheDocument();
         expect(screen.queryByLabelText(/^Prefix$/i)).not.toBeInTheDocument();
+    });
+
+    it("toggles dark theme on the document and persists preference from Settings", () => {
+        renderSettings();
+
+        const toggle = screen.getByRole("switch", { name: /Toggle Dark Mode/i });
+        expect(toggle).toHaveAttribute("aria-checked", "false");
+        expect(screen.getByText(/Light theme enabled/i)).toBeInTheDocument();
+        expect(document.documentElement.classList.contains("dark")).toBe(false);
+
+        fireEvent.click(toggle);
+
+        expect(toggle).toHaveAttribute("aria-checked", "true");
+        expect(screen.getByText(/Dark theme enabled/i)).toBeInTheDocument();
+        expect(document.documentElement.classList.contains("dark")).toBe(true);
+        expect(document.documentElement.style.colorScheme).toBe("dark");
+        expect(localStorage.getItem("powercell_dark_mode")).toBe("true");
+
+        fireEvent.click(toggle);
+
+        expect(toggle).toHaveAttribute("aria-checked", "false");
+        expect(document.documentElement.classList.contains("dark")).toBe(false);
+        expect(localStorage.getItem("powercell_dark_mode")).toBe("false");
     });
 });
