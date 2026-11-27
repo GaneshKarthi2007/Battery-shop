@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
-import { Plus, Minus, Trash2, ShoppingCart, Search, CreditCard, ChevronUp, CheckCheck, AlertTriangle, FileText, History } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Search, CreditCard, CheckCheck, AlertTriangle, FileText, History, ArrowLeft, ArrowRight, X } from "lucide-react";
 import { Button } from "../components/Button";
 import { apiClient } from "../api/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { CircleLoader } from "../components/ui/CircleLoader";
+import { getBrandProductImage, FALLBACK_BATTERY_IMAGE } from "../utils/productImages";
 
 interface Battery {
   id: number;
@@ -34,19 +35,50 @@ interface BillItem {
 export function BatterySales() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const location = useLocation();
+  const routerState = location.state as {
+    fromService?: boolean;
+    serviceId?: number;
+    isNewConnection?: boolean;
+    customerInfo?: { name?: string; phone?: string; address?: string };
+    serviceSpecs?: {
+      complaint_type?: string;
+      complaint_details?: string;
+      vehicle_details?: string;
+      battery_brand?: string;
+      battery_model?: string;
+      battery_capacity?: string;
+    };
+  } | null;
+  const isStaff = user?.role === "staff";
   const isAdmin = user?.role === "admin";
+  const canBill = isAdmin || user?.role === "manager" || (isStaff && Boolean(routerState?.fromService));
   const [batteries, setBatteries] = useState<Battery[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<string>("All");
+  const [searchTerm, setSearchTerm] = useState(() => {
+    const specs = (location.state as any)?.serviceSpecs;
+    return specs?.battery_brand || specs?.battery_model || "";
+  });
+  const [filterType, setFilterType] = useState<string>(() => {
+    const specs = (location.state as any)?.serviceSpecs;
+    const hint = `${specs?.complaint_details || ""} ${specs?.vehicle_details || ""}`.toLowerCase();
+    if (hint.includes("inverter") || hint.includes("ups")) return "Inverter";
+    if (hint.includes("car") || hint.includes("bike") || hint.includes("vehicle")) return "Car";
+    return "All";
+  });
   const [billItems, setBillItems] = useState<BillItem[]>([]);
-  const [showFloatingBar, setShowFloatingBar] = useState(false);
-  const billModuleRef = useRef<HTMLDivElement>(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const isFirstMount = useRef(true);
 
   const [billingMode, setBillingMode] = useState<"Billing" | "Quotation">("Billing");
-  const location = useLocation();
+
+  // Staff may only access Billing when coming from a New Connection / service task
+  useEffect(() => {
+    if (isStaff && !routerState?.fromService) {
+      navigate("/assigned-jobs", { replace: true });
+    }
+  }, [isStaff, routerState?.fromService, navigate]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -63,13 +95,12 @@ export function BatterySales() {
 
     fetchData();
 
-    // Context for service conversion
-    const routerState = location.state as { fromService?: boolean; serviceId?: number; customerInfo?: any };
     if (routerState?.fromService) {
-      console.log("Processing conversion for service:", routerState.serviceId);
+      localStorage.removeItem("pending_bill_items");
+      return;
     }
 
-    // Load persisted bill items
+    // Load persisted bill items for walk-in billing
     const savedItems = localStorage.getItem("pending_bill_items");
     if (savedItems) {
       try {
@@ -108,21 +139,6 @@ export function BatterySales() {
     refreshProducts();
     setBillItems([]);
   }, [billingMode]);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setShowFloatingBar(!entry.isIntersecting);
-      },
-      { threshold: 0.2 }
-    );
-
-    if (billModuleRef.current) {
-      observer.observe(billModuleRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [billItems.length]);
 
   const filteredBatteries = batteries.filter((battery) => {
     const matchesSearch =
@@ -186,7 +202,7 @@ export function BatterySales() {
 
   const handleProceedToCheckout = (isQuotation: boolean = false) => {
     if (billItems.length === 0) return;
-    const routerState = location.state as { fromService?: boolean; serviceId?: number; customerInfo?: any };
+    setIsCartOpen(false);
 
     navigate("/checkout", {
       state: {
@@ -196,31 +212,172 @@ export function BatterySales() {
         total,
         fromService: routerState?.fromService,
         serviceId: routerState?.serviceId,
+        isNewConnection: routerState?.isNewConnection,
         customerInfo: routerState?.customerInfo,
+        serviceSpecs: routerState?.serviceSpecs,
         isQuotation
       }
     });
   };
 
+  const renderBillPanelContent = () => {
+    if (billItems.length === 0) {
+      return (
+        <div className="text-center py-10">
+          <ShoppingCart className="w-10 h-10 text-gray-300 mx-auto mb-2.5" />
+          <p className="text-sm font-medium text-gray-500">No items added yet</p>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div className="space-y-2.5 mb-4 max-h-64 overflow-y-auto pr-1">
+          {billItems.map((item) => (
+            <div key={item.id} className="p-3 bg-gray-50 dark:bg-[#0D1B2A] rounded-lg border border-gray-200 dark:border-[#2E3B55]">
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-wider bg-blue-100 text-blue-700">
+                      Product
+                    </span>
+                    <p className="font-bold text-gray-900 dark:text-white text-xs truncate">{item.name}</p>
+                  </div>
+                  <p className="text-[10px] text-gray-600 dark:text-gray-400 truncate">{item.model}</p>
+                </div>
+                <button onClick={() => removeFromBill(item.id)} aria-label={`Remove ${item.name}`} className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded transition-colors">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button onClick={() => updateQuantity(item.id, -1)} aria-label={`Decrease quantity for ${item.name}`} className="w-7 h-7 bg-white dark:bg-[#1B263B] border border-gray-300 dark:border-[#2E3B55] rounded-md flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#1a1a1a] transition-colors dark:text-white">
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <span className="w-8 text-center font-medium dark:text-white">{item.quantity}</span>
+                  <button onClick={() => updateQuantity(item.id, 1)} aria-label={`Increase quantity for ${item.name}`} className="w-7 h-7 bg-white dark:bg-[#1B263B] border border-gray-300 dark:border-[#2E3B55] rounded-md flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#1a1a1a] transition-colors dark:text-white">
+                    <Plus className="w-3 h-3" />
+                  </button>
+                </div>
+                <p className="font-bold text-gray-900 dark:text-white">₹{(item.price * item.quantity).toLocaleString()}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-2 py-3 border-t border-gray-200 dark:border-[#2E3B55]">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
+            <span className="font-medium text-gray-900 dark:text-white">₹{subtotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600 dark:text-gray-400">GST (18%)</span>
+            <span className="font-medium text-gray-900 dark:text-white">₹{gst.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-[#2E3B55]">
+            <span className="font-bold text-gray-900 dark:text-white">Total</span>
+            <span className="font-bold text-xl text-blue-600">₹{total.toLocaleString()}</span>
+          </div>
+        </div>
+
+        <div className="mt-3">
+          {billingMode === "Billing" ? (
+            <Button
+              onClick={() => handleProceedToCheckout(false)}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white flex items-center justify-center gap-2 py-3"
+            >
+              <CreditCard className="w-4 h-4" /> Proceed to Billing
+            </Button>
+          ) : (
+            <Button
+              onClick={() => handleProceedToCheckout(true)}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white flex items-center justify-center gap-2 py-3"
+            >
+              <FileText className="w-4 h-4" /> Proceed to Quotation
+            </Button>
+          )}
+        </div>
+      </>
+    );
+  };
+
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
-          <p className="text-gray-600 mt-1">Select batteries, generate invoice, or view history</p>
-        </div>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Mobile Top Floating Cart Bar (replaces Current Bill card on mobile) */}
+      {canBill && (
+        <div
+          data-testid="mobile-top-cart-bar"
+          className="lg:hidden sticky top-14 z-20 -mx-1 px-3.5 py-2.5 bg-white/95 dark:bg-[#0D1B2A]/95 backdrop-blur-md border border-blue-100 dark:border-[#25314D] rounded-2xl shadow-md flex items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+              <ShoppingCart className="w-4 h-4" />
+              {billItems.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-white dark:ring-[#0D1B2A]">
+                  {billItems.length}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-black text-gray-900 dark:text-white truncate">
+                {billItems.length === 0 ? "Cart Empty" : `${billItems.length} Item${billItems.length > 1 ? "s" : ""} in Cart`}
+              </p>
+              <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                ₹{total.toLocaleString()} <span className="text-[9px] text-gray-400 font-medium">(incl. GST)</span>
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 self-end md:self-auto">
           <button
-            onClick={() => navigate("/reports")}
-            className="px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-[#2E3B55] bg-white hover:bg-gray-50 dark:bg-[#1B263B] dark:hover:bg-white/5 text-gray-700 dark:text-gray-200 transition-all shadow-sm flex items-center gap-2 font-bold text-sm"
-            title="View All History & Reports"
+            type="button"
+            onClick={() => setIsCartOpen(true)}
+            aria-label="Open Cart"
+            className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shrink-0 transition-colors"
           >
-            <History className="w-4 h-4 text-blue-600" />
-            <span>History</span>
+            <ShoppingCart className="w-3.5 h-3.5" />
+            <span>Cart</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          {routerState?.fromService && routerState?.serviceId && (
+            <button
+              type="button"
+              onClick={() => navigate(`/service/${routerState.serviceId}`)}
+              className="p-2.5 rounded-xl border border-gray-200 dark:border-[#2E3B55] bg-white hover:bg-gray-50 dark:bg-[#1B263B] text-gray-700 dark:text-gray-200 transition-all shadow-xs"
+              title="Back to Service"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {routerState?.isNewConnection ? "New Connection — Product Billing" : "Billing"}
+            </h1>
+            <p className="text-gray-600 mt-1">
+              {routerState?.fromService && routerState?.customerInfo?.name
+                ? `Billing product for ${routerState.customerInfo.name}`
+                : "Select batteries, generate invoice, or view history"}
+            </p>
+          </div>
+        </div>
+
+        {!isStaff && (
+          <div className="flex items-center gap-2 self-end md:self-auto">
+            <button
+              onClick={() => navigate("/reports")}
+              className="px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-[#2E3B55] bg-white hover:bg-gray-50 dark:bg-[#1B263B] dark:hover:bg-white/5 text-gray-700 dark:text-gray-200 transition-all shadow-sm flex items-center gap-2 font-bold text-sm"
+              title="View All History & Reports"
+            >
+              <History className="w-4 h-4 text-blue-600" />
+              <span>History</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-start">
@@ -267,7 +424,7 @@ export function BatterySales() {
       ) : (
         <>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className={`lg:col-span-${isAdmin ? '2' : '3'} order-2 lg:order-1 space-y-4`}>
+              <div className={`lg:col-span-${canBill ? '2' : '3'} order-2 lg:order-1 space-y-4`}>
                 <AnimatePresence mode="wait">
                   <motion.div
                     key="product-grid"
@@ -303,55 +460,86 @@ export function BatterySales() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div data-testid="product-grid" className="grid grid-cols-3 gap-2 sm:gap-3.5">
                       {filteredBatteries.map((battery) => {
                         const isAdded = billItems.some(item => item.id === battery.id);
+                        const productImg = getBrandProductImage(battery.brand, battery.type);
                         return (
-                          <div key={battery.id} className="bg-white dark:bg-[#1B263B] rounded-xl p-5 border border-gray-200 dark:border-[#2E3B55] hover:border-gray-300 dark:hover:border-white/20 transition-all">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="font-bold text-gray-900">{battery.brand}</h3>
-                                <p className="text-sm text-gray-600">{battery.model}</p>
-                              </div>
-                              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-md">
+                          <div
+                            key={battery.id}
+                            className="bg-white dark:bg-[#1B263B] rounded-xl border border-gray-200 dark:border-[#2E3B55] hover:border-blue-400 hover:shadow-md transition-all flex flex-col overflow-hidden group"
+                          >
+                            {/* E-commerce Brand Product Image Stage */}
+                            <div className="relative aspect-square bg-white p-1.5 sm:p-3 flex items-center justify-center border-b border-gray-100 dark:border-[#25314D] overflow-hidden">
+                              <img
+                                src={productImg}
+                                alt={`${battery.brand} ${battery.model}`}
+                                loading="lazy"
+                                onError={(e) => {
+                                  if (e.currentTarget.src !== FALLBACK_BATTERY_IMAGE) {
+                                    e.currentTarget.src = FALLBACK_BATTERY_IMAGE;
+                                  }
+                                }}
+                                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                              />
+                              <span className="absolute top-1 left-1 sm:top-2 sm:left-2 px-1.5 py-0.5 bg-blue-50/95 text-blue-700 text-[8px] sm:text-[10px] font-bold rounded border border-blue-100">
                                 {battery.type}
                               </span>
+                              <span
+                                className={`hidden sm:inline-flex absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-bold rounded ${
+                                  battery.stock <= 0
+                                    ? "bg-red-50 text-red-600"
+                                    : battery.stock < 10
+                                    ? "bg-amber-50 text-amber-600"
+                                    : "bg-emerald-50 text-emerald-600"
+                                }`}
+                              >
+                                {battery.stock} left
+                              </span>
                             </div>
-                            <div className="space-y-2 mb-4">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Capacity:</span>
-                                <span className="font-medium text-gray-900">{battery.ah} Ah</span>
+
+                            {/* Product Info */}
+                            <div className="p-2 sm:p-3 flex-1 flex flex-col justify-between gap-1.5">
+                              <div className="min-w-0 space-y-0.5">
+                                <p className="text-[9px] sm:text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider truncate">
+                                  {battery.brand}
+                                </p>
+                                <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight">
+                                  {battery.model}
+                                </h3>
+                                <p className="text-[9px] sm:text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                                  {battery.ah} Ah · {battery.warranty || "N/A"}
+                                </p>
                               </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Warranty:</span>
-                                <span className="font-medium text-gray-900">{battery.warranty || "N/A"}</span>
+
+                              <div className="pt-1.5 border-t border-gray-100 dark:border-[#25314D] space-y-1.5">
+                                <div className="flex items-baseline justify-between gap-1">
+                                  <p className="text-xs sm:text-base font-black text-gray-900 dark:text-white truncate">
+                                    ₹{Number(battery.price).toLocaleString()}
+                                  </p>
+                                  <span
+                                    className={`sm:hidden text-[8px] font-bold ${
+                                      battery.stock <= 0 ? "text-red-600" : battery.stock < 10 ? "text-orange-600" : "text-green-600"
+                                    }`}
+                                  >
+                                    {battery.stock}u
+                                  </span>
+                                </div>
+                                {canBill && (
+                                  <Button
+                                    onClick={() => addToBill(battery)}
+                                    disabled={isAdded}
+                                    size="sm"
+                                    className={`w-full py-1 sm:py-1.5 text-[10px] sm:text-xs flex items-center justify-center gap-1 transition-all ${isAdded ? "bg-green-600 hover:bg-green-600 cursor-default opacity-85" : ""}`}
+                                  >
+                                    {isAdded ? (
+                                      <><CheckCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Added</>
+                                    ) : (
+                                      <><Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Add</>
+                                    )}
+                                  </Button>
+                                )}
                               </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Stock:</span>
-                                <span className={`font-medium ${battery.stock <= 0 ? "text-red-600" : battery.stock < 10 ? "text-orange-600" : "text-green-600"}`}>
-                                  {battery.stock} units {battery.stock <= 0 ? "(Zero Stock)" : ""}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-[#2E3B55]">
-                              <div>
-                                <p className="text-xs text-gray-500">Price</p>
-                                <p className="text-xl font-bold text-gray-900">₹{Number(battery.price).toLocaleString()}</p>
-                              </div>
-                              {isAdmin && (
-                                <Button
-                                  onClick={() => addToBill(battery)}
-                                  disabled={isAdded}
-                                  size="sm"
-                                  className={`flex items-center gap-2 transition-all ${isAdded ? "bg-green-600 hover:bg-green-600 cursor-default opacity-80" : ""}`}
-                                >
-                                  {isAdded ? (
-                                    <><CheckCheck className="w-4 h-4" /> Added</>
-                                  ) : (
-                                    <><Plus className="w-4 h-4" /> Add</>
-                                  )}
-                                </Button>
-                              )}
                             </div>
                           </div>
                         );
@@ -361,8 +549,9 @@ export function BatterySales() {
                 </AnimatePresence>
               </div>
 
-              {isAdmin && (
-                <div ref={billModuleRef} className="lg:col-span-1 order-1 lg:order-2">
+              {/* Desktop Current Bill Sidebar (hidden on mobile; mobile uses top floating bar + Cart drawer) */}
+              {canBill && (
+                <div className="hidden lg:block lg:col-span-1 order-1 lg:order-2">
                   <div className="bg-white dark:bg-[#1B263B] rounded-xl border border-gray-200 dark:border-[#2E3B55] lg:sticky lg:top-24 overflow-hidden">
                     <div className="p-5 border-b border-gray-200 dark:border-[#2E3B55] bg-gradient-to-r from-blue-50 to-blue-100 dark:from-[#1B263B] dark:to-[#0D1B2A]">
                       <div className="flex items-center gap-3">
@@ -370,87 +559,14 @@ export function BatterySales() {
                           <ShoppingCart className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <h2 className="font-bold text-gray-900">Current Bill</h2>
-                          <p className="text-sm text-gray-600">{billItems.length} items</p>
+                          <h2 className="font-bold text-gray-900 dark:text-white">Current Bill</h2>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">{billItems.length} items</p>
                         </div>
                       </div>
                     </div>
 
                     <div className="p-5">
-                      {billItems.length === 0 ? (
-                        <div className="text-center py-12">
-                          <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                          <p className="text-gray-500">No items added yet</p>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="space-y-3 mb-4 max-h-64 overflow-y-auto pr-1">
-                            {billItems.map((item) => (
-                              <div key={item.id} className="p-3 bg-gray-50 dark:bg-[#0D1B2A] rounded-lg border border-gray-200 dark:border-[#2E3B55]">
-                                <div className="flex justify-between items-start mb-2">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span className={`px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-wider bg-blue-100 text-blue-700`}>
-                                        Product
-                                      </span>
-                                      <p className="font-bold text-gray-900 text-xs">{item.name}</p>
-                                    </div>
-                                    <p className="text-[10px] text-gray-600">{item.model}</p>
-                                  </div>
-                                  <button onClick={() => removeFromBill(item.id)} className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded transition-colors">
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 bg-white dark:bg-[#1B263B] border border-gray-300 dark:border-[#2E3B55] rounded-md flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#1a1a1a] transition-colors dark:text-white">
-                                      <Minus className="w-3 h-3" />
-                                    </button>
-                                    <span className="w-8 text-center font-medium dark:text-white">{item.quantity}</span>
-                                    <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 bg-white dark:bg-[#1B263B] border border-gray-300 dark:border-[#2E3B55] rounded-md flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#1a1a1a] transition-colors dark:text-white">
-                                      <Plus className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                  <p className="font-medium text-gray-900">₹{(item.price * item.quantity).toLocaleString()}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          
-                          <div className="space-y-2 py-4 border-t border-gray-200 dark:border-[#2E3B55]">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Subtotal</span>
-                              <span className="font-medium text-gray-900">₹{subtotal.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">GST (18%)</span>
-                              <span className="font-medium text-gray-900">₹{gst.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between pt-2 border-t border-gray-200">
-                              <span className="font-bold text-gray-900">Total</span>
-                              <span className="font-bold text-xl text-blue-600">₹{total.toLocaleString()}</span>
-                            </div>
-                          </div>
-
-                          <div className="mt-4">
-                            {billingMode === "Billing" ? (
-                              <Button
-                                onClick={() => handleProceedToCheckout(false)}
-                                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white flex items-center justify-center gap-2 py-3"
-                              >
-                                <CreditCard className="w-4 h-4" /> Proceed to Billing
-                              </Button>
-                            ) : (
-                              <Button
-                                onClick={() => handleProceedToCheckout(true)}
-                                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white flex items-center justify-center gap-2 py-3"
-                              >
-                                <FileText className="w-4 h-4" /> Proceed to Quotation
-                              </Button>
-                            )}
-                          </div>
-                        </>
-                      )}
+                      {renderBillPanelContent()}
                     </div>
                   </div>
                 </div>
@@ -459,29 +575,51 @@ export function BatterySales() {
         </>
       )}
 
-      {isAdmin && billItems.length > 0 && showFloatingBar && (
-        <div className="lg:hidden fixed bottom-[72px] left-4 right-4 p-4 bg-white/95 dark:bg-[#1B263B]/95 backdrop-blur-md border border-gray-200 dark:border-[#2E3B55] rounded-2xl z-30">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="bg-blue-600 p-2 rounded-xl hidden sm:block">
-                <ShoppingCart className="w-4 h-4 text-white" />
+      {/* Mobile Cart Drawer / Sheet */}
+      <AnimatePresence>
+        {canBill && isCartOpen && (
+          <div className="lg:hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsCartOpen(false)}
+              className="absolute inset-0 bg-black/50 backdrop-blur-xs"
+            />
+            <motion.div
+              data-testid="mobile-cart-drawer"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="relative z-10 w-full max-w-lg bg-white dark:bg-[#1B263B] rounded-t-3xl sm:rounded-3xl border border-gray-200 dark:border-[#2E3B55] shadow-2xl overflow-hidden"
+            >
+              <div className="px-5 py-4 border-b border-gray-200 dark:border-[#2E3B55] bg-gradient-to-r from-blue-50 to-blue-100 dark:from-[#1B263B] dark:to-[#0D1B2A] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
+                    <ShoppingCart className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-gray-900 dark:text-white text-sm">Your Cart</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300">{billItems.length} item(s)</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCartOpen(false)}
+                  aria-label="Close Cart"
+                  className="p-1.5 rounded-lg text-gray-500 hover:bg-white/60 dark:hover:bg-white/10"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <p className="text-base sm:text-lg font-black text-gray-900 whitespace-nowrap">{billItems.length} Items</p>
-            </div>
-            <div className="flex items-center gap-2">
-            </div>
+              <div className="p-5 max-h-[75vh] overflow-y-auto">
+                {renderBillPanelContent()}
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
-
-      {isAdmin && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className={`lg:hidden fixed bottom-[160px] right-4 w-12 h-12 bg-white dark:bg-[#1B263B] border border-gray-200 dark:border-[#2E3B55] rounded-full flex items-center justify-center z-30 transition-all duration-300 ${(billItems.length > 0 && showFloatingBar) ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0 pointer-events-none"}`}
-        >
-          <ChevronUp className="w-6 h-6 text-blue-600" />
-        </button>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

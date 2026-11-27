@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 import {
-    ArrowLeft, User, FileText, Zap, ShieldCheck, Wrench,
-    Truck, RefreshCcw, Banknote, QrCode
+    ArrowLeft, Zap, Banknote, QrCode, RefreshCcw, ChevronDown
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
@@ -11,6 +10,13 @@ import { useNotifications } from "../contexts/NotificationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { BatteryLoader } from "../components/ui/BatteryLoader";
 import { ContactActions } from "../components/ui/ContactActions";
+import { MinimalConfirmDialog } from "../components/ui/MinimalConfirmDialog";
+import {
+    isValidMobile10,
+    normalizeMobile10,
+    capitalizeEachWord,
+    capitalizeFirstLetter,
+} from "../utils/inputFormatters";
 
 interface SalesItem {
     id: number | string;
@@ -91,10 +97,19 @@ export function Checkout() {
         total: number;
         fromService?: boolean;
         serviceId?: number;
+        isNewConnection?: boolean;
         customerInfo?: {
             name: string;
             phone: string;
             address: string;
+        };
+        serviceSpecs?: {
+            complaint_type?: string;
+            complaint_details?: string;
+            vehicle_details?: string;
+            battery_brand?: string;
+            battery_model?: string;
+            battery_capacity?: string;
         };
         isQuotation?: boolean;
     } | undefined;
@@ -107,14 +122,12 @@ export function Checkout() {
     });
     const [billedBy, setBilledBy] = useState("");
 
-    /** ── Product / Type & Usage ── */
-    const [usageType, setUsageType] = useState<"Vehicle" | "Home">("Vehicle");
+    /** ── Product / Type & Installation ── */
+    const [usageType, setUsageType] = useState<"Vehicle" | "Home">("Home");
     const [vehicleModel, setVehicleModel] = useState("");
-    const [vehicleNumber, setVehicleNumber] = useState("");
     const [installationRequired, setInstallationRequired] = useState(true);
     const [installAddress, setInstallAddress] = useState("");
-    const [landmark, setLandmark] = useState("");
-    const [sameAsBilling, setSameAsBilling] = useState(false);
+    const [sameAsBilling, setSameAsBilling] = useState(true);
 
     /** ── Charges ── */
     const [installCharges, setInstallCharges] = useState(0);
@@ -144,6 +157,8 @@ export function Checkout() {
     /** ── UI state ── */
     const [loading, setLoading] = useState(false);
     const [gstEnabled, setGstEnabled] = useState(true);
+    const [showExtras, setShowExtras] = useState(false);
+    const [showBackConfirm, setShowBackConfirm] = useState(false);
 
     const serviceItem = state?.items?.find(item => item.type === "Service");
     const hasService = !!serviceItem;
@@ -153,27 +168,49 @@ export function Checkout() {
         if (user) setBilledBy(user.name);
     }, [user]);
 
-    /* Auto-fill customer from service data or conversion state */
+    /* Auto-fill customer & installation details from service / new connection state */
     useEffect(() => {
+        const formatIndianPhone = (raw?: string) => {
+            if (!raw) return "+91 ";
+            const digits = raw.replace(/\D/g, "");
+            if (digits.length === 10) return `+91 ${digits}`;
+            if (digits.length === 12 && digits.startsWith("91")) return `+91 ${digits.slice(2)}`;
+            return raw.startsWith("+") ? raw : `+91 ${raw}`;
+        };
+
         if (state?.fromService && state.customerInfo) {
+            const addr = state.customerInfo.address || "";
             setCustomerInfo({
                 name: state.customerInfo.name || "",
-                phone: state.customerInfo.phone || "+91 ",
-                billingAddress: state.customerInfo.address || "",
+                phone: formatIndianPhone(state.customerInfo.phone),
+                billingAddress: addr,
             });
-            if (state.customerInfo.address) {
+            if (addr) {
                 setSameAsBilling(true);
+                setInstallAddress(addr);
+            }
+
+            const vehicleHint = state.serviceSpecs?.vehicle_details?.trim();
+            const hasRealVehicle = Boolean(vehicleHint && vehicleHint.toUpperCase() !== "N/A");
+            const prodType = (productItem?.originalData?.type || "").toLowerCase();
+
+            if (prodType.includes("invert") || (state.isNewConnection && !hasRealVehicle)) {
+                setUsageType("Home");
+                setInstallationRequired(true);
+            } else if (hasRealVehicle) {
+                setUsageType("Vehicle");
+                setVehicleModel(vehicleHint || "");
             }
         } else if (serviceItem?.originalData) {
             const svc = serviceItem.originalData;
             setCustomerInfo(prev => ({
                 ...prev,
                 name: svc.customer_name || "",
-                phone: svc.contact_number || "+91 ",
+                phone: formatIndianPhone(svc.contact_number),
                 billingAddress: svc.address || ""
             }));
         }
-    }, [hasService, serviceItem, state?.fromService, state?.customerInfo]);
+    }, [hasService, serviceItem, productItem, state?.fromService, state?.isNewConnection, state?.customerInfo, state?.serviceSpecs]);
 
     /* Same-as-billing checkbox logic */
     useEffect(() => {
@@ -230,16 +267,10 @@ export function Checkout() {
 
     /* ── Build invoice state helper ── */
     const buildInvoiceState = () => {
-        let formattedVehicleDetails = "";
-        let formattedInstallAddress = "";
-
-        if (usageType === "Vehicle") {
-            formattedVehicleDetails = vehicleNumber
-                ? `Vehicle: ${vehicleNumber}${vehicleModel ? ` (${vehicleModel})` : ""}`
-                : (vehicleModel ? `Vehicle: ${vehicleModel}` : "Vehicle");
-        } else if (usageType === "Home" && installationRequired) {
-            formattedInstallAddress = sameAsBilling ? customerInfo.billingAddress : installAddress;
-        }
+        const formattedVehicleDetails = vehicleModel ? `Vehicle: ${vehicleModel}` : "";
+        const formattedInstallAddress = installationRequired
+            ? (sameAsBilling ? customerInfo.billingAddress : installAddress)
+            : "";
 
         return {
             ...state,
@@ -251,12 +282,12 @@ export function Checkout() {
             usageType,
             productType: usageType,
             vehicleModel,
-            vehicleNumber,
+            vehicleNumber: "",
             vehicleDetails: formattedVehicleDetails,
-            installationRequired: usageType === "Home" ? installationRequired : false,
+            installationRequired,
             sameAsBilling,
             installAddress: formattedInstallAddress,
-            landmark: (usageType === "Home" && installationRequired) ? landmark : "",
+            landmark: "",
             warrantyDetails: {
                 totalWarranty: `${totalWarrantyVal} ${warrantyUnit}`,
                 totalWarrantyExpiry,
@@ -278,28 +309,26 @@ export function Checkout() {
     /* ── Submit Sale / Quotation ── */
     const handleProcessSale = async () => {
         if (!customerInfo.name.trim()) { alert("Customer name is required."); return; }
-        if (!customerInfo.phone.replace("+91 ", "").trim()) { alert("Phone number is required."); return; }
+        if (!isValidMobile10(customerInfo.phone)) { alert("Please enter a valid 10-digit mobile number."); return; }
+
+        const formattedName = capitalizeEachWord(customerInfo.name.trim());
+        const normalizedPhone = normalizeMobile10(customerInfo.phone);
+        const formattedBillingAddr = capitalizeFirstLetter(customerInfo.billingAddress);
+        const formattedInstallAddr = capitalizeFirstLetter(installAddress);
 
         setLoading(true);
         try {
-            let vehicleDetailsPayload = "";
-            let installAddressPayload = "";
-
-            if (usageType === "Vehicle") {
-                vehicleDetailsPayload = vehicleNumber
-                    ? `Vehicle: ${vehicleNumber}${vehicleModel ? ` (${vehicleModel})` : ""}`
-                    : (vehicleModel ? `Vehicle: ${vehicleModel}` : "Vehicle");
-            } else if (usageType === "Home" && installationRequired) {
-                const baseAddr = sameAsBilling ? customerInfo.billingAddress : installAddress;
-                installAddressPayload = baseAddr + (landmark ? (baseAddr ? `\nLandmark: ${landmark}` : `Landmark: ${landmark}`) : "");
-            }
+            const vehicleDetailsPayload = vehicleModel ? `Vehicle: ${vehicleModel}` : "";
+            const installAddressPayload = installationRequired
+                ? (sameAsBilling ? formattedBillingAddr : formattedInstallAddr)
+                : "";
 
             const saleData = {
-                customer_name: customerInfo.name || "Walk-in Customer",
-                customer_phone: customerInfo.phone,
+                customer_name: formattedName || "Walk-in Customer",
+                customer_phone: normalizedPhone,
                 vehicle_details: vehicleDetailsPayload,
                 installation_address: installAddressPayload,
-                product_category: state?.fromService ? "Converted to New Order" : usageType,
+                product_category: state?.fromService ? (state?.isNewConnection ? "New Connection" : "Converted to New Order") : usageType,
                 type: state.isQuotation ? "Quotation" : "Sale",
                 items: state.items.map(item => ({
                     product_id: item.type === "Product" ? Number(item.id) : null,
@@ -356,7 +385,7 @@ export function Checkout() {
         setWarrantyUnit(newUnit);
     };
 
-    const inputClass = "bg-gray-50/50 hover:bg-white focus:bg-white dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] h-10 sm:h-11 text-gray-900 dark:text-[#FFFFFF] text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 rounded-xl transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 px-3.5";
+    const inputClass = "bg-gray-50/50 hover:bg-white focus:bg-white dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] h-9 sm:h-10 text-gray-900 dark:text-[#FFFFFF] text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#2E6DFF]/20 rounded-xl transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 px-3";
     const chargeInput = "bg-transparent border-none w-20 text-right font-black text-gray-900 dark:text-[#FFFFFF] focus:ring-0 outline-none p-0 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500";
 
     return (
@@ -366,33 +395,33 @@ export function Checkout() {
             {/* ── Fixed Compact Checkout Header ── */}
             <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-[#0D121F]/90 backdrop-blur-md border-b border-gray-200 dark:border-[#25314D] px-3.5 py-2.5 flex items-center justify-between shadow-xs">
                 <button
-                    onClick={() => navigate(-1)}
+                    onClick={() => setShowBackConfirm(true)}
                     className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#161D30] rounded-xl transition-colors text-gray-700 dark:text-gray-200"
+                    aria-label="Go back"
                 >
                     <ArrowLeft className="w-4 h-4" />
                 </button>
-                <h1 className="text-base sm:text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase">
+                <h1 className="text-sm sm:text-base font-black text-gray-900 dark:text-white tracking-tight uppercase">
                     {state.isQuotation ? "Quotation Details" : "Final Checkout"}
                 </h1>
                 <div className="w-7" />
             </header>
 
-            <main className="flex-1 px-2 sm:px-4 pt-16 pb-6 space-y-3.5 max-w-2xl mx-auto w-full">
-
-                {/* ── Section: Customer Details ── */}
-                <div className="bg-white dark:bg-[#0D121F] rounded-2xl border border-gray-200 dark:border-[#25314D] shadow-xs overflow-hidden">
-                    <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#161D30]/80 border-b border-gray-200 dark:border-[#25314D] flex items-center gap-2">
-                        <User className="w-4 h-4 text-blue-600" />
-                        <h2 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Customer Details</h2>
-                    </div>
-
-                    <div className="p-3.5 sm:p-4 space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                            <Field label="Full Name">
+            <main className="flex-1 px-2.5 sm:px-4 pt-14 pb-6 max-w-2xl mx-auto w-full">
+                {/* Single Unified Compact Checkout Card */}
+                <div
+                    data-testid="checkout-unified-card"
+                    className="bg-white dark:bg-[#0D121F] rounded-2xl border border-gray-200 dark:border-[#25314D] shadow-xs divide-y divide-gray-100 dark:divide-[#25314D] overflow-hidden"
+                >
+                    {/* 1. Customer Inputs: Name, Mobile Number, Address, Installation Required */}
+                    <div className="p-3.5 sm:p-4 space-y-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <Field label="Name">
                                 <Input
                                     type="text"
+                                    aria-label="Name"
                                     value={customerInfo.name}
-                                    onChange={(e) => !hasService && setCustomerInfo({ ...customerInfo, name: e.target.value })}
+                                    onChange={(e) => !hasService && setCustomerInfo({ ...customerInfo, name: capitalizeEachWord(e.target.value) })}
                                     readOnly={hasService}
                                     className={inputClass}
                                     placeholder="e.g. Ganesh S"
@@ -402,6 +431,7 @@ export function Checkout() {
                                 <div className="flex items-center gap-1.5">
                                     <Input
                                         type="tel"
+                                        aria-label="Mobile Number"
                                         value={customerInfo.phone}
                                         onChange={(e) => {
                                             const val = e.target.value;
@@ -412,97 +442,31 @@ export function Checkout() {
                                         placeholder="+91 98765 43210"
                                     />
                                     {customerInfo.phone && customerInfo.phone.replace(/\D/g, "").length > 2 && (
-                                        <ContactActions phoneNumber={customerInfo.phone} iconSize={16} className="p-1" />
+                                        <ContactActions phoneNumber={customerInfo.phone} iconSize={14} className="shrink-0" />
                                     )}
                                 </div>
                             </Field>
                         </div>
-                        <Field label="Billing Address">
+
+                        <Field label="Address">
                             <textarea
+                                aria-label="Address"
                                 value={customerInfo.billingAddress}
                                 onChange={(e) => {
-                                    setCustomerInfo({ ...customerInfo, billingAddress: e.target.value });
-                                    if (sameAsBilling) setInstallAddress(e.target.value);
+                                    const nextAddr = capitalizeFirstLetter(e.target.value);
+                                    setCustomerInfo({ ...customerInfo, billingAddress: nextAddr });
+                                    if (sameAsBilling) setInstallAddress(nextAddr);
                                 }}
                                 rows={2}
-                                className="w-full bg-gray-50/50 hover:bg-white focus:bg-white dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:text-gray-400 min-h-[52px]"
+                                className="w-full bg-gray-50/50 hover:bg-white focus:bg-white dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] rounded-xl px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:text-gray-400"
                                 placeholder="Door No, Street, City, Pincode"
                             />
                         </Field>
-                    </div>
-                </div>
 
-                {/* ── Section: Installation Info ── */}
-                {!state.isQuotation && (
-                <div className="bg-white dark:bg-[#0D121F] rounded-2xl border border-gray-200 dark:border-[#25314D] shadow-xs overflow-hidden">
-                    <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#161D30]/80 border-b border-gray-200 dark:border-[#25314D] flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-blue-600" />
-                        <h2 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Installation Info</h2>
-                    </div>
-
-                    <div className="p-3.5 sm:p-4 space-y-3">
-                        <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider ml-0.5">
-                                Usage Selection
-                            </label>
-                            <div className="flex flex-row gap-2.5">
-                                <label
-                                    onClick={() => setUsageType("Vehicle")}
-                                    className={`flex-1 flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${usageType === "Vehicle" ? "border-blue-600 bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300"}`}
-                                >
-                                    <input
-                                        type="radio"
-                                        name="usageType"
-                                        checked={usageType === "Vehicle"}
-                                        onChange={() => setUsageType("Vehicle")}
-                                        className="w-3.5 h-3.5 text-blue-600 accent-blue-600"
-                                    />
-                                    <span className="text-xs font-bold uppercase tracking-wider">Vehicle Usage</span>
-                                </label>
-
-                                <label
-                                    onClick={() => setUsageType("Home")}
-                                    className={`flex-1 flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${usageType === "Home" ? "border-blue-600 bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300"}`}
-                                >
-                                    <input
-                                        type="radio"
-                                        name="usageType"
-                                        checked={usageType === "Home"}
-                                        onChange={() => setUsageType("Home")}
-                                        className="w-3.5 h-3.5 text-blue-600 accent-blue-600"
-                                    />
-                                    <span className="text-xs font-bold uppercase tracking-wider">Home / UPS Usage</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        {usageType === "Vehicle" && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 pt-1 animate-in fade-in duration-200">
-                                <Field label="Vehicle Model">
-                                    <Input
-                                        type="text"
-                                        value={vehicleModel}
-                                        onChange={(e) => setVehicleModel(e.target.value)}
-                                        className={inputClass}
-                                        placeholder="e.g. Swift VDi / Honda Activa"
-                                    />
-                                </Field>
-                                <Field label="Vehicle Number">
-                                    <Input
-                                        type="text"
-                                        value={vehicleNumber}
-                                        onChange={(e) => setVehicleNumber(e.target.value)}
-                                        className={inputClass}
-                                        placeholder="e.g. TN 38 BU 1234"
-                                    />
-                                </Field>
-                            </div>
-                        )}
-
-                        {usageType === "Home" && (
-                            <div className="space-y-3 pt-1 animate-in fade-in duration-200">
-                                <div>
-                                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                        {!state.isQuotation && (
+                            <div className="pt-0.5 space-y-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <label className="inline-flex items-center gap-2 cursor-pointer">
                                         <input
                                             type="checkbox"
                                             checked={installationRequired}
@@ -513,390 +477,252 @@ export function Checkout() {
                                             Installation Required
                                         </span>
                                     </label>
+
+                                    {installationRequired && (
+                                        <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={sameAsBilling}
+                                                onChange={(e) => {
+                                                    const checked = e.target.checked;
+                                                    setSameAsBilling(checked);
+                                                    if (checked) setInstallAddress(customerInfo.billingAddress);
+                                                }}
+                                                className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 accent-blue-600 cursor-pointer"
+                                            />
+                                            <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-400">
+                                                Same as Address
+                                            </span>
+                                        </label>
+                                    )}
                                 </div>
 
-                                {installationRequired && (
-                                    <div className="space-y-3 pt-1 pl-2 border-l-2 border-blue-500/20">
-                                        <div>
-                                            <label className="flex items-center gap-2.5 cursor-pointer group">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={sameAsBilling}
-                                                    onChange={(e) => {
-                                                        const checked = e.target.checked;
-                                                        setSameAsBilling(checked);
-                                                        if (checked) setInstallAddress(customerInfo.billingAddress);
-                                                    }}
-                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 accent-blue-600"
-                                                />
-                                                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Same as Billing Address</span>
-                                            </label>
-                                        </div>
-
-                                        {sameAsBilling && (
-                                            <Field label="Landmark">
-                                                <Input
-                                                    type="text"
-                                                    value={landmark}
-                                                    onChange={(e) => setLandmark(e.target.value)}
-                                                    className={inputClass}
-                                                    placeholder="e.g. Near Pillayar Temple"
-                                                />
-                                            </Field>
-                                        )}
-
-                                        {!sameAsBilling && (
-                                            <div className="space-y-2.5 animate-in slide-in-from-top-1 duration-200">
-                                                <Field label="Installation Address">
-                                                    <textarea
-                                                        value={installAddress}
-                                                        onChange={(e) => setInstallAddress(e.target.value)}
-                                                        rows={2}
-                                                        className="w-full bg-gray-50/50 hover:bg-white focus:bg-white dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#2E6DFF]/20 outline-none resize-none transition-all placeholder:text-gray-400 min-h-[52px]"
-                                                        placeholder="Specific installation location..."
-                                                    />
-                                                </Field>
-                                                <Field label="Landmark">
-                                                    <Input
-                                                        type="text"
-                                                        value={landmark}
-                                                        onChange={(e) => setLandmark(e.target.value)}
-                                                        className={inputClass}
-                                                        placeholder="e.g. Near Pillayar Temple"
-                                                    />
-                                                </Field>
-                                            </div>
-                                        )}
-                                    </div>
+                                {installationRequired && !sameAsBilling && (
+                                    <Input
+                                        type="text"
+                                        aria-label="Installation Address"
+                                        value={installAddress}
+                                        onChange={(e) => setInstallAddress(capitalizeFirstLetter(e.target.value))}
+                                        className={inputClass}
+                                        placeholder="Specific installation address & landmark..."
+                                    />
                                 )}
                             </div>
                         )}
                     </div>
-                </div>
-                )}
 
-                {/* ── Section: Warranty Registration ── */}
-                {!state.isQuotation && (
-                    <div className="bg-white dark:bg-[#0D121F] rounded-2xl border border-gray-200 dark:border-[#25314D] shadow-xs overflow-hidden">
-                        <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#161D30]/80 border-b border-gray-200 dark:border-[#25314D] flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <ShieldCheck className="w-4 h-4 text-blue-600" />
-                                <h2 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Warranty Registration</h2>
-                            </div>
-                            {!isWarrantyEditable ? (
+                    {/* 2. Ordered Items Details */}
+                    <div className="p-3.5 sm:p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                Ordered Items ({state.items.length})
+                            </span>
+                            {!state.isQuotation && (
                                 <button
                                     type="button"
-                                    onClick={() => setIsWarrantyEditable(true)}
-                                    className="px-2.5 py-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-lg transition-all uppercase tracking-wider"
+                                    onClick={() => setShowExtras(!showExtras)}
+                                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 hover:underline"
                                 >
-                                    Edit
+                                    <span>Charges / Exchange / Warranty</span>
+                                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showExtras ? "rotate-180" : ""}`} />
                                 </button>
-                            ) : (
-                                <div className="flex bg-gray-100 dark:bg-[#161D30] p-0.5 rounded-lg border border-gray-200 dark:border-[#25314D]">
-                                    <button
-                                        onClick={() => handleUnitChange("Months")}
-                                        className={`px-2.5 py-1 rounded-md text-[9px] font-bold transition-all ${warrantyUnit === "Months" ? "bg-blue-600 text-white" : "text-gray-500 dark:text-white/40"}`}
-                                    >
-                                        MONTHS
-                                    </button>
-                                    <button
-                                        onClick={() => handleUnitChange("Years")}
-                                        className={`px-2.5 py-1 rounded-md text-[9px] font-bold transition-all ${warrantyUnit === "Years" ? "bg-blue-600 text-white" : "text-gray-500 dark:text-white/40"}`}
-                                    >
-                                        YEARS
-                                    </button>
-                                </div>
                             )}
                         </div>
 
-                        <div className="p-3.5 sm:p-4 space-y-3">
-                            <div className="space-y-2">
-                                <WarrantyInput
-                                    label="Total Warranty"
-                                    value={totalWarrantyVal}
-                                    onValueChange={setTotalWarrantyVal}
-                                    disabled={!isWarrantyEditable}
-                                />
-                                <div className="h-px bg-gray-100 dark:bg-gray-800 w-full" />
-                                <WarrantyInput
-                                    label="Free Replacement"
-                                    value={freeReplacementVal}
-                                    onValueChange={setFreeReplacementVal}
-                                    disabled={!isWarrantyEditable}
-                                />
-                            </div>
-                            {(parseInt(totalWarrantyVal) > 0 || parseInt(freeReplacementVal) > 0) && (
-                                <div className="bg-blue-50/60 dark:bg-blue-950/20 rounded-xl p-3 space-y-1 border border-blue-100 dark:border-blue-900/30">
-                                    <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Calculated Expiry Dates</p>
-                                    {parseInt(totalWarrantyVal) > 0 && (
-                                        <p className="text-xs text-gray-800 dark:text-white font-semibold">
-                                            Total Warranty: <span className="text-blue-600 dark:text-blue-400 font-bold">{totalWarrantyExpiry}</span>
+                        <div className="divide-y divide-gray-100 dark:divide-[#25314D] rounded-xl border border-gray-100 dark:border-[#25314D] bg-gray-50/40 dark:bg-[#070A13]/40">
+                            {state.items.map((item) => (
+                                <div key={item.id} className="px-3 py-2 flex justify-between items-center gap-2">
+                                    <div className="min-w-0">
+                                        <p className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate">
+                                            {item.name} {item.model}
                                         </p>
-                                    )}
-                                    {parseInt(freeReplacementVal) > 0 && (
-                                        <p className="text-xs text-gray-800 dark:text-white font-semibold">
-                                            Free Replacement: <span className="text-blue-600 dark:text-blue-400 font-bold">{freeReplacementExpiry}</span>
+                                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold">
+                                            {item.quantity} × ₹{item.price.toLocaleString()}
                                         </p>
-                                    )}
+                                    </div>
+                                    <p className="text-xs sm:text-sm font-black text-gray-900 dark:text-white shrink-0">
+                                        ₹{(item.price * item.quantity).toLocaleString()}
+                                    </p>
                                 </div>
-                            )}
+                            ))}
                         </div>
-                    </div>
-                )}
 
-                {/* ── Section: Order Items & Charges ── */}
-                <div className="bg-white dark:bg-[#0D121F] rounded-2xl border border-gray-200 dark:border-[#25314D] shadow-xs overflow-hidden">
-                    <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-[#161D30]/80 border-b border-gray-200 dark:border-[#25314D] flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-blue-600" />
-                        <h2 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Order Items & Charges</h2>
-                    </div>
+                        {/* Optional collapsed charges, exchange & warranty */}
+                        {!state.isQuotation && showExtras && (
+                            <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] space-y-2.5">
+                                <div className="grid grid-cols-2 gap-2.5">
+                                    <ChargeRow label="Install ₹">
+                                        <input
+                                            type="number" min="0"
+                                            value={installCharges || ""}
+                                            onChange={(e) => setInstallCharges(Number(e.target.value))}
+                                            className={chargeInput} placeholder="0"
+                                        />
+                                    </ChargeRow>
+                                    <ChargeRow label="Delivery ₹">
+                                        <input
+                                            type="number" min="0"
+                                            value={deliveryCharges || ""}
+                                            onChange={(e) => setDeliveryCharges(Number(e.target.value))}
+                                            className={chargeInput} placeholder="0"
+                                        />
+                                    </ChargeRow>
+                                </div>
 
-                    <div className="divide-y divide-gray-100 dark:divide-[#25314D]">
-                        {state.items.map((item) => (
-                            <div key={item.id} className="p-3.5 flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${item.type === "Product" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"}`}>
-                                        {item.type === "Product" ? <Zap className="w-4 h-4" /> : <Wrench className="w-4 h-4" />}
+                                <div className="pt-2 border-t border-gray-200 dark:border-[#25314D] space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase">Warranty ({totalWarrantyExpiry})</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsWarrantyEditable(!isWarrantyEditable)}
+                                            className="text-[10px] font-bold text-blue-600 hover:underline"
+                                        >
+                                            {isWarrantyEditable ? "Done" : "Edit"}
+                                        </button>
                                     </div>
-                                    <div>
-                                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white tracking-tight">{item.name} {item.model}</h3>
-                                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
-                                            {item.quantity} unit(s) · ₹{item.price.toLocaleString()}
-                                        </p>
-                                    </div>
-                                </div>
-                                <p className="text-sm sm:text-base font-black text-gray-900 dark:text-white tracking-tight">₹{(item.price * item.quantity).toLocaleString()}</p>
-                            </div>
-                        ))}
-                    </div>
-
-                    {!state.isQuotation && (
-                        <div className="p-3.5 bg-gray-50/50 dark:bg-[#070A13]/50 space-y-3 border-t border-gray-200 dark:border-[#25314D]">
-                            <ChargeRow label="Installation Charges" sublabel="No GST applied">
-                                <div className="flex items-center bg-white dark:bg-[#070A13] rounded-xl px-3 py-1.5 border border-gray-200 dark:border-[#25314D]">
-                                    <span className="text-gray-900 dark:text-white font-bold text-xs mr-1">₹</span>
-                                    <input
-                                        type="number" min="0"
-                                        value={installCharges || ""}
-                                        onChange={(e) => setInstallCharges(Number(e.target.value))}
-                                        className={chargeInput} placeholder="0"
-                                    />
-                                </div>
-                            </ChargeRow>
-
-                            <ChargeRow label="Delivery Charges" sublabel="No GST applied">
-                                <div className="flex items-center bg-white dark:bg-[#070A13] rounded-xl px-3 py-1.5 border border-gray-200 dark:border-[#25314D]">
-                                    <Truck className="w-3.5 h-3.5 text-gray-500 mr-1.5" />
-                                    <input
-                                        type="number" min="0"
-                                        value={deliveryCharges || ""}
-                                        onChange={(e) => setDeliveryCharges(Number(e.target.value))}
-                                        className={chargeInput} placeholder="0"
-                                    />
-                                </div>
-                            </ChargeRow>
-
-                            {/* Old Battery Exchange */}
-                            <div className="space-y-1.5 pt-1">
-                                <div className="flex items-center gap-1.5">
-                                    <RefreshCcw className="w-3.5 h-3.5 text-rose-500" />
-                                    <span className="text-xs font-bold text-rose-500 uppercase tracking-wider">Old Battery Exchange</span>
-                                </div>
-                                {loadingExchanges ? (
-                                    <p className="text-xs text-gray-400 py-1">Loading exchanges…</p>
-                                ) : exchangeRecords.length === 0 ? (
-                                    <div className="bg-white dark:bg-[#070A13] rounded-xl p-3 border border-dashed border-gray-200 dark:border-[#25314D] text-center">
-                                        <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">No pending exchange records found</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-1.5">
-                                        {selectedExchange && (
-                                            <button
-                                                onClick={() => setSelectedExchange(null)}
-                                                className="text-[10px] text-gray-500 hover:text-gray-700 underline"
-                                            >
-                                                Remove exchange selection
-                                            </button>
-                                        )}
-                                        {exchangeRecords.map(rec => (
-                                            <div
-                                                key={rec.id}
-                                                onClick={() => setSelectedExchange(selectedExchange?.id === rec.id ? null : rec)}
-                                                className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${selectedExchange?.id === rec.id
-                                                    ? "border-rose-500 bg-rose-50 dark:bg-rose-950/20"
-                                                    : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13]"
-                                                    }`}
-                                            >
-                                                <div>
-                                                    <p className="text-xs font-bold text-gray-900 dark:text-white">{rec.battery_brand} {rec.battery_model}</p>
-                                                    <p className="text-[10px] text-gray-500 font-medium">{rec.customer_name}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-sm font-black text-rose-500">- ₹{Number(rec.valuation_amount).toLocaleString()}</p>
-                                                </div>
+                                    {isWarrantyEditable && (
+                                        <div className="space-y-1.5">
+                                            <div className="flex gap-1.5">
+                                                <button type="button" onClick={() => handleUnitChange("Months")} className={`px-2 py-0.5 rounded text-[9px] font-bold ${warrantyUnit === "Months" ? "bg-blue-600 text-white" : "bg-gray-200 dark:bg-gray-800"}`}>MONTHS</button>
+                                                <button type="button" onClick={() => handleUnitChange("Years")} className={`px-2 py-0.5 rounded text-[9px] font-bold ${warrantyUnit === "Years" ? "bg-blue-600 text-white" : "bg-gray-200 dark:bg-gray-800"}`}>YEARS</button>
                                             </div>
+                                            <WarrantyInput label="Total Warranty" value={totalWarrantyVal} onValueChange={setTotalWarrantyVal} />
+                                            <WarrantyInput label="Free Replacement" value={freeReplacementVal} onValueChange={setFreeReplacementVal} />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {!loadingExchanges && exchangeRecords.length > 0 && (
+                                    <div className="pt-2 border-t border-gray-200 dark:border-[#25314D] space-y-1">
+                                        <span className="text-[10px] font-bold text-rose-500 uppercase">Old Battery Exchange</span>
+                                        {exchangeRecords.map(rec => (
+                                            <button
+                                                key={rec.id}
+                                                type="button"
+                                                onClick={() => setSelectedExchange(selectedExchange?.id === rec.id ? null : rec)}
+                                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-left text-xs ${selectedExchange?.id === rec.id ? "border-rose-500 bg-rose-50 dark:bg-rose-950/20" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#0D121F]"}`}
+                                            >
+                                                <span className="font-semibold truncate">{rec.battery_brand} {rec.battery_model} ({rec.customer_name})</span>
+                                                <span className="font-black text-rose-500 shrink-0">- ₹{Number(rec.valuation_amount).toLocaleString()}</span>
+                                            </button>
                                         ))}
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    )}
-
-                    <div className="p-3.5 space-y-1.5 bg-gray-50/30 dark:bg-[#070A13]/30 border-t border-gray-200 dark:border-[#25314D]">
-                        {serviceSubtotal > 0 && (
-                            <SummaryRow label="Service Charges" value={`₹${serviceSubtotal.toLocaleString()}`} />
                         )}
-                        <SummaryRow label={`Product Subtotal`} value={`₹${productSubtotal.toLocaleString()}`} />
-                        {gstEnabled && (
-                            <SummaryRow label="Product GST (18%)" value={`₹${productGst.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
-                        )}
-                        {installCharges > 0 && <SummaryRow label="Installation Charges" value={`₹${installCharges.toLocaleString()}`} />}
-                        {deliveryCharges > 0 && <SummaryRow label="Delivery Charges" value={`₹${deliveryCharges.toLocaleString()}`} />}
-                        {exchangeDiscount > 0 && (
-                            <SummaryRow label="Exchange Discount" value={`- ₹${exchangeDiscount.toLocaleString()}`} accent="text-rose-500" />
-                        )}
-                    </div>
-                </div>
 
-                {/* ── Payment Method & Action Card ── */}
-                <div className="bg-white dark:bg-[#0D121F] rounded-2xl border border-gray-200 dark:border-[#25314D] p-3.5 sm:p-4 space-y-3.5 shadow-xs relative overflow-hidden">
-                    <div className="space-y-1.5 relative z-10">
-                        <label className="text-[11px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block ml-0.5">
-                            Billing Selection (GST / Non-GST)
-                        </label>
-                        <div className="flex flex-row gap-2.5">
-                            <label
-                                onClick={() => setGstEnabled(true)}
-                                className={`flex-1 flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${gstEnabled ? "border-blue-600 bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300"}`}
-                            >
-                                <input
-                                    type="radio"
-                                    name="gstBillingType"
-                                    checked={gstEnabled}
-                                    onChange={() => setGstEnabled(true)}
-                                    className="w-3.5 h-3.5 text-blue-600 accent-blue-600"
-                                />
-                                <div>
-                                    <p className="text-xs font-bold uppercase tracking-wider">GST Tax Invoice</p>
-                                </div>
-                            </label>
-
-                            <label
-                                onClick={() => setGstEnabled(false)}
-                                className={`flex-1 flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${!gstEnabled ? "border-blue-600 bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400" : "border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-700 dark:text-gray-300"}`}
-                            >
-                                <input
-                                    type="radio"
-                                    name="gstBillingType"
-                                    checked={!gstEnabled}
-                                    onChange={() => setGstEnabled(false)}
-                                    className="w-3.5 h-3.5 text-blue-600 accent-blue-600"
-                                />
-                                <div>
-                                    <p className="text-xs font-bold uppercase tracking-wider">Non-GST / Cash Bill</p>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Grand Total Display */}
-                    <div className="flex items-end justify-between relative z-10 pt-2 border-t border-gray-100 dark:border-[#25314D]">
-                        <div>
-                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">
-                                Grand Total Payable
-                            </p>
-                            <p className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
-                                ₹{Math.max(0, grandTotal).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                            </p>
-                        </div>
-                        <div className="bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                            <div className="flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Confirmed</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Payment Method Selection */}
-                    {!state.isQuotation && (
-                        <>
-                            <div className="space-y-1 relative z-10">
-                                <label className="text-[11px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block ml-0.5">Transaction Method</label>
-                                <div className="relative">
-                                    <select
-                                        value={paymentMethod}
-                                        onChange={(e) => {
-                                            const val = e.target.value as "Cash" | "UPI" | "Split";
-                                            setPaymentMethod(val);
-                                            if (val === "Split") setCashPart(0);
-                                        }}
-                                        className="w-full bg-white dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] rounded-xl px-3.5 h-11 text-gray-900 dark:text-white font-bold text-xs sm:text-sm focus:ring-2 focus:ring-blue-500/20 outline-none appearance-none cursor-pointer transition-all pr-10"
-                                    >
-                                        <option value="Cash">Cash Transaction</option>
-                                        <option value="UPI">UPI / QR Payment</option>
-                                        <option value="Split">Split Payment (Mix Mode)</option>
-                                    </select>
-                                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {paymentMethod === "Split" && (
-                                <div className="grid grid-cols-2 gap-3 relative z-10 animate-in fade-in duration-200">
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider ml-0.5">Cash Part</label>
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-900 dark:text-white font-bold text-xs">₹</span>
-                                            <input
-                                                type="number"
-                                                value={cashPart || ""}
-                                                onChange={(e) => {
-                                                    const val = Math.min(grandTotal, Math.max(0, Number(e.target.value)));
-                                                    setCashPart(val);
-                                                }}
-                                                className="w-full pl-7 pr-3 py-2 rounded-xl border border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                placeholder="0"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider ml-0.5">UPI Part</label>
-                                        <div className="w-full bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-xl flex items-center px-3 h-9 text-xs font-bold text-blue-600 dark:text-blue-400">
-                                            ₹{(grandTotal - cashPart).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                                        </div>
-                                    </div>
-                                </div>
+                        <div className="space-y-1 pt-1 text-xs">
+                            {serviceSubtotal > 0 && <SummaryRow label="Service Charges" value={`₹${serviceSubtotal.toLocaleString()}`} />}
+                            <SummaryRow label="Product Subtotal" value={`₹${productSubtotal.toLocaleString()}`} />
+                            {gstEnabled && (
+                                <SummaryRow label="GST (18%)" value={`₹${productGst.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
                             )}
-                        </>
-                    )}
+                            {installCharges > 0 && <SummaryRow label="Installation" value={`₹${installCharges.toLocaleString()}`} />}
+                            {deliveryCharges > 0 && <SummaryRow label="Delivery" value={`₹${deliveryCharges.toLocaleString()}`} />}
+                            {exchangeDiscount > 0 && <SummaryRow label="Exchange Discount" value={`- ₹${exchangeDiscount.toLocaleString()}`} accent="text-rose-500" />}
+                        </div>
+                    </div>
 
-                    {/* Submit Action Button */}
-                    <Button
-                        onClick={handleProcessSale}
-                        disabled={loading}
-                        className={`w-full text-white h-12 sm:h-13 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2.5 relative z-10 ${paymentMethod === "Cash"
-                            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                            : paymentMethod === "Split"
-                                ? "bg-gradient-to-r from-emerald-600 via-blue-600 to-indigo-600 hover:opacity-95 text-white"
-                                : "bg-blue-600 hover:bg-blue-700 text-white"
-                            }`}
-                    >
-                        {loading ? (
-                            <Zap className="w-5 h-5 animate-spin" />
-                        ) : (
-                            <>
-                                {paymentMethod === "Cash" ? <Banknote className="w-4 h-4" /> : paymentMethod === "Split" ? <RefreshCcw className="w-4 h-4" /> : <QrCode className="w-4 h-4" />}
-                                <span>
-                                    {state.isQuotation ? "Confirm Quotation Details" : "Generate Bill & Pay"}
+                    {/* 3. GST Checkbox, Payment Method, Grand Total & Submit */}
+                    <div className="p-3.5 sm:p-4 space-y-3 bg-gray-50/30 dark:bg-[#070A13]/30">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <label className="inline-flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={gstEnabled}
+                                    onChange={(e) => setGstEnabled(e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
+                                />
+                                <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                    GST Invoice (18%)
                                 </span>
-                            </>
-                        )}
-                    </Button>
-                </div>
+                                <span className="text-[10px] font-semibold text-gray-500">
+                                    ({gstEnabled ? "GST" : "Non-GST"})
+                                </span>
+                            </label>
 
-                <div className="h-10" />
+                            {!state.isQuotation && (
+                                <select
+                                    aria-label="Transaction Method"
+                                    value={paymentMethod}
+                                    onChange={(e) => {
+                                        const val = e.target.value as "Cash" | "UPI" | "Split";
+                                        setPaymentMethod(val);
+                                        if (val === "Split") setCashPart(0);
+                                    }}
+                                    className="bg-white dark:bg-[#070A13] border border-gray-200 dark:border-[#25314D] rounded-xl px-2.5 h-8 text-gray-900 dark:text-white font-bold text-xs focus:ring-2 focus:ring-blue-500/20 outline-none cursor-pointer"
+                                >
+                                    <option value="Cash">Cash</option>
+                                    <option value="UPI">UPI / QR</option>
+                                    <option value="Split">Split (Cash + UPI)</option>
+                                </select>
+                            )}
+                        </div>
+
+                        {!state.isQuotation && paymentMethod === "Split" && (
+                            <div className="grid grid-cols-2 gap-2.5 animate-in fade-in duration-200">
+                                <div className="relative">
+                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-900 dark:text-white font-bold text-xs">₹</span>
+                                    <input
+                                        type="number"
+                                        aria-label="Cash Part"
+                                        value={cashPart || ""}
+                                        onChange={(e) => setCashPart(Math.min(grandTotal, Math.max(0, Number(e.target.value))))}
+                                        className="w-full pl-6 pr-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-[#25314D] bg-white dark:bg-[#070A13] text-gray-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Cash amount"
+                                    />
+                                </div>
+                                <div className="w-full bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-xl flex items-center px-3 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">
+                                    UPI: ₹{(grandTotal - cashPart).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-1">
+                            <div>
+                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Grand Total</p>
+                                <p data-testid="checkout-grand-total" className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+                                    ₹{Math.max(0, grandTotal).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                </p>
+                            </div>
+                            <Button
+                                onClick={handleProcessSale}
+                                disabled={loading}
+                                className={`text-white px-5 h-11 rounded-xl text-xs font-bold uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${paymentMethod === "Cash"
+                                    ? "bg-emerald-600 hover:bg-emerald-700"
+                                    : paymentMethod === "Split"
+                                        ? "bg-gradient-to-r from-emerald-600 via-blue-600 to-indigo-600 hover:opacity-95"
+                                        : "bg-blue-600 hover:bg-blue-700"
+                                    }`}
+                            >
+                                {loading ? (
+                                    <Zap className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <>
+                                        {paymentMethod === "Cash" ? <Banknote className="w-4 h-4" /> : paymentMethod === "Split" ? <RefreshCcw className="w-4 h-4" /> : <QrCode className="w-4 h-4" />}
+                                        <span>
+                                            {state.isQuotation ? "Confirm Quotation" : "Generate Bill & Pay"}
+                                        </span>
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             </main>
+
+            <MinimalConfirmDialog
+                isOpen={showBackConfirm}
+                title="Leave Checkout?"
+                message="Your checkout details will not be saved."
+                confirmLabel="Leave"
+                cancelLabel="Stay"
+                onConfirm={() => {
+                    setShowBackConfirm(false);
+                    navigate(-1);
+                }}
+                onCancel={() => setShowBackConfirm(false)}
+            />
         </div>
     );
 }

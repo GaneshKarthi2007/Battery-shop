@@ -252,8 +252,25 @@ describe("ServiceDetails Page Component", () => {
         });
     });
 
-    it("renders admin layout with Service Timeline when logged in as admin", async () => {
+    it("renders compact admin layout with assigned staff on right, gallery/timeline icons, clickable mobile quick contact, and hides Assign Staff when already assigned", async () => {
         mockUser = { id: 1, name: "Admin User", role: "admin" };
+        (apiClient.get as any).mockResolvedValue({
+            ...mockServiceData,
+            assigned_staff: { id: 2, name: "Staff User" },
+            sales: [
+                {
+                    id: 21,
+                    type: "Sale",
+                    customer_name: "Rajesh Kumar",
+                    total_amount: "6500",
+                    payment_method: "UPI",
+                    created_at: "2026-11-27T10:00:00.000Z",
+                    items: [
+                        { id: 1, product_id: 5, quantity: 1, price: "6500", product: { brand: "Exide", model: "Matrix Red", ah: "65Ah", price: 6500 } },
+                    ],
+                },
+            ],
+        });
 
         render(
             <MemoryRouter initialEntries={["/service/1"]}>
@@ -267,8 +284,190 @@ describe("ServiceDetails Page Component", () => {
             expect(screen.getByText("Service #SRV-1")).toBeInTheDocument();
         });
 
-        // Admin sees timeline
-        expect(screen.getByText("Service Timeline")).toBeInTheDocument();
-        expect(screen.getByText("Customer & Vehicle Information")).toBeInTheDocument();
+        // Assigned staff shown in top card right side, Assign Staff module hidden because already assigned
+        expect(screen.getByText("Staff User")).toBeInTheDocument();
+        expect(screen.queryByTestId("assign-staff-module")).not.toBeInTheDocument();
+
+        // Compact info card shows needed fields and no separate Quick Contact label
+        expect(screen.getByTestId("admin-compact-info")).toBeInTheDocument();
+        expect(screen.queryByText(/Quick Contact/i)).not.toBeInTheDocument();
+        expect(screen.getByText("Dead Battery")).toBeInTheDocument();
+        expect(screen.getByText("Battery not cranking the engine")).toBeInTheDocument();
+
+        // Clicking mobile number reveals Call & WhatsApp quick contact actions
+        fireEvent.click(screen.getByRole("button", { name: /9876543210/i }));
+        expect(screen.getByTestId("mobile-quick-contact-menu")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /^Call$/i })).toHaveAttribute("href", "tel:+919876543210");
+        expect(screen.getByRole("link", { name: /WhatsApp/i })).toHaveAttribute("href", "https://wa.me/919876543210");
+
+        // Linked Products section is visible
+        expect(screen.getByTestId("linked-products-card")).toBeInTheDocument();
+        expect(screen.getByText(/Exide Matrix Red × 1/i)).toBeInTheDocument();
+
+        // Timeline & Gallery open via icon buttons
+        expect(screen.queryByTestId("timeline-modal")).not.toBeInTheDocument();
+        fireEvent.click(screen.getByLabelText("Service Timeline"));
+        expect(screen.getByTestId("timeline-modal")).toBeInTheDocument();
+        fireEvent.click(screen.getByLabelText("Close Service Timeline"));
+
+        fireEvent.click(screen.getByLabelText("Job Site Photos"));
+        expect(screen.getByTestId("gallery-modal")).toBeInTheDocument();
+    });
+
+    it("hides Convert & Bill for New Connection jobs and shows Assign Staff only when unassigned", async () => {
+        mockUser = { id: 1, name: "Admin User", role: "admin" };
+        (apiClient.get as any).mockImplementation((url: string) => {
+            if (url === "/staff") {
+                return Promise.resolve([{ id: 2, name: "Staff User" }]);
+            }
+            return Promise.resolve({
+                ...mockServiceData,
+                assigned_to: undefined,
+                assigned_staff: undefined,
+                complaint_type: "New Connection",
+                complaint_details: "",
+            });
+        });
+
+        render(
+            <MemoryRouter initialEntries={["/service/1"]}>
+                <Routes>
+                    <Route path="/service/:id" element={<ServiceDetails />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText("Service #SRV-1")).toBeInTheDocument();
+        });
+
+        // Convert & Bill is hidden for New Connection
+        expect(screen.queryByRole("button", { name: /Convert & Bill/i })).not.toBeInTheDocument();
+
+        // Assign Staff module IS shown when unassigned
+        expect(screen.getByTestId("assign-staff-module")).toBeInTheDocument();
+
+        // Specific complaint details block is hidden when empty
+        expect(screen.queryByText(/Specific Complaint Details/i)).not.toBeInTheDocument();
+    });
+
+    it("requires product billing first for New Connection before allowing task completion", async () => {
+        (apiClient.get as any).mockResolvedValue({
+            ...mockServiceData,
+            id: 7,
+            complaint_type: "New Connection",
+            sales: [],
+        });
+
+        render(
+            <MemoryRouter initialEntries={["/service/7"]}>
+                <Routes>
+                    <Route path="/service/:id" element={<ServiceDetails />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText("New Connection — Product Billing Required")).toBeInTheDocument();
+        });
+
+        expect(screen.queryByRole("button", { name: /Complete Task/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /Request New Battery/i })).not.toBeInTheDocument();
+
+        const billBtn = screen.getByRole("button", { name: /Bill Product/i });
+        fireEvent.click(billBtn);
+
+        expect(mockNavigate).toHaveBeenCalledWith("/sales", {
+            state: expect.objectContaining({
+                fromService: true,
+                isNewConnection: true,
+                serviceId: 7,
+                customerInfo: {
+                    name: "Rajesh Kumar",
+                    phone: "9876543210",
+                    address: "",
+                },
+                serviceSpecs: expect.objectContaining({
+                    complaint_type: "New Connection",
+                }),
+            }),
+        });
+    });
+
+    it("follows the standard service completion and payment process for New Connection after product billing", async () => {
+        const billedNewConnection = {
+            ...mockServiceData,
+            id: 8,
+            complaint_type: "New Connection",
+            sales: [
+                {
+                    id: 99,
+                    type: "Sale",
+                    customer_name: "Rajesh Kumar",
+                    total_amount: "5500",
+                    payment_method: "Cash",
+                    created_at: "2026-11-27T10:00:00.000Z",
+                    items: [
+                        {
+                            id: 1,
+                            product_id: 10,
+                            quantity: 1,
+                            price: "5500",
+                            product: { brand: "Exide", model: "InvaTubular", ah: "150Ah", price: 5500 },
+                        },
+                    ],
+                },
+            ],
+        };
+        (apiClient.get as any).mockResolvedValue(billedNewConnection);
+        (apiClient.put as any).mockResolvedValue({ ...billedNewConnection, status: "Completed" });
+
+        render(
+            <MemoryRouter initialEntries={["/service/8"]}>
+                <Routes>
+                    <Route path="/service/:id" element={<ServiceDetails />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText(/Billed Product \(1\)/i)).toBeInTheDocument();
+            expect(screen.getByText(/Exide InvaTubular × 1/i)).toBeInTheDocument();
+        });
+
+        const completeBtn = screen.getByRole("button", { name: /Complete Task/i });
+        expect(completeBtn).toBeInTheDocument();
+        fireEvent.click(completeBtn);
+
+        await waitFor(() => {
+            expect(apiClient.put).toHaveBeenCalledWith("/services/8", { status: "Completed" });
+            expect(screen.getByLabelText("Service Charge Amount")).toBeInTheDocument();
+        });
+    });
+
+    it("shows minimalistic confirmation when staff clicks Back with unsaved notes or sub-status changes", async () => {
+        render(
+            <MemoryRouter initialEntries={["/service/1"]}>
+                <Routes>
+                    <Route path="/service/:id" element={<ServiceDetails />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText("Service #SRV-1")).toBeInTheDocument();
+        });
+
+        const noteInput = screen.getByPlaceholderText(/Add status notes/i);
+        fireEvent.change(noteInput, { target: { value: "battery voltage ok" } });
+        expect(noteInput).toHaveValue("Battery voltage ok");
+
+        fireEvent.click(screen.getByText("Back to Tasks"));
+        expect(screen.getByTestId("minimal-confirm-dialog")).toBeInTheDocument();
+        expect(screen.getByText("Unsaved Changes")).toBeInTheDocument();
+        expect(mockNavigate).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole("button", { name: /^Discard$/i }));
+        expect(mockNavigate).toHaveBeenCalledWith("/assigned-jobs");
     });
 });

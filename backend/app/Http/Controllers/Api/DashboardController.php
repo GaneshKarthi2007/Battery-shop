@@ -143,7 +143,8 @@ class DashboardController extends Controller
         ->whereBetween('created_at', [$queryStartDate, $queryEndDate])
         ->groupBy('date_label')
         ->orderBy('date_label', 'ASC')
-        ->get();
+        ->get()
+        ->keyBy('date_label');
 
         $dailyServicesRaw = Service::select(
             DB::raw("$dateExpression as date_label"),
@@ -155,19 +156,27 @@ class DashboardController extends Controller
         ->get()
         ->keyBy('date_label');
 
+        $allTrendDates = $dailySalesRaw->keys()
+            ->merge($dailyServicesRaw->keys())
+            ->unique()
+            ->sort()
+            ->values();
+
         $trendData = [];
-        foreach ($dailySalesRaw as $row) {
-            $date = $row->date_label;
-            $daySaleIds = Sale::whereDate('created_at', $date)->pluck('id');
-            $dayItemsCost = DB::table('sale_items')
-                ->leftJoin('products', 'sale_items.product_id', '=', 'products.id')
-                ->whereIn('sale_items.sale_id', $daySaleIds)
-                ->sum(DB::raw('COALESCE(sale_items.quantity, 1) * COALESCE(products.purchase_price, products.price * 0.75, 0)'));
-            
-            $salesVal = (float)$row->sales;
+        foreach ($allTrendDates as $date) {
+            $saleRow = $dailySalesRaw->get($date);
+            $daySaleIds = $saleRow ? Sale::whereDate('created_at', $date)->pluck('id') : collect();
+            $dayItemsCost = $daySaleIds->isNotEmpty()
+                ? DB::table('sale_items')
+                    ->leftJoin('products', 'sale_items.product_id', '=', 'products.id')
+                    ->whereIn('sale_items.sale_id', $daySaleIds)
+                    ->sum(DB::raw('COALESCE(sale_items.quantity, 1) * COALESCE(products.purchase_price, products.price * 0.75, 0)'))
+                : 0;
+
+            $salesVal = $saleRow ? (float)$saleRow->sales : 0.0;
             $profitVal = max(0, $salesVal - $dayItemsCost);
             $serviceRow = $dailyServicesRaw->get($date);
-            $servicesVal = $serviceRow ? (float)$serviceRow->services_amount : 0;
+            $servicesVal = $serviceRow ? (float)$serviceRow->services_amount : 0.0;
             $servicesCount = $serviceRow ? (int)$serviceRow->services_count : 0;
 
             $parsedDate = Carbon::parse($date);
@@ -178,9 +187,32 @@ class DashboardController extends Controller
                 'services' => $servicesVal,
                 'services_count' => $servicesCount,
                 'profit' => $profitVal,
-                'count' => (int)$row->count,
+                'count' => $saleRow ? (int)$saleRow->count : 0,
             ];
         }
+
+        // Current month daily service logs trend (for the Dashboard Service Logs graph)
+        $monthStart = Carbon::now()->startOfMonth();
+        $monthEnd = Carbon::now()->endOfMonth();
+        $monthlyServiceLogsRaw = Service::select(
+            DB::raw("$dateExpression as date_label"),
+            DB::raw('COUNT(*) as services_count')
+        )
+        ->whereBetween('created_at', [$monthStart, $monthEnd])
+        ->groupBy('date_label')
+        ->orderBy('date_label', 'ASC')
+        ->get();
+
+        $serviceLogsTrend = $monthlyServiceLogsRaw->map(function ($row) {
+            $parsedDate = Carbon::parse($row->date_label);
+            $cnt = (int)$row->services_count;
+            return [
+                'date' => $parsedDate->format('M d'),
+                'day' => (int)$parsedDate->format('j'),
+                'services_count' => $cnt,
+                'count' => $cnt,
+            ];
+        })->values()->all();
 
         // If today or timeframe has no sales rows, ensure at least today point or dates
         if (empty($trendData)) {
@@ -303,6 +335,7 @@ class DashboardController extends Controller
             ],
             'topSellingBatteries' => $topSellingBatteries,
             'trendData' => $trendData,
+            'serviceLogsTrend' => $serviceLogsTrend,
 
             // Legacy / Staff items for backwards compatibility
             'totalStock' => Product::sum('stock'),

@@ -8,11 +8,11 @@ import { useNavigate } from "react-router";
 import {
   ClipboardList, Search, Clock,
   Inbox, Loader2, ArrowLeft, Wrench, CheckCircle2,
-  Eye, Calendar, X
+  Eye, X, Phone, ShoppingCart
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../components/Button";
-import { ContactActions } from "../components/ui/ContactActions";
+import { ContactActions, formatDialPhone } from "../components/ui/ContactActions";
 
 export interface ServiceRecord {
   id: number;
@@ -42,7 +42,18 @@ export interface ServiceRecord {
     id: number;
     name: string;
   };
+  sales?: Array<{ id: number }>;
+  receipt?: { id: number } | null;
 }
+
+const isNewConnectionJob = (job: Pick<ServiceRecord, "complaint_type">): boolean =>
+  Boolean(job.complaint_type?.trim().toLowerCase().includes("new connection"));
+
+const getComplaintCategoryLabel = (job: Pick<ServiceRecord, "complaint_type">): string => {
+  if (isNewConnectionJob(job)) return "New Connection";
+  const type = job.complaint_type?.trim();
+  return type && type.toLowerCase() !== "service" ? `Service · ${type}` : "Service";
+};
 
 interface TasksWorkspaceProps {
   defaultTab?: "available" | "assigned" | "history";
@@ -59,7 +70,6 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
   const [takingId, setTakingId] = useState<number | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchDate, setSearchDate] = useState("");
   const [activeTab, setActiveTab] = useState<"available" | "assigned" | "history">(defaultTab);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
 
@@ -111,20 +121,7 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
 
   const tabJobs = getTabJobs();
 
-  const getLocalDateString = (isoString?: string) => {
-    if (!isoString) return "";
-    try {
-      const d = new Date(isoString);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    } catch {
-      return "";
-    }
-  };
-
-  // Search & Date Filter within active tab
+  // Search Filter within active tab
   const filteredJobs = tabJobs.filter((job) => {
     const query = searchQuery.trim().toLowerCase();
     if (query) {
@@ -146,15 +143,6 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
       if (!matchesSearch) return false;
     }
 
-    if (searchDate) {
-      const createdDate = getLocalDateString(job.created_at);
-      const resolvedDate = getLocalDateString(job.resolved_at);
-      const pickupDate = getLocalDateString(job.pickup_date);
-      if (createdDate !== searchDate && resolvedDate !== searchDate && pickupDate !== searchDate) {
-        return false;
-      }
-    }
-    
     return true;
   });
 
@@ -169,7 +157,6 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
   const handleTabChange = (tab: "available" | "assigned" | "history") => {
     setActiveTab(tab);
     setSearchQuery("");
-    setSearchDate("");
     setSelectedJob(null);
     if (tab === "available") navigate("/available-jobs");
     if (tab === "assigned") navigate("/assigned-jobs");
@@ -242,69 +229,76 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
   const completedCount = services.filter(s => s.status === 'Completed' || s.status === 'Converted to Order').length;
 
   return (
-    <div className="space-y-6 pb-24 text-gray-900 dark:text-white">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-          <ClipboardList className="w-8 h-8 text-blue-500" />
-          Tasks Workspace
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1 uppercase tracking-widest text-[10px] font-bold">
-          Redesigned Unified Portal
-        </p>
-      </div>
+    <div className="space-y-4 sm:space-y-6 pb-24 text-gray-900 dark:text-white">
+      {!(isMobileView && selectedJob) && (
+        <>
+          {/* Header */}
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+              <ClipboardList className="w-8 h-8 text-blue-500" />
+              Tasks Workspace
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1 uppercase tracking-widest text-[10px] font-bold">
+              Redesigned Unified Portal
+            </p>
+          </div>
 
-      {/* Segmented Control Tabs */}
-      <div className="flex bg-gray-100 dark:bg-[#161D30] p-1.5 rounded-2xl border border-gray-250 dark:border-[#25314D] w-full max-w-2xl">
-        <button
-          onClick={() => handleTabChange("available")}
-          className={`flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-            activeTab === "available"
-              ? "bg-white dark:bg-[#0D121F] text-blue-500 shadow-sm"
-              : "text-gray-500 dark:text-white/40 hover:text-gray-800 dark:hover:text-white/80"
-          }`}
-        >
-          <ClipboardList className="w-4 h-4" />
-          Available
-          {availableCount > 0 && (
-            <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-blue-500/10 text-blue-500 border border-blue-500/20">
-              {availableCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => handleTabChange("assigned")}
-          className={`flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-            activeTab === "assigned"
-              ? "bg-white dark:bg-[#0D121F] text-blue-500 shadow-sm"
-              : "text-gray-500 dark:text-white/40 hover:text-gray-800 dark:hover:text-white/80"
-          }`}
-        >
-          <Wrench className="w-4 h-4" />
-          Active
-          {activeCount > 0 && (
-            <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-blue-500/10 text-blue-500 border border-blue-500/20">
-              {activeCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => handleTabChange("history")}
-          className={`flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-            activeTab === "history"
-              ? "bg-white dark:bg-[#0D121F] text-emerald-500 shadow-sm"
-              : "text-gray-500 dark:text-white/40 hover:text-gray-800 dark:hover:text-white/80"
-          }`}
-        >
-          <CheckCircle2 className="w-4 h-4" />
-          History
-          {completedCount > 0 && (
-            <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-              {completedCount}
-            </span>
-          )}
-        </button>
-      </div>
+          {/* Segmented Control Tabs */}
+          <div
+            data-testid="tasks-tab-bar"
+            className="flex bg-gray-100 dark:bg-[#161D30] p-1.5 rounded-2xl border border-gray-250 dark:border-[#25314D] w-full max-w-2xl"
+          >
+            <button
+              onClick={() => handleTabChange("available")}
+              className={`flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                activeTab === "available"
+                  ? "bg-white dark:bg-[#0D121F] text-blue-500 shadow-sm"
+                  : "text-gray-500 dark:text-white/40 hover:text-gray-800 dark:hover:text-white/80"
+              }`}
+            >
+              <ClipboardList className="w-4 h-4" />
+              Available
+              {availableCount > 0 && (
+                <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                  {availableCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => handleTabChange("assigned")}
+              className={`flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                activeTab === "assigned"
+                  ? "bg-white dark:bg-[#0D121F] text-blue-500 shadow-sm"
+                  : "text-gray-500 dark:text-white/40 hover:text-gray-800 dark:hover:text-white/80"
+              }`}
+            >
+              <Wrench className="w-4 h-4" />
+              Active
+              {activeCount > 0 && (
+                <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                  {activeCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => handleTabChange("history")}
+              className={`flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                activeTab === "history"
+                  ? "bg-white dark:bg-[#0D121F] text-emerald-500 shadow-sm"
+                  : "text-gray-500 dark:text-white/40 hover:text-gray-800 dark:hover:text-white/80"
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              History
+              {completedCount > 0 && (
+                <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                  {completedCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </>
+      )}
 
       {error && (
         <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-3xl p-6 flex items-center justify-between gap-4">
@@ -330,132 +324,119 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* Master Panel */}
-          <div className={`space-y-4 lg:col-span-5 ${isMobileView && selectedJob ? "hidden" : "block"}`}>
+          {/* Master Panel — WhatsApp-style continuous list */}
+          <div className={`space-y-3.5 lg:col-span-5 ${isMobileView && selectedJob ? "hidden" : "block"}`}>
             
-            {/* Search & Date Filter */}
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search by ID, name, mobile..."
-                  aria-label="Search complaints"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-8 py-3 bg-white dark:bg-[#0D121F] border border-gray-250 dark:border-[#25314D] rounded-2xl text-xs sm:text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 dark:text-white font-bold"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
-                    aria-label="Clear search"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* Date-wise search at right side of search bar */}
-              <div className="relative flex-shrink-0">
-                <div className="flex items-center bg-white dark:bg-[#0D121F] border border-gray-250 dark:border-[#25314D] rounded-2xl px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
-                  <Calendar className="w-4 h-4 text-gray-400 mr-1.5 flex-shrink-0 hidden sm:block" />
-                  <input
-                    type="date"
-                    aria-label="Date Search"
-                    value={searchDate}
-                    onChange={(e) => setSearchDate(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-gray-900 dark:text-white outline-none cursor-pointer py-1.5"
-                  />
-                  {searchDate && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchDate("")}
-                      className="ml-1 text-gray-400 hover:text-red-500 p-1"
-                      aria-label="Clear date filter"
-                      title="Clear date"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by ID, name, mobile..."
+                aria-label="Search complaints"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-8 py-2.5 bg-white dark:bg-[#0D121F] border border-gray-250 dark:border-[#25314D] rounded-xl text-xs sm:text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 dark:text-white font-bold"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
+                  aria-label="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
-            {/* List */}
+            {/* Continuous WhatsApp-style Chats List */}
             {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((n) => (
-                  <div key={n} className="animate-pulse bg-gray-100 dark:bg-[#0D121F] border border-gray-200 dark:border-[#25314D] rounded-2xl h-24" />
+              <div className="bg-white dark:bg-[#0D121F] border border-gray-200 dark:border-[#25314D] rounded-2xl overflow-hidden divide-y divide-gray-100 dark:divide-[#1E293B]">
+                {[1, 2, 3, 4].map((n) => (
+                  <div key={n} className="animate-pulse px-4 py-3.5 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-[#161D30] shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-gray-100 dark:bg-[#161D30] rounded w-2/3" />
+                      <div className="h-2.5 bg-gray-100 dark:bg-[#161D30] rounded w-1/3" />
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : sortedJobs.length === 0 ? (
-              <p className="text-center text-sm text-gray-550 dark:text-gray-400 py-8 font-bold uppercase tracking-widest text-[11px]">
+              <p className="text-center text-gray-550 dark:text-gray-400 py-8 font-bold uppercase tracking-widest text-[11px]">
                 No jobs match your search parameters.
               </p>
             ) : (
-              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1 custom-scrollbar">
+              <div
+                data-testid="services-list"
+                className="bg-white dark:bg-[#0D121F] border border-gray-200 dark:border-[#25314D] rounded-2xl overflow-hidden divide-y divide-gray-100 dark:divide-[#1E293B] max-h-[600px] overflow-y-auto custom-scrollbar"
+              >
                 {sortedJobs.map((job) => {
                   const isActive = selectedJob?.id === job.id;
-                  const isUrgent = 
-                    job.complaint_type?.toLowerCase().includes("dead") || 
-                    job.complaint_details?.toLowerCase().includes("urgent") ||
-                    job.complaint_type?.toLowerCase().includes("warranty");
-                  const created = formatDateTime(job.created_at);
-                  
+                  const isNewConnection = isNewConnectionJob(job);
+                  const dialPhone = job.contact_number ? formatDialPhone(job.contact_number) : null;
+                  const displayLogId = `#${formatServiceLogId(logIdPrefix, job.log_id || job.service_code || job.id)}`;
+                  const initial = (job.customer_name?.trim().charAt(0) || "?").toUpperCase();
+
                   return (
                     <div
                       key={job.id}
                       onClick={() => handleSelectJob(job)}
-                      className={`relative p-5 rounded-[22px] border cursor-pointer transition-all duration-300 ${
+                      className={`relative px-4 py-3 cursor-pointer transition-colors flex items-center gap-3 ${
                         isActive
-                          ? "bg-blue-500/5 border-blue-500 shadow-sm"
-                          : "bg-white dark:bg-[#0D121F] border-gray-200 dark:border-[#25314D] hover:border-blue-500/40"
+                          ? "bg-blue-50/80 dark:bg-blue-500/10"
+                          : "hover:bg-gray-50 dark:hover:bg-[#141B2D]"
                       }`}
                     >
                       {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-12 bg-blue-500 rounded-r-lg" />
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
                       )}
-                      
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-black font-mono text-gray-900 dark:text-white">
-                          #{formatServiceLogId(logIdPrefix, job.log_id || job.service_code || job.id)}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {job.contact_number && (
-                            <ContactActions phoneNumber={job.contact_number} iconSize={13} />
-                          )}
-                          {isUrgent && (
-                            <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-red-500/10 text-red-500 border border-red-500/20">
-                              Urgent
-                            </span>
-                          )}
-                          <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded border ${
-                            job.status === 'Completed'
-                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                              : job.status === 'Converted to Order'
-                              ? "bg-purple-500/10 text-purple-500 border-purple-500/20"
-                              : "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                          }`}>
-                            {job.status}
-                          </span>
-                        </div>
+
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${
+                          isNewConnection
+                            ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300"
+                            : "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
+                        }`}
+                      >
+                        {initial}
                       </div>
 
-                      <div className="space-y-1">
-                        <p className="text-[12px] font-bold text-gray-900 dark:text-white uppercase tracking-tight">
-                          {job.customer_name}
-                        </p>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-black tracking-widest">
-                          {job.contact_number}
-                        </p>
-                        <div className="flex items-center gap-2 pt-1 text-[9px] font-black text-gray-400 dark:text-white/30 uppercase tracking-widest">
-                          <span>{created.date}</span>
-                          <span>·</span>
-                          <span>{created.time}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-tight truncate">
+                            {job.customer_name}
+                          </p>
+                          <span className="text-[11px] font-black font-mono text-gray-500 dark:text-gray-400 shrink-0">
+                            {displayLogId}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 mt-1">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider truncate ${
+                              isNewConnection
+                                ? "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/60"
+                                : "bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700/60"
+                            }`}
+                          >
+                            {getComplaintCategoryLabel(job)}
+                          </span>
+
+                          {dialPhone && (
+                            <a
+                              href={`tel:+${dialPhone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 flex items-center justify-center transition-colors shrink-0 ring-1 ring-blue-500/15"
+                              title="Call Customer"
+                              aria-label={`Call ${job.customer_name}`}
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -468,35 +449,37 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
           {/* Details Panel */}
           <div
             ref={detailRef}
-            className={`lg:col-span-7 space-y-6 ${isMobileView && !selectedJob ? "hidden" : "block"}`}
+            className={`lg:col-span-7 space-y-4 ${isMobileView && !selectedJob ? "hidden" : "block"}`}
           >
             {selectedJob ? (
-              <div className="bg-white dark:bg-[#0D121F] border border-gray-200 dark:border-[#25314D] rounded-[32px] p-6 sm:p-8 space-y-8 relative overflow-hidden shadow-sm">
-                
+              <div
+                data-testid="complaint-details-card"
+                className="bg-white dark:bg-[#0D121F] border border-gray-200 dark:border-[#25314D] rounded-2xl p-4 sm:p-5 space-y-3.5 relative overflow-hidden shadow-sm"
+              >
                 {/* Mobile Back button */}
                 {isMobileView && (
                   <button
                     onClick={() => setSelectedJob(null)}
-                    className="flex items-center gap-2 text-xs font-black text-gray-500 hover:text-gray-700 dark:text-white/40 dark:hover:text-white/80 uppercase tracking-wider mb-4"
+                    className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white uppercase tracking-wider"
                   >
-                    <ArrowLeft className="w-4 h-4" /> Back to list
+                    <ArrowLeft className="w-3.5 h-3.5" /> Back to list
                   </button>
                 )}
 
-                <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#25314D] pb-5">
+                <div className="flex items-center justify-between gap-2 border-b border-gray-100 dark:border-[#25314D] pb-3">
                   <div>
-                    <h2 className="text-xs font-black text-blue-500 uppercase tracking-[0.2em] mb-1">
+                    <h2 className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.18em]">
                       Complaint Details
                     </h2>
-                    <h3 className="text-xl font-black font-mono text-gray-955 dark:text-white tracking-tighter">
+                    <h3 className="text-lg font-black font-mono text-gray-900 dark:text-white tracking-tight">
                       #{formatServiceLogId(logIdPrefix, selectedJob.log_id || selectedJob.service_code || selectedJob.id)}
                     </h3>
                   </div>
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2 shrink-0">
                     {selectedJob.contact_number && (
-                      <ContactActions phoneNumber={selectedJob.contact_number} iconSize={16} />
+                      <ContactActions phoneNumber={selectedJob.contact_number} iconSize={14} />
                     )}
-                    <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
+                    <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
                       selectedJob.status === 'Completed'
                         ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                         : "bg-blue-500/10 text-blue-500 border-blue-500/20"
@@ -506,64 +489,48 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                   </div>
                 </div>
 
-                {/* Rearranged Complaint Details */}
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Complaint ID */}
+                {/* Minimalistic Complaint Details */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
                     <DetailRow
                       label="Complaint ID"
                       value={`#${formatServiceLogId(logIdPrefix, selectedJob.log_id || selectedJob.service_code || selectedJob.id)}`}
                     />
 
-                    {/* Created At (date and time) */}
                     <DetailRow
-                      label="Created At"
-                      value={`${formatDateTime(selectedJob.created_at).date} · ${formatDateTime(selectedJob.created_at).time}`}
+                      label="Complaint Type"
+                      value={getComplaintCategoryLabel(selectedJob)}
                     />
 
-                    {/* If after assigned or taken the job: Assigned At and Staff */}
-                    {(selectedJob.assigned_at || selectedJob.assigned_to || selectedJob.status !== 'Pending') && (
-                      <>
-                        <DetailRow
-                          label="Assigned At"
-                          value={
-                            selectedJob.assigned_at
-                              ? `${formatDateTime(selectedJob.assigned_at).date} · ${formatDateTime(selectedJob.assigned_at).time}`
-                              : "Recently Assigned"
-                          }
-                        />
-                        <DetailRow
-                          label="Staff"
-                          value={
-                            selectedJob.assigned_staff?.name ||
-                            (Number(selectedJob.assigned_to) === Number(user?.id) ? user?.name : "") ||
-                            "Assigned Staff"
-                          }
-                        />
-                      </>
-                    )}
-
-                    {/* Customer Name */}
                     <DetailRow
                       label="Customer Name"
                       value={selectedJob.customer_name}
                     />
 
-                    {/* Mobile Number with inline contact action buttons */}
-                    <div>
-                      <p className="text-[10px] text-gray-400 dark:text-white/30 font-black uppercase tracking-widest mb-0.5">
+                    {(selectedJob.assigned_at || selectedJob.assigned_to || selectedJob.status !== 'Pending') && (
+                      <DetailRow
+                        label="Staff"
+                        value={
+                          selectedJob.assigned_staff?.name ||
+                          (Number(selectedJob.assigned_to) === Number(user?.id) ? user?.name : "") ||
+                          "Assigned Staff"
+                        }
+                      />
+                    )}
+
+                    <div className="col-span-2 sm:col-span-1">
+                      <p className="text-[10px] text-gray-400 dark:text-gray-400 font-bold uppercase tracking-wider mb-0.5">
                         Mobile Number
                       </p>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-900 dark:text-white font-mono">
+                        <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white font-mono">
                           {selectedJob.contact_number}
                         </span>
-                        <ContactActions phoneNumber={selectedJob.contact_number} iconSize={13} />
+                        <ContactActions phoneNumber={selectedJob.contact_number} iconSize={12} />
                       </div>
                     </div>
 
-                    {/* Address */}
-                    <div className="sm:col-span-2">
+                    <div className="col-span-2 sm:col-span-1">
                       <DetailRow
                         label="Address"
                         value={selectedJob.address || "N/A"}
@@ -571,10 +538,31 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                     </div>
                   </div>
 
+                  {/* Much Smaller Timestamps Row */}
+                  <div className="grid grid-cols-2 gap-x-3 pt-2 border-t border-gray-100 dark:border-[#25314D]">
+                    <DetailRow
+                      label="Created At"
+                      value={`${formatDateTime(selectedJob.created_at).date} · ${formatDateTime(selectedJob.created_at).time}`}
+                      small
+                    />
+
+                    {(selectedJob.assigned_at || selectedJob.assigned_to || selectedJob.status !== 'Pending') && (
+                      <DetailRow
+                        label="Assigned At"
+                        value={
+                          selectedJob.assigned_at
+                            ? `${formatDateTime(selectedJob.assigned_at).date} · ${formatDateTime(selectedJob.assigned_at).time}`
+                            : "Recently Assigned"
+                        }
+                        small
+                      />
+                    )}
+                  </div>
+
                   {/* Optional: Voice note if provided by admin */}
                   {selectedJob.voice_note && (
-                    <div className="pt-2">
-                      <p className="text-[10px] text-gray-400 dark:text-white/30 font-black uppercase tracking-widest mb-2">
+                    <div className="pt-1">
+                      <p className="text-[9px] text-gray-400 dark:text-gray-400 font-bold uppercase tracking-wider mb-1.5">
                         Admin Voice Attachment
                       </p>
                       <AudioPlayer
@@ -586,12 +574,12 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                 </div>
 
                 {/* Action Buttons based on context */}
-                <div className="pt-6 border-t border-gray-100 dark:border-[#25314D]">
+                <div className="pt-3 border-t border-gray-100 dark:border-[#25314D]">
                   {activeTab === "available" ? (
                     <Button
                       onClick={() => setShowConfirmModal(true)}
                       disabled={takingId === selectedJob.id}
-                      className="w-full py-4 bg-blue-500 hover:bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all duration-300 disabled:opacity-75"
+                      className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all duration-200 disabled:opacity-75"
                     >
                       {takingId === selectedJob.id ? (
                         <>
@@ -602,16 +590,49 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
                       )}
                     </Button>
                   ) : activeTab === "assigned" ? (
-                    <button
-                      onClick={() => navigate(`/service/${selectedJob.id}`)}
-                      className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all duration-300"
-                    >
-                      <Eye className="w-4 h-4" /> Manage Active Job
-                    </button>
+                    <div className="space-y-2">
+                      {isNewConnectionJob(selectedJob) &&
+                        !(selectedJob.sales && selectedJob.sales.length > 0) &&
+                        !selectedJob.receipt && (
+                          <button
+                            onClick={() =>
+                              navigate("/sales", {
+                                state: {
+                                  fromService: true,
+                                  isNewConnection: true,
+                                  serviceId: selectedJob.id,
+                                  customerInfo: {
+                                    name: selectedJob.customer_name,
+                                    phone: selectedJob.contact_number,
+                                    address: selectedJob.address || "",
+                                  },
+                                  serviceSpecs: {
+                                    complaint_type: selectedJob.complaint_type,
+                                    complaint_details: selectedJob.complaint_details,
+                                    vehicle_details: selectedJob.vehicle_details,
+                                    battery_brand: selectedJob.battery_brand,
+                                    battery_model: selectedJob.battery_model,
+                                    battery_capacity: selectedJob.battery_capacity,
+                                  },
+                                },
+                              })
+                            }
+                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all duration-200"
+                          >
+                            <ShoppingCart className="w-4 h-4" /> Bill Product for New Connection
+                          </button>
+                        )}
+                      <button
+                        onClick={() => navigate(`/service/${selectedJob.id}`)}
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all duration-200"
+                      >
+                        <Eye className="w-4 h-4" /> Manage Active Job
+                      </button>
+                    </div>
                   ) : (
                     <button
                       onClick={() => navigate(`/service/${selectedJob.id}`)}
-                      className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all duration-300"
+                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all duration-200"
                     >
                       <Eye className="w-4 h-4" /> View Full Record
                     </button>
@@ -685,13 +706,25 @@ export function TasksWorkspace({ defaultTab = "available" }: TasksWorkspaceProps
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value, small = false }: { label: string; value: string; small?: boolean }) {
   return (
     <div>
-      <p className="text-[10px] text-gray-400 dark:text-white/30 font-black uppercase tracking-widest mb-0.5">
+      <p
+        className={
+          small
+            ? "text-[9px] text-gray-400 dark:text-gray-400 font-bold uppercase tracking-wider mb-0.5"
+            : "text-[10px] text-gray-400 dark:text-gray-400 font-bold uppercase tracking-wider mb-0.5"
+        }
+      >
         {label}
       </p>
-      <p className="text-sm font-bold text-gray-900 dark:text-white">
+      <p
+        className={
+          small
+            ? "text-[10px] font-semibold text-gray-500 dark:text-gray-400 leading-tight"
+            : "text-xs sm:text-sm font-bold text-gray-900 dark:text-white leading-snug"
+        }
+      >
         {value}
       </p>
     </div>

@@ -230,14 +230,14 @@ const BatteryInvoice: React.FC = () => {
 
       {/* ACTION BAR */}
       <div className="no-print max-w-[210mm] mx-auto mb-4 px-4 flex items-center justify-between">
-        {/* Top Left: Back Button to Home Page */}
+        {/* Top Left: Back to Service (when billed for a service/new connection) or Home */}
         <button
-          onClick={() => navigate("/")}
-          title="Go to Home"
+          onClick={() => navigate(state?.fromService && state?.serviceId ? `/service/${state.serviceId}` : "/")}
+          title={state?.fromService && state?.serviceId ? "Back to Service" : "Go to Home"}
           className="flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 font-bold text-xs shadow-sm transition-all"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Home</span>
+          <span>{state?.fromService && state?.serviceId ? "Back to Service" : "Home"}</span>
         </button>
 
         {/* Right side of Back Button: Icons Only (WhatsApp, Print, Download) */}

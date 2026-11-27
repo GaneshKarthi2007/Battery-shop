@@ -14,8 +14,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     // Default to light mode or local storage if it exists
     const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-        const saved = localStorage.getItem('powercell_dark_mode');
-        return saved ? JSON.parse(saved) : false;
+        try {
+            const saved = localStorage.getItem('powercell_dark_mode');
+            return saved ? Boolean(JSON.parse(saved)) : false;
+        } catch {
+            return false;
+        }
     });
 
     useEffect(() => {
@@ -24,19 +28,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
         if (shouldBeDark) {
             document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
         } else {
             document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
         }
 
         localStorage.setItem('powercell_dark_mode', JSON.stringify(isDarkMode));
     }, [isDarkMode, features.darkMode]);
 
     const toggleDarkMode = (e?: React.MouseEvent | { clientX: number; clientY: number }) => {
-        const hasViewTransition = typeof document !== 'undefined' && 'startViewTransition' in document;
-        const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const hasViewTransition = typeof document !== 'undefined' && typeof (document as any).startViewTransition === 'function';
+        const prefersReducedMotion =
+            typeof window !== 'undefined' &&
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         if (!hasViewTransition || prefersReducedMotion) {
-            setIsDarkMode(!isDarkMode);
+            setIsDarkMode((prev) => !prev);
             return;
         }
 
@@ -110,9 +119,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                     }
                 );
             }
-        });
+        }).catch(() => {});
 
         transition.finished.then(() => {
+            document.documentElement.classList.remove('transition-to-dark', 'transition-to-light', 'disable-transitions');
+        }).catch(() => {
             document.documentElement.classList.remove('transition-to-dark', 'transition-to-light', 'disable-transitions');
         });
     };

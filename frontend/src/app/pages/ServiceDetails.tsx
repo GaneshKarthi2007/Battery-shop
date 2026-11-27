@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useServiceLogIdPrefix, formatServiceLogId } from "../contexts/DeveloperContext";
 import { useParams, useNavigate } from "react-router";
-import { Wrench, Clock, CheckCircle, ArrowLeft, User, Calendar, AlertTriangle, Zap, MapPin, Mic, CreditCard, ShoppingCart, ShoppingBag, RefreshCw, Activity, Trash2, CheckCheck, FileText, Download, Receipt, Phone, Car, BatteryFull, TrendingUp, Camera, Check } from "lucide-react";
+import { Wrench, Clock, CheckCircle, ArrowLeft, User, AlertTriangle, Zap, Mic, CreditCard, ShoppingCart, ShoppingBag, RefreshCw, Activity, Trash2, CheckCheck, Download, Receipt, Phone, TrendingUp, Check, Images, History, X, MessageCircle } from "lucide-react";
 import { Button } from "../components/Button";
-import { ContactActions } from "../components/ui/ContactActions";
+import { ContactActions, formatDialPhone } from "../components/ui/ContactActions";
+import { MinimalConfirmDialog } from "../components/ui/MinimalConfirmDialog";
+import { capitalizeFirstLetter } from "../utils/inputFormatters";
 import { AudioRecorder } from "../components/AudioRecorder/AudioRecorder";
 import { AudioPlayer } from "../components/ui/AudioPlayer";
 import { useAuth } from "../contexts/AuthContext";
@@ -135,7 +137,6 @@ export function ServiceDetails() {
     const [updating, setUpdating] = useState(false);
     const [showAudioRecorder, setShowAudioRecorder] = useState(false);
 
-    const [showChargeInput, setShowChargeInput] = useState(false);
     const [tempCharge, setTempCharge] = useState("");
     const [paymentType, setPaymentType] = useState<"Cash" | "UPI">("Cash");
     const [showRevisitForm, setShowRevisitForm] = useState(false);
@@ -146,6 +147,10 @@ export function ServiceDetails() {
     const [selectedSubStatus, setSelectedSubStatus] = useState<string>("");
     const [customSubStatus, setCustomSubStatus] = useState<string>("");
     const [isEditingPayment, setIsEditingPayment] = useState<boolean>(false);
+    const [showGalleryModal, setShowGalleryModal] = useState<boolean>(false);
+    const [showTimelineModal, setShowTimelineModal] = useState<boolean>(false);
+    const [showQuickContact, setShowQuickContact] = useState<boolean>(false);
+    const [showUnsavedConfirm, setShowUnsavedConfirm] = useState<boolean>(false);
 
     useEffect(() => {
         fetchService();
@@ -155,7 +160,7 @@ export function ServiceDetails() {
     const fetchStaff = async () => {
         try {
             const data = await apiClient.get<Staff[]>('/staff');
-            setStaffList(data);
+            setStaffList(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error("Failed to load staff list", err);
         }
@@ -234,26 +239,6 @@ export function ServiceDetails() {
             });
         } catch (err: any) {
             alert(err.message || "Failed to record payment");
-        } finally {
-            setUpdating(false);
-        }
-    };
-
-    const handleUpdateStatus = async (newStatus: ServiceRequest["status"], specificCharge?: number, specificPaymentMethod?: string) => {
-        if (!service) return;
-        setUpdating(true);
-        try {
-            const payload: any = { status: newStatus };
-            if (specificCharge !== undefined) payload.service_charge = specificCharge;
-            if (specificPaymentMethod) payload.payment_method = specificPaymentMethod;
-            const updated = await apiClient.put<ServiceRequest>(`/services/${id}`, payload);
-            setService(updated);
-            setTempCharge(updated.service_charge ? updated.service_charge.toString() : "0");
-            if (newStatus === "Completed") {
-                addNotification({ type: "SERVICE", title: "Service Completed", message: `Service #${service.id} (${service.customer_name}) marked as completed by staff.`, role: "admin" });
-            }
-        } catch (err: any) {
-            alert(err.message || "Failed to update status");
         } finally {
             setUpdating(false);
         }
@@ -447,21 +432,63 @@ export function ServiceDetails() {
     };
 
     const currentStatus = statusConfig[service.status as keyof typeof statusConfig] || statusConfig.Pending;
-
-    const infoCard = (icon: React.ReactNode, label: string, value: string) => (
-        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#0D1B2A] rounded-xl border border-gray-100 dark:border-[#2E3B55] hover:border-gray-200 dark:hover:border-blue-500/20 transition-colors dark:hover:shadow-[0_0_15px_rgba(59,130,246,0.05)]">
-            <div className="w-8 h-8 rounded-lg bg-white dark:bg-[#15161E] border border-gray-200 dark:border-white/10 flex items-center justify-center flex-shrink-0 shadow-sm">
-                {icon}
-            </div>
-            <div className="min-w-0">
-                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{label}</p>
-                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{value}</p>
-            </div>
-        </div>
+    const isNewConnection = Boolean(service.complaint_type?.trim().toLowerCase().includes("new connection"));
+    const hasBilledProduct = Boolean((service.sales && service.sales.length > 0) || service.receipt);
+    const dialPhone = formatDialPhone(service.contact_number);
+    const hasUnsavedStaffChanges = Boolean(
+        isStaff && (
+            staffNote.trim().length > 0 ||
+            (selectedSubStatus !== "" && selectedSubStatus !== (service.sub_status || "")) ||
+            (isEditingPayment && (
+                tempCharge !== (service.service_charge ? service.service_charge.toString() : "0") ||
+                paymentType !== (service.payment_method === "UPI" ? "UPI" : "Cash")
+            ))
+        )
     );
 
+    const navigateBackFromDetails = () => {
+        if (isAdmin) {
+            navigate("/service");
+        } else if (service?.status === 'Completed' || service?.status === 'Converted to Order') {
+            navigate("/completed-jobs");
+        } else {
+            navigate("/assigned-jobs");
+        }
+    };
+
+    const handleBackClick = () => {
+        if (hasUnsavedStaffChanges) {
+            setShowUnsavedConfirm(true);
+            return;
+        }
+        navigateBackFromDetails();
+    };
+
+    const openNewConnectionBilling = () => {
+        navigate("/sales", {
+            state: {
+                fromService: true,
+                isNewConnection: true,
+                serviceId: service.id,
+                customerInfo: {
+                    name: service.customer_name,
+                    phone: service.contact_number,
+                    address: service.address || ""
+                },
+                serviceSpecs: {
+                    complaint_type: service.complaint_type,
+                    complaint_details: service.complaint_details,
+                    vehicle_details: service.vehicle_details,
+                    battery_brand: service.battery_brand,
+                    battery_model: service.battery_model,
+                    battery_capacity: service.battery_capacity,
+                }
+            }
+        });
+    };
+
     return (
-        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
             {updating && (
                 <div className="fixed inset-0 bg-white/40 backdrop-blur-[1px] z-50 flex items-center justify-center">
                     <CircleLoader size="md" />
@@ -471,15 +498,7 @@ export function ServiceDetails() {
             {/* ── Top Nav Bar ── */}
             <div className="flex items-center justify-between">
                 <button
-                    onClick={() => {
-                        if (isAdmin) {
-                            navigate("/service");
-                        } else if (service?.status === 'Completed' || service?.status === 'Converted to Order') {
-                            navigate("/completed-jobs");
-                        } else {
-                            navigate("/assigned-jobs");
-                        }
-                    }}
+                    onClick={handleBackClick}
                     className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group"
                 >
                     <div className="p-2 bg-white rounded-xl border border-gray-200 shadow-sm group-hover:border-blue-200 group-hover:shadow-md transition-all">
@@ -506,72 +525,85 @@ export function ServiceDetails() {
             </div>
 
             {/* ── Hero Header Card ── */}
-            <div className={`bg-gradient-to-r ${currentStatus.gradient} to-white rounded-2xl border ${currentStatus.border} overflow-hidden shadow-sm`}>
+            <div className={`bg-gradient-to-r ${currentStatus.gradient} to-white dark:to-[#0D121F] rounded-2xl border ${currentStatus.border} dark:border-[#25314D] overflow-hidden shadow-sm`}>
                 <div className="p-4 sm:p-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         {/* Icon + Title */}
                         <div className="flex items-center gap-4 min-w-0">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white rounded-2xl border border-gray-200 shadow-sm flex items-center justify-center flex-shrink-0">
-                                <Wrench className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" />
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white dark:bg-[#161D30] rounded-2xl border border-gray-200 dark:border-[#25314D] shadow-sm flex items-center justify-center flex-shrink-0">
+                                <Wrench className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div>
                                 <div className="flex items-center gap-2.5 flex-wrap">
-                                    <h1 className="text-xl sm:text-2xl font-black text-gray-900">Service #{formatServiceLogId(logIdPrefix, service.log_id || service.service_code || service.id)}</h1>
+                                    <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">Service #{formatServiceLogId(logIdPrefix, service.log_id || service.service_code || service.id)}</h1>
                                     {service.parent_id && (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
                                             <RefreshCw className="w-3 h-3" />
                                             Revisit of #{service.parent_id}
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-xs text-gray-500 mt-0.5">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                     Registered on <span className="font-semibold">{new Date(service.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                                 </p>
                             </div>
                         </div>
 
-                        {/* Right Area of Header: Staff Customer Details vs Admin Stats (No vehicle details!) */}
+                        {/* Right Area of Header: Staff Customer Details vs Admin Assigned Staff + Gallery/Timeline Icons */}
                         {isStaff ? (
-                            <div className="flex items-center gap-3 p-3 bg-white/95 backdrop-blur rounded-xl border border-gray-200 shadow-xs flex-shrink-0">
-                                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold flex-shrink-0">
+                            <div className="flex items-center gap-3 p-3 bg-white/95 dark:bg-[#161D30]/95 backdrop-blur rounded-xl border border-gray-200 dark:border-[#25314D] shadow-xs flex-shrink-0">
+                                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold flex-shrink-0">
                                     <User className="w-4 h-4" />
                                 </div>
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-1.5 flex-wrap">
-                                        <span className="text-xs sm:text-sm font-black text-gray-900 truncate">{service.customer_name}</span>
+                                        <span className="text-xs sm:text-sm font-black text-gray-900 dark:text-white truncate">{service.customer_name}</span>
                                         {service.customer_code && (
-                                            <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                                            <span className="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800/50">
                                                 {service.customer_code}
                                             </span>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2 mt-0.5">
-                                        <span className="text-xs font-bold text-gray-600 font-mono">{service.contact_number}</span>
+                                        <span className="text-xs font-bold text-gray-600 dark:text-gray-300 font-mono">{service.contact_number}</span>
                                         <ContactActions phoneNumber={service.contact_number} iconSize={13} />
                                     </div>
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
-                                <div className="text-center px-4 py-2.5 bg-white/70 backdrop-blur rounded-xl border border-gray-200">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Service Charge</p>
-                                    <p className="text-lg font-black text-gray-900 mt-0.5">₹{Number(service.service_charge).toLocaleString('en-IN')}</p>
-                                </div>
-                                {service.assigned_staff && (
-                                    <div className="text-center px-4 py-2.5 bg-white/70 backdrop-blur rounded-xl border border-gray-200">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Assigned To</p>
-                                        <p className="text-xs font-bold text-blue-700 mt-0.5 flex items-center gap-1">
-                                            <User className="w-3.5 h-3.5" />
-                                            {service.assigned_staff.name}
+                            <div className="flex items-center gap-2 flex-wrap sm:justify-end flex-shrink-0">
+                                <div className="px-3 py-1.5 bg-white/90 dark:bg-[#161D30]/90 backdrop-blur rounded-xl border border-gray-200 dark:border-[#25314D] flex items-center gap-2">
+                                    <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                                    <div>
+                                        <p className="text-[9px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider leading-none">Assigned Staff</p>
+                                        <p className="text-xs font-bold text-gray-900 dark:text-white mt-0.5 leading-none">
+                                            {service.assigned_staff?.name || "Unassigned"}
                                         </p>
                                     </div>
-                                )}
-                                <div className="text-center px-4 py-2.5 bg-white/70 backdrop-blur rounded-xl border border-gray-200">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Payment</p>
-                                    <p className={`text-xs font-bold mt-0.5 ${service.payment_status === 'verified' ? 'text-green-600' : 'text-amber-600'}`}>
-                                        {service.payment_status === 'verified' ? '✓ Verified' : '⏳ Pending'}
-                                    </p>
                                 </div>
+
+                                {isAdmin && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowGalleryModal(true)}
+                                            aria-label="Job Site Photos"
+                                            title="Job Site Photos"
+                                            className="p-2.5 bg-white hover:bg-blue-50 text-blue-600 rounded-xl border border-gray-200 shadow-xs transition-colors"
+                                        >
+                                            <Images className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowTimelineModal(true)}
+                                            aria-label="Service Timeline"
+                                            title="Service Timeline"
+                                            className="p-2.5 bg-white hover:bg-indigo-50 text-indigo-600 rounded-xl border border-gray-200 shadow-xs transition-colors"
+                                        >
+                                            <History className="w-4 h-4" />
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>
@@ -590,7 +622,7 @@ export function ServiceDetails() {
                             </span>
                             {(service.battery_brand || service.battery_model) && (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:text-blue-300 border border-blue-200 dark:border-blue-900/40">
-                                    <BatteryFull className="w-3.5 h-3.5 text-blue-600" />
+                                    <Wrench className="w-3.5 h-3.5 text-blue-600" />
                                     {[service.battery_brand, service.battery_model, service.battery_capacity].filter(Boolean).join(" ")}
                                 </span>
                             )}
@@ -660,7 +692,7 @@ export function ServiceDetails() {
                                             aria-label="Custom Sub-Status"
                                             placeholder="Type custom sub-status..."
                                             value={customSubStatus}
-                                            onChange={(e) => setCustomSubStatus(e.target.value)}
+                                            onChange={(e) => setCustomSubStatus(capitalizeFirstLetter(e.target.value))}
                                             className="w-full px-3 py-2 bg-gray-50 dark:bg-[#0D1B2A] border border-blue-300 dark:border-blue-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                         />
                                     </div>
@@ -676,7 +708,7 @@ export function ServiceDetails() {
                                     className="w-full px-3 py-2 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl text-xs font-medium text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                     placeholder="Add status notes... (e.g. Battery is charging well)"
                                     value={staffNote}
-                                    onChange={(e) => setStaffNote(e.target.value)}
+                                    onChange={(e) => setStaffNote(capitalizeFirstLetter(e.target.value))}
                                 />
                             </div>
 
@@ -729,33 +761,90 @@ export function ServiceDetails() {
 
                             {service.status === "In Progress" && (
                                 <div className="space-y-3">
-                                    <div className="p-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 rounded-xl text-center">
-                                        <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
-                                            Task In Progress
-                                        </p>
-                                        <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">
-                                            Complete task when servicing is done, or request new battery replacement.
-                                        </p>
-                                    </div>
+                                    {isNewConnection && !hasBilledProduct ? (
+                                        <>
+                                            <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-xl text-center">
+                                                <p className="text-xs font-bold text-indigo-900 dark:text-indigo-200">
+                                                    New Connection — Product Billing Required
+                                                </p>
+                                                <p className="text-[11px] text-indigo-600 dark:text-indigo-400 mt-0.5">
+                                                    Bill a product for this new connection first, then proceed with standard service completion.
+                                                </p>
+                                            </div>
 
-                                    <Button
-                                        onClick={handleCompleteTask}
-                                        disabled={updating}
-                                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs"
-                                    >
-                                        <CheckCircle className="w-4 h-4" />
-                                        Complete Task
-                                    </Button>
+                                            <Button
+                                                onClick={openNewConnectionBilling}
+                                                disabled={updating}
+                                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs"
+                                            >
+                                                <ShoppingCart className="w-4 h-4" />
+                                                Bill Product
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="p-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 rounded-xl text-center">
+                                                <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
+                                                    Task In Progress
+                                                </p>
+                                                <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">
+                                                    {isNewConnection
+                                                        ? "Product billed. Follow the standard service steps and complete task when installation is done."
+                                                        : "Complete task when servicing is done, or request new battery replacement."}
+                                                </p>
+                                            </div>
 
-                                    <Button
-                                        onClick={handleConvertToOrder}
-                                        disabled={updating}
-                                        variant="outline"
-                                        className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
-                                    >
-                                        <ShoppingCart className="w-3.5 h-3.5" />
-                                        Request New Battery
-                                    </Button>
+                                            {isNewConnection && service.sales && service.sales.length > 0 && (
+                                                <div className="p-3 bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-xl space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[11px] font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                                                            <Receipt className="w-3.5 h-3.5" />
+                                                            Billed Product ({service.sales.length})
+                                                        </span>
+                                                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-400">
+                                                            ₹{Number(service.sales[0].total_amount).toLocaleString('en-IN')}
+                                                        </span>
+                                                    </div>
+                                                    {service.sales[0].items?.map((item) => (
+                                                        <p key={item.id} className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                                                            {item.product ? `${item.product.brand} ${item.product.model}` : "Product"} × {item.quantity}
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <Button
+                                                onClick={handleCompleteTask}
+                                                disabled={updating}
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs"
+                                            >
+                                                <CheckCircle className="w-4 h-4" />
+                                                Complete Task
+                                            </Button>
+
+                                            {isNewConnection ? (
+                                                <Button
+                                                    onClick={openNewConnectionBilling}
+                                                    disabled={updating}
+                                                    variant="outline"
+                                                    className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
+                                                >
+                                                    <ShoppingCart className="w-3.5 h-3.5" />
+                                                    Bill Another Product
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    onClick={handleConvertToOrder}
+                                                    disabled={updating}
+                                                    variant="outline"
+                                                    className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
+                                                >
+                                                    <ShoppingCart className="w-3.5 h-3.5" />
+                                                    Request New Battery
+                                                </Button>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                             )}
 
@@ -869,240 +958,106 @@ export function ServiceDetails() {
                     </div>
                 </div>
             ) : (
-                /* ── Admin / Manager Workspace ── */
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                /* ── Admin / Manager Compact Workspace ── */
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
                 {/* ── Left Column (2/3 width) ── */}
-                <div className="xl:col-span-2 space-y-6">
+                <div className="xl:col-span-2 space-y-4">
 
-                    {/* Customer & Vehicle Info */}
-                    <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-                            <User className="w-4 h-4 text-blue-600" />
-                            <h2 className="text-sm font-bold text-gray-900">Customer & Vehicle Information</h2>
-                        </div>
-                        <div className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {infoCard(<User className="w-4 h-4 text-blue-500" />, "Customer Name", `${service.customer_name} (${service.customer_code || "CUST-00000"})`)}
-                                {infoCard(<Phone className="w-4 h-4 text-green-500" />, "Contact Number", service.contact_number)}
-                                {service.vehicle_details && infoCard(<Car className="w-4 h-4 text-purple-500" />, "Vehicle", service.vehicle_details)}
-                                {service.address && infoCard(<MapPin className="w-4 h-4 text-red-500" />, "Address", service.address)}
-                                {service.battery_brand && infoCard(<BatteryFull className="w-4 h-4 text-amber-500" />, "Battery Brand", service.battery_brand)}
-                                {service.battery_model && infoCard(<Wrench className="w-4 h-4 text-indigo-500" />, "Battery Model", service.battery_model)}
-                                {service.battery_capacity && infoCard(<Zap className="w-4 h-4 text-yellow-500" />, "Capacity", service.battery_capacity)}
+                    {/* Single Compact Service Summary Card */}
+                    <div
+                        data-testid="admin-compact-info"
+                        className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-xs p-4 space-y-3"
+                    >
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div className="p-2.5 bg-gray-50 dark:bg-[#0D1B2A] rounded-xl border border-gray-100 dark:border-[#2E3B55] min-w-0">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Customer Name</p>
+                                <p className="text-sm font-bold text-gray-900 dark:text-white truncate mt-0.5">{service.customer_name}</p>
                             </div>
 
-                            {/* Contact Quick Actions */}
-                            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3">
-                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Quick Contact</span>
-                                <ContactActions phoneNumber={service.contact_number} iconSize={15} />
+                            <div className="p-2.5 bg-gray-50 dark:bg-[#0D1B2A] rounded-xl border border-gray-100 dark:border-[#2E3B55] min-w-0 relative">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mobile Number</p>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowQuickContact((prev) => !prev)}
+                                    className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline font-mono mt-0.5 flex items-center gap-1.5"
+                                    title="Tap for quick contact options"
+                                >
+                                    <Phone className="w-3.5 h-3.5 shrink-0" />
+                                    <span>{service.contact_number}</span>
+                                </button>
+
+                                {showQuickContact && dialPhone && (
+                                    <div
+                                        data-testid="mobile-quick-contact-menu"
+                                        className="mt-2 flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-[#2E3B55]"
+                                    >
+                                        <a
+                                            href={`tel:+${dialPhone}`}
+                                            className="flex-1 py-1.5 px-2.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                                        >
+                                            <Phone className="w-3.5 h-3.5" />
+                                            Call
+                                        </a>
+                                        <a
+                                            href={`https://wa.me/${dialPhone}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex-1 py-1.5 px-2.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                                        >
+                                            <MessageCircle className="w-3.5 h-3.5" />
+                                            WhatsApp
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-2.5 bg-gray-50 dark:bg-[#0D1B2A] rounded-xl border border-gray-100 dark:border-[#2E3B55] min-w-0">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Service Category</p>
+                                <p className={`text-sm font-bold truncate mt-0.5 ${isNewConnection ? "text-indigo-600 dark:text-indigo-400" : "text-gray-900 dark:text-white"}`}>
+                                    {service.complaint_type || "General Issue"}
+                                </p>
                             </div>
                         </div>
+
+                        {service.complaint_details && service.complaint_details.trim() !== "" && (
+                            <div className="p-3 bg-amber-50/50 dark:bg-amber-950/15 border border-amber-200/70 dark:border-amber-900/30 rounded-xl">
+                                <p className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-0.5">
+                                    Specific Complaint Details
+                                </p>
+                                <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 font-medium">
+                                    {service.complaint_details}
+                                </p>
+                            </div>
+                        )}
+
+                        {service.voice_note && (
+                            <AudioPlayer
+                                src={getMediaUrl(service.voice_note_url ?? service.voice_note)}
+                                label="Initial Complaint Voice Note"
+                            />
+                        )}
                     </div>
 
-                    {/* Issue Details */}
-                    <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-amber-500" />
-                            <h2 className="text-sm font-bold text-gray-900">Issue Report</h2>
-                        </div>
-                        <div className="p-6">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block mb-2 px-1">Problem Category</label>
-                                    <div className="p-4 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-xl flex items-center gap-3 shadow-sm transition-all hover:border-blue-300 dark:hover:border-blue-500/30 dark:hover:shadow-[0_0_15px_rgba(59,130,246,0.05)]">
-                                        <AlertTriangle className="w-4 h-4 text-amber-500" />
-                                        <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{service.complaint_type || "General Issue"}</span>
-                                    </div>
+                    {/* Linked Products */}
+                    {((service.sales && service.sales.length > 0) || service.receipt) && (
+                        <div
+                            data-testid="linked-products-card"
+                            className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-xs overflow-hidden"
+                        >
+                            <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2E3B55] flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Receipt className="w-4 h-4 text-indigo-600" />
+                                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Linked Products</h2>
                                 </div>
-
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block mb-2 px-1">Specific Complaint / Details</label>
-                                    <div className="p-4 bg-gray-50 dark:bg-[#0D1B2A] border border-gray-200 dark:border-[#2E3B55] rounded-2xl min-h-[100px] shadow-sm transition-all hover:border-blue-300 dark:hover:border-blue-500/30 dark:hover:shadow-[0_0_15px_rgba(59,130,246,0.05)]">
-                                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-                                            {service.complaint_details || "No specific details provided for this service request."}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {service.voice_note && (
-                                <div className="mt-4 animate-in fade-in slide-in-from-top-2">
-                                    <AudioPlayer
-                                        src={getMediaUrl(service.voice_note_url ?? service.voice_note)}
-                                        label="Initial Complaint Voice Note"
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Job Site Photos Gallery (Admin View) */}
-                    {isAdmin && (
-                        <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden mt-5">
-                            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-                                <Camera className="w-4 h-4 text-blue-600" />
-                                <h2 className="text-sm font-bold text-gray-900">Job Site Photos</h2>
-                            </div>
-                            <div className="p-6">
-                                <ServiceGpsCamera serviceId={service.id} readOnly={true} />
-                            </div>
-                        </div>
-                    )}
-
-
-                    {/* Service Timeline (Admin Only) */}
-                    {isAdmin && (
-                        <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-blue-600" />
-                            <h2 className="text-sm font-bold text-gray-900">Service Timeline</h2>
-                        </div>
-                        <div className="p-6">
-                            <div className="space-y-0">
-
-                                {/* Registered */}
-                                <div className="flex gap-4 relative">
-                                    <div className="flex flex-col items-center">
-                                        <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-blue-200 flex items-center justify-center z-10">
-                                            <Clock className="w-3.5 h-3.5 text-blue-600" />
-                                        </div>
-                                        {(service.assigned_at || service.status_updated_at || service.resolved_at || service.billed_at) && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
-                                    </div>
-                                    <div className="pb-5 flex-1">
-                                        <p className="text-sm font-bold text-gray-900">Service Registered</p>
-                                        <p className="text-xs text-gray-500 mt-0.5">{new Date(service.created_at).toLocaleString()}</p>
-                                    </div>
-                                </div>
-
-                                {/* Assigned */}
-                                {service.assigned_at && (
-                                    <div className="flex gap-4">
-                                        <div className="flex flex-col items-center">
-                                            <div className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-indigo-200 flex items-center justify-center z-10">
-                                                <User className="w-3.5 h-3.5 text-indigo-600" />
-                                            </div>
-                                            {(service.status_updated_at || service.resolved_at || service.billed_at) && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
-                                        </div>
-                                        <div className="pb-5 flex-1">
-                                            <p className="text-sm font-bold text-gray-900">Service Taken</p>
-                                            {service.assigned_staff && <p className="text-xs font-semibold text-indigo-600">by {service.assigned_staff.name}</p>}
-                                            <p className="text-xs text-gray-500 mt-0.5">{new Date(service.assigned_at).toLocaleString()}</p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* In Progress */}
-                                {((service.status === 'In Progress' || service.status === 'Converted to Order' || service.status === 'Completed') && service.status_updated_at) && (
-                                    <div className="flex gap-4">
-                                        <div className="flex flex-col items-center">
-                                            <div className="w-8 h-8 rounded-full bg-amber-100 border-2 border-amber-200 flex items-center justify-center z-10">
-                                                <Activity className="w-3.5 h-3.5 text-amber-600" />
-                                            </div>
-                                            {(service.resolved_at || service.billed_at) && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
-                                        </div>
-                                        <div className="pb-5 flex-1">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-900">In Progress</p>
-                                                    {service.sub_status && <p className="text-xs font-semibold text-amber-600">Sub-Status: {service.sub_status}</p>}
-                                                    <p className="text-xs text-gray-500 mt-0.5">{new Date(service.status_updated_at).toLocaleString()}</p>
-                                                </div>
-                                                {service.assigned_to === user?.id && !isAdmin && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowAudioRecorder(true)}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-100"
-                                                    >
-                                                        <Mic className="w-3.5 h-3.5" />
-                                                        <span className="text-[10px] font-bold uppercase">Record Update</span>
-                                                    </button>
-                                                )}
-                                            </div>
-
-                                            {/* Process Flows */}
-                                            {service.process_flows && service.process_flows.length > 0 && (
-                                                <div className="mt-3 space-y-2 ml-2 border-l-2 border-amber-200 pl-4">
-                                                    {service.process_flows.slice().reverse().map((flow, fIdx) => (
-                                                        <div key={flow.id} className="relative">
-                                                            <div className="absolute -left-[1.375rem] top-2 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-white" />
-                                                            <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 hover:border-amber-200 transition-all">
-                                                                <div className="flex justify-between items-start">
-                                                                    <p className="text-xs font-bold text-gray-800">{flow.sub_status}</p>
-                                                                    <span className="text-[9px] font-bold text-amber-500 uppercase">{fIdx === 0 ? "Latest" : `#${service.process_flows!.length - fIdx}`}</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-2 mt-1">
-                                                                    <p className="text-[9px] text-gray-400">{new Date(flow.created_at).toLocaleString()}</p>
-                                                                    {flow.staff && <p className="text-[9px] font-bold text-gray-400 uppercase">— {flow.staff.name}</p>}
-                                                                </div>
-                                                                {flow.notes && (
-                                                                    <p className="mt-2 text-xs text-gray-600 italic leading-relaxed bg-white/70 p-2 rounded-lg border border-amber-100/50">"{flow.notes}"</p>
-                                                                )}
-                                                                {flow.voice_note && (
-                                                                    <div className="mt-2">
-                                                                        <AudioPlayer
-                                                                            src={getMediaUrl(flow.voice_note_url ?? flow.voice_note)}
-                                                                            label="Status Update Audio"
-                                                                            className="!p-2 border-amber-200/50 bg-white/50"
-                                                                        />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Completed */}
-                                {service.resolved_at && (
-                                    <div className="flex gap-4">
-                                        <div className="flex flex-col items-center">
-                                            <div className="w-8 h-8 rounded-full bg-green-100 border-2 border-green-200 flex items-center justify-center z-10">
-                                                <CheckCircle className="w-3.5 h-3.5 text-green-600" />
-                                            </div>
-                                            {service.billed_at && isAdmin && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
-                                        </div>
-                                        <div className="pb-5 flex-1">
-                                            <p className="text-sm font-bold text-gray-900">Service Completed</p>
-                                            <p className="text-xs text-gray-500 mt-0.5">{new Date(service.resolved_at).toLocaleString()}</p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Billed */}
-                                {service.billed_at && isAdmin && (
-                                    <div className="flex gap-4">
-                                        <div className="flex flex-col items-center">
-                                            <div className="w-8 h-8 rounded-full bg-emerald-100 border-2 border-emerald-200 flex items-center justify-center z-10">
-                                                <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
-                                            </div>
-                                        </div>
-                                        <div className="pb-1 flex-1">
-                                            <p className="text-sm font-bold text-gray-900">Payment Received <span className="text-[10px] font-semibold text-emerald-600 ml-1">(Admin View)</span></p>
-                                            <p className="text-xs text-gray-500 mt-0.5">{new Date(service.billed_at).toLocaleString()}</p>
-                                        </div>
-                                    </div>
+                                {service.sales && service.sales.length > 0 && (
+                                    <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+                                        {service.sales.length} bill{service.sales.length > 1 ? 's' : ''}
+                                    </span>
                                 )}
                             </div>
-                        </div>
-                    </div>
-                    )}
-
-                    {/* Linked Documents */}
-                    {service.sales && service.sales.length > 0 && (
-                        <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden">
-                            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-                                <Receipt className="w-4 h-4 text-indigo-600" />
-                                <h2 className="text-sm font-bold text-gray-900">Linked Documents</h2>
-                                <span className="ml-auto text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-                                    {service.sales.length} doc{service.sales.length > 1 ? 's' : ''}
-                                </span>
-                            </div>
-                            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {service.sales.map((doc) => {
+                            <div className="p-3.5 space-y-2.5">
+                                {service.sales?.map((doc) => {
                                     const isQuotation = doc.type === 'Quotation';
                                     const docItems = doc.items.map(item => ({
                                         id: item.product_id ?? `svc-${doc.id}`,
@@ -1127,29 +1082,41 @@ export function ServiceDetails() {
                                         gst_enabled: doc.gst_enabled,
                                     };
                                     return (
-                                        <div key={doc.id} className={`flex items-center justify-between gap-3 p-4 rounded-xl border-2 ${isQuotation ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100'} transition-all hover:shadow-sm`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isQuotation ? 'bg-amber-100' : 'bg-emerald-100'}`}>
-                                                    {isQuotation ? <FileText className="w-5 h-5 text-amber-600" /> : <Receipt className="w-5 h-5 text-emerald-600" />}
-                                                </div>
-                                                <div>
+                                        <div key={doc.id} className={`flex items-center justify-between gap-3 p-3 rounded-xl border ${isQuotation ? 'bg-amber-50/70 border-amber-200' : 'bg-emerald-50/70 border-emerald-200'}`}>
+                                            <div className="min-w-0 space-y-0.5">
+                                                <div className="flex items-center gap-2">
                                                     <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${isQuotation ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                                        {isQuotation ? 'Quotation' : 'Bill / Receipt'}
+                                                        {isQuotation ? 'Quotation' : 'Bill'}
                                                     </span>
-                                                    <p className="text-sm font-bold text-gray-900 mt-1">₹{Number(doc.total_amount).toLocaleString('en-IN')}</p>
-                                                    <p className="text-[10px] text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</p>
+                                                    <span className="text-xs font-black text-gray-900">₹{Number(doc.total_amount).toLocaleString('en-IN')}</span>
+                                                    <span className="text-[10px] text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="text-xs font-semibold text-gray-700 truncate">
+                                                    {doc.items
+                                                        .filter(i => i.product)
+                                                        .map(i => `${i.product!.brand} ${i.product!.model} × ${i.quantity}`)
+                                                        .join(", ") || "Service Charge"}
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={() => navigate('/invoice', { state: docState })}
-                                                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border flex-shrink-0 ${isQuotation ? 'bg-white text-amber-700 hover:bg-amber-100 border-amber-200' : 'bg-white text-emerald-700 hover:bg-emerald-100 border-emerald-200'}`}
+                                                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold border shrink-0 bg-white ${isQuotation ? 'text-amber-700 border-amber-200 hover:bg-amber-100' : 'text-emerald-700 border-emerald-200 hover:bg-emerald-100'}`}
                                             >
                                                 <Download className="w-3.5 h-3.5" />
-                                                {isQuotation ? 'View' : 'View'}
+                                                View
                                             </button>
                                         </div>
                                     );
                                 })}
+
+                                {service.receipt && (!service.sales || service.sales.length === 0) && (
+                                    <div className="flex items-center justify-between p-3 rounded-xl border border-indigo-200 bg-indigo-50/60">
+                                        <span className="text-xs font-bold text-gray-900">
+                                            {service.receipt.product ? `${service.receipt.product.brand} ${service.receipt.product.model}` : 'Product'} × {service.receipt.quantity}
+                                        </span>
+                                        <span className="text-xs font-black text-indigo-700">₹{Number(service.receipt.total).toLocaleString('en-IN')}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -1236,280 +1203,282 @@ export function ServiceDetails() {
                 </div>
 
                 {/* ── Right Sidebar (1/3 width) ── */}
-                <div className="space-y-5 xl:sticky xl:top-4 xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto xl:pr-1">
+                <div className="space-y-4">
 
-                    {/* Service Actions */}
-                    <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden">
-                        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-                            <Zap className="w-4 h-4 text-blue-600" />
-                            <h2 className="text-sm font-bold text-gray-900">Service Actions</h2>
-                        </div>
-                        <div className="p-5 space-y-3">
+                    {/* Service Actions (hidden when New Connection and already assigned/no revisit needed) */}
+                    {((!service.assigned_to && !isAdmin) ||
+                      (!isNewConnection && (service.status === "Pending" || service.status === "In Progress" || service.status === "Converted to Order")) ||
+                      service.status === "Completed") && (
+                        <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-xs overflow-hidden">
+                            <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2E3B55] flex items-center gap-2">
+                                <Zap className="w-4 h-4 text-blue-600" />
+                                <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Service Actions</h2>
+                            </div>
+                            <div className="p-4 space-y-3">
 
-                            {/* Staff: Pick up */}
-                            {!service.assigned_to && !isAdmin && (
-                                <Button
-                                    onClick={handlePickUp}
-                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl flex items-center justify-center gap-2.5 font-bold text-sm shadow-md shadow-blue-100 transition-all hover:shadow-lg hover:shadow-blue-200"
-                                >
-                                    <ShoppingBag className="w-4 h-4" />
-                                    Pick Up This Task
-                                </Button>
-                            )}
+                                {/* Staff: Pick up */}
+                                {!service.assigned_to && !isAdmin && (
+                                    <Button
+                                        onClick={handlePickUp}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm"
+                                    >
+                                        <ShoppingBag className="w-4 h-4" />
+                                        Pick Up This Task
+                                    </Button>
+                                )}
 
-                            {/* Staff Toolbox */}
-                            {service.assigned_to === user?.id && !isAdmin && service.status !== 'Completed' && service.status !== 'Converted to Order' && (
-                                <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 border-dashed rounded-xl">
-                                    <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1.5">
-                                        <Wrench className="w-3 h-3" /> Staff Toolbox
-                                    </h4>
-                                    
-                                    <div>
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Update Sub-Status</label>
-                                        <select
-                                            className="w-full px-3 py-2 rounded-xl border border-blue-100 bg-white text-sm focus:ring-2 focus:ring-blue-500 font-medium"
-                                            onChange={(e) => {
-                                                if (e.target.value) handleUpdateSubStatus(e.target.value);
-                                            }}
-                                            value={service.sub_status || ""}
-                                        >
-                                            <option value="" disabled>Select progress stage...</option>
-                                            {SUB_STATUS_OPTIONS.map(opt => (
-                                                <option key={opt} value={opt}>{opt}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Progress Notes</label>
-                                        <textarea
-                                            className="w-full px-3 py-2 rounded-xl border border-blue-100 bg-white text-sm focus:ring-2 focus:ring-blue-500 min-h-[70px] resize-none"
-                                            placeholder="Add status notes... (e.g. Battery is charging well)"
-                                            value={staffNote}
-                                            onChange={(e) => setStaffNote(e.target.value)}
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <ServiceGpsCamera serviceId={service.id} />
-                                        <Button
-                                            onClick={() => setShowAudioRecorder(true)}
-                                            variant="primary"
-                                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center gap-2 font-bold py-2.5 text-sm"
-                                        >
-                                            <Mic className="w-3.5 h-3.5" />
-                                            Record
-                                        </Button>
-                                    </div>
-                                    
-                                    {staffNote && (
-                                        <Button
-                                            onClick={() => handleUpdateSubStatus(service.sub_status || "Progress Update")}
-                                            className="w-full bg-blue-100 text-blue-700 hover:bg-blue-200 py-2 rounded-xl font-bold text-xs"
-                                        >
-                                            Save Note Only
-                                        </Button>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Convert to Order */}
-                            { (service.status === "Pending" || service.status === "In Progress") && (
-                                <div className="space-y-2">
+                                {/* Convert to Order (only for regular service jobs, never for New Connection) */}
+                                {!isNewConnection && (service.status === "Pending" || service.status === "In Progress") && (
                                     <Button
                                         onClick={handleConvertToOrder}
-                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl flex items-center justify-center gap-2 font-bold text-sm shadow-md shadow-indigo-100 transition-all hover:shadow-lg"
+                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm"
                                     >
                                         <ShoppingCart className="w-4 h-4" />
                                         {isAdmin ? "Convert & Bill" : "Request New Battery"}
                                     </Button>
-                                </div>
-                            )}
+                                )}
 
-                            {/* Converted to Order Status */}
-                            {service.status === "Converted to Order" && (
-                                <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl space-y-3 text-center">
-                                    <ShoppingCart className="w-6 h-6 text-indigo-500 mx-auto" />
-                                    <div>
-                                        <p className="font-bold text-indigo-900 text-sm">Converted to Order</p>
-                                        <p className="text-xs text-indigo-600 mt-0.5">{isAdmin ? "Staff has requested a new order conversion." : "Waiting for Admin to process..."}</p>
+                                {/* Converted to Order Status (regular service only) */}
+                                {!isNewConnection && service.status === "Converted to Order" && (
+                                    <div className="p-3.5 bg-indigo-50 border border-indigo-200 rounded-xl space-y-2.5 text-center">
+                                        <ShoppingCart className="w-5 h-5 text-indigo-500 mx-auto" />
+                                        <div>
+                                            <p className="font-bold text-indigo-900 text-sm">Converted to Order</p>
+                                            <p className="text-xs text-indigo-600 mt-0.5">{isAdmin ? "Staff has requested a new order conversion." : "Waiting for Admin to process..."}</p>
+                                        </div>
+                                        {isAdmin && (
+                                            <Button
+                                                onClick={() => navigate("/sales", { state: { fromService: true, serviceId: service.id, customerInfo: { name: service.customer_name, phone: service.contact_number, address: service.address } } })}
+                                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-sm"
+                                            >
+                                                <CheckCheck className="w-4 h-4" />
+                                                Accept & Process
+                                            </Button>
+                                        )}
                                     </div>
-                                    {isAdmin && (
+                                )}
+
+                                {/* Revisit */}
+                                {service.status === "Completed" && (
+                                    <div className="space-y-2">
                                         <Button
-                                            onClick={() => navigate("/sales", { state: { fromService: true, serviceId: service.id, customerInfo: { name: service.customer_name, phone: service.contact_number, address: service.address } } })}
-                                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-sm"
+                                            onClick={() => setShowRevisitForm(!showRevisitForm)}
+                                            className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm"
                                         >
-                                            <CheckCheck className="w-4 h-4" />
-                                            Accept & Process
+                                            <RefreshCw className="w-4 h-4" />
+                                            Create Revisit
                                         </Button>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Revisit */}
-                            {service.status === "Completed" && (
-                                <div className="space-y-2 pt-1 border-t border-gray-100">
-                                    <Button
-                                        onClick={() => setShowRevisitForm(!showRevisitForm)}
-                                        className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm"
-                                    >
-                                        <RefreshCw className="w-4 h-4" />
-                                        Create Revisit
-                                    </Button>
-                                    {showRevisitForm && (
-                                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3 animate-in slide-in-from-top-2">
-                                            <label className="text-xs font-bold text-amber-700 uppercase">Issue Summary</label>
-                                            <input
-                                                className="w-full px-3 py-2 rounded-xl border border-amber-300 text-sm focus:ring-2 focus:ring-amber-500"
-                                                value={revisitData.issue}
-                                                onChange={(e) => setRevisitData({ ...revisitData, issue: e.target.value })}
-                                                placeholder="Required..."
-                                            />
-                                            <div className="flex gap-2 pt-1">
-                                                <Button variant="outline" className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setShowRevisitForm(false)}>Cancel</Button>
-                                                <Button className="flex-1 bg-amber-600 hover:bg-amber-700 text-white" onClick={handleCreateRevisit}>Confirm</Button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Assign Staff (Admin) */}
-                    {isAdmin && (
-                        <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden">
-                            <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-                                <User className="w-4 h-4 text-blue-600" />
-                                <h2 className="text-sm font-bold text-gray-900">Assign Staff</h2>
-                            </div>
-                            <div className="p-4 space-y-2">
-                                {service.assigned_to ? (
-                                    <div className="p-4 bg-blue-50/80 border border-blue-200 rounded-xl space-y-1">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Assigned Staff</span>
-                                            <span className="px-2 py-0.5 text-[10px] font-black bg-blue-600 text-white rounded-md">Assigned</span>
-                                        </div>
-                                        <p className="text-sm font-black text-gray-900 flex items-center gap-2 pt-1">
-                                            <User className="w-4 h-4 text-blue-600" />
-                                            {service.assigned_staff?.name || "Staff Member"}
-                                        </p>
-                                        <p className="text-[10px] text-gray-500 pt-1">
-                                            Assigned staff cannot be changed once job is commenced.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    staffList.map(staff => (
-                                        <button
-                                            key={staff.id}
-                                            onClick={() => handleAssignStaff(staff.id)}
-                                            className="w-full text-left px-4 py-3 rounded-xl border-2 border-gray-100 hover:border-blue-200 text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-between"
-                                        >
-                                            <div className="flex items-center gap-2.5">
-                                                <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-black">
-                                                    {staff.name.charAt(0).toUpperCase()}
+                                        {showRevisitForm && (
+                                            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-2.5 animate-in slide-in-from-top-2">
+                                                <label className="text-xs font-bold text-amber-700 uppercase">Issue Summary</label>
+                                                <input
+                                                    className="w-full px-3 py-2 rounded-xl border border-amber-300 text-sm focus:ring-2 focus:ring-amber-500"
+                                                    value={revisitData.issue}
+                                                    onChange={(e) => setRevisitData({ ...revisitData, issue: e.target.value })}
+                                                    placeholder="Required..."
+                                                />
+                                                <div className="flex gap-2 pt-1">
+                                                    <Button variant="outline" className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setShowRevisitForm(false)}>Cancel</Button>
+                                                    <Button className="flex-1 bg-amber-600 hover:bg-amber-700 text-white" onClick={handleCreateRevisit}>Confirm</Button>
                                                 </div>
-                                                <span className="font-semibold text-sm">{staff.name}</span>
                                             </div>
-                                        </button>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Update Status (Staff) */}
-                    {!isAdmin && service.assigned_to === user?.id && (
-                        <div className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-sm overflow-hidden">
-                            <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-green-600" />
-                                <h2 className="text-sm font-bold text-gray-900">Update Status</h2>
-                            </div>
-                            <div className="p-4 space-y-2">
-                                {service.status === 'Completed' || service.status === 'Converted to Order' ? (
-                                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1">
-                                        <CheckCircle className="w-6 h-6 text-emerald-600 mx-auto" />
-                                        <p className="text-xs font-black text-emerald-900 uppercase">Job {service.status}</p>
-                                        <p className="text-[11px] text-emerald-700 font-medium">This task is complete. Status cannot be modified or reverted.</p>
+                                        )}
                                     </div>
-                                ) : (
-                                    (["Pending", "In Progress", "Completed"] as const).map((status) => {
-                                        const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.Pending;
-                                        const Icon = config.icon;
-                                        const isActive = service.status === status || (status === 'In Progress' && service.status === 'Converted to Order');
-
-                                        return (
-                                            <div key={status} className="space-y-2">
-                                                {status === "Completed" && service.status === "Converted to Order" && (!service.sales || service.sales.length === 0) ? (
-                                                    <div className="p-3 bg-amber-50 border-2 border-amber-200 rounded-xl">
-                                                        <div className="flex items-center gap-2">
-                                                            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                                                            <p className="text-xs font-bold text-amber-800">Waiting for Bill / Quotation</p>
-                                                        </div>
-                                                        <p className="text-[11px] text-amber-700 mt-1 leading-relaxed">Admin must process billing or quotation first.</p>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <button
-                                                            onClick={() => {
-                                                                if (status === "Completed" && service.status !== "Completed") {
-                                                                    setShowChargeInput(true);
-                                                                } else {
-                                                                    handleUpdateStatus(status);
-                                                                    setShowChargeInput(false);
-                                                                }
-                                                            }}
-                                                            className={`w-full p-3.5 rounded-xl border-2 transition-all flex items-center gap-3 ${isActive ? "border-blue-600 bg-blue-50 text-blue-800 shadow-sm" : "border-gray-100 hover:border-gray-200 text-gray-600 hover:bg-gray-50"}`}
-                                                        >
-                                                            <div className={`p-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-400"}`}>
-                                                                <Icon className="w-4 h-4" />
-                                                            </div>
-                                                            <span className="font-bold text-sm">{status}</span>
-                                                            {isActive && <CheckCircle className="ml-auto w-4 h-4 text-blue-600" />}
-                                                        </button>
-
-                                                        {status === "Completed" && showChargeInput && !isActive && (
-                                                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3 animate-in slide-in-from-top-2">
-                                                                <label className="text-xs font-bold text-gray-500 uppercase">Final Service Charge (₹)</label>
-                                                                <input
-                                                                    type="number"
-                                                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-sm font-bold text-gray-900"
-                                                                    value={tempCharge}
-                                                                    onChange={(e) => setTempCharge(e.target.value)}
-                                                                    placeholder="e.g. 500"
-                                                                />
-                                                                <div className="flex gap-2">
-                                                                    <Button variant="outline" className="flex-1 text-sm" onClick={() => { setShowChargeInput(false); setTempCharge(""); }}>Cancel</Button>
-                                                                    <Button
-                                                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm"
-                                                                        onClick={() => {
-                                                                            if (!tempCharge || isNaN(Number(tempCharge))) { alert("Please enter a valid service charge."); return; }
-                                                                            handleUpdateStatus(status, Number(tempCharge));
-                                                                            setShowChargeInput(false);
-                                                                        }}
-                                                                    >
-                                                                        Confirm
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                )}
-                                            </div>
-                                        );
-                                    })
                                 )}
                             </div>
                         </div>
                     )}
 
-                    {/* Last Updated */}
-                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 text-xs text-gray-500">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        <span>Registered: <span className="font-semibold text-gray-700">{new Date(service.created_at).toLocaleDateString('en-IN')}</span></span>
-                    </div>
+                    {/* Assign Staff (Admin) — hidden once a staff member is assigned */}
+                    {isAdmin && !service.assigned_to && (
+                        <div
+                            data-testid="assign-staff-module"
+                            className="bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-xs overflow-hidden"
+                        >
+                            <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2E3B55] flex items-center gap-2">
+                                <User className="w-4 h-4 text-blue-600" />
+                                <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Assign Staff</h2>
+                            </div>
+                            <div className="p-3.5 space-y-2">
+                                {staffList.map(staff => (
+                                    <button
+                                        key={staff.id}
+                                        onClick={() => handleAssignStaff(staff.id)}
+                                        className="w-full text-left px-3.5 py-2.5 rounded-xl border border-gray-200 hover:border-blue-300 text-gray-700 hover:bg-blue-50/40 transition-all flex items-center gap-2.5"
+                                    >
+                                        <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-black">
+                                            {staff.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <span className="font-semibold text-sm">{staff.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
+            )}
+
+            {/* Job Site Photos Gallery Modal (Admin) */}
+            {showGalleryModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-xs" onClick={() => setShowGalleryModal(false)} />
+                    <div
+                        data-testid="gallery-modal"
+                        className="relative z-10 w-full max-w-2xl bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-2xl overflow-hidden"
+                    >
+                        <div className="px-5 py-3.5 border-b border-gray-100 dark:border-[#2E3B55] flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Images className="w-4 h-4 text-blue-600" />
+                                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Job Site Photos</h2>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowGalleryModal(false)}
+                                aria-label="Close Job Site Photos"
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="p-5 max-h-[75vh] overflow-y-auto">
+                            <ServiceGpsCamera serviceId={service.id} readOnly={true} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Service Timeline Modal (Admin) */}
+            {showTimelineModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-xs" onClick={() => setShowTimelineModal(false)} />
+                    <div
+                        data-testid="timeline-modal"
+                        className="relative z-10 w-full max-w-lg bg-white dark:bg-[#1B263B] rounded-2xl border border-gray-200 dark:border-[#2E3B55] shadow-2xl overflow-hidden"
+                    >
+                        <div className="px-5 py-3.5 border-b border-gray-100 dark:border-[#2E3B55] flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <TrendingUp className="w-4 h-4 text-indigo-600" />
+                                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Service Timeline</h2>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowTimelineModal(false)}
+                                aria-label="Close Service Timeline"
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="p-5 max-h-[75vh] overflow-y-auto space-y-0">
+                            <div className="flex gap-4 relative">
+                                <div className="flex flex-col items-center">
+                                    <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-blue-200 flex items-center justify-center z-10">
+                                        <Clock className="w-3.5 h-3.5 text-blue-600" />
+                                    </div>
+                                    {(service.assigned_at || service.status_updated_at || service.resolved_at || service.billed_at) && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
+                                </div>
+                                <div className="pb-5 flex-1">
+                                    <p className="text-sm font-bold text-gray-900 dark:text-white">Service Registered</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">{new Date(service.created_at).toLocaleString()}</p>
+                                </div>
+                            </div>
+
+                            {service.assigned_at && (
+                                <div className="flex gap-4">
+                                    <div className="flex flex-col items-center">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-indigo-200 flex items-center justify-center z-10">
+                                            <User className="w-3.5 h-3.5 text-indigo-600" />
+                                        </div>
+                                        {(service.status_updated_at || service.resolved_at || service.billed_at) && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
+                                    </div>
+                                    <div className="pb-5 flex-1">
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">Service Taken</p>
+                                        {service.assigned_staff && <p className="text-xs font-semibold text-indigo-600">by {service.assigned_staff.name}</p>}
+                                        <p className="text-xs text-gray-500 mt-0.5">{new Date(service.assigned_at).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {((service.status === 'In Progress' || service.status === 'Converted to Order' || service.status === 'Completed') && service.status_updated_at) && (
+                                <div className="flex gap-4">
+                                    <div className="flex flex-col items-center">
+                                        <div className="w-8 h-8 rounded-full bg-amber-100 border-2 border-amber-200 flex items-center justify-center z-10">
+                                            <Activity className="w-3.5 h-3.5 text-amber-600" />
+                                        </div>
+                                        {(service.resolved_at || service.billed_at) && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
+                                    </div>
+                                    <div className="pb-5 flex-1">
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">In Progress</p>
+                                        {service.sub_status && <p className="text-xs font-semibold text-amber-600">Sub-Status: {service.sub_status}</p>}
+                                        <p className="text-xs text-gray-500 mt-0.5">{new Date(service.status_updated_at).toLocaleString()}</p>
+
+                                        {service.process_flows && service.process_flows.length > 0 && (
+                                            <div className="mt-3 space-y-2 ml-2 border-l-2 border-amber-200 pl-4">
+                                                {service.process_flows.slice().reverse().map((flow, fIdx) => (
+                                                    <div key={flow.id} className="relative">
+                                                        <div className="absolute -left-[1.375rem] top-2 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-white" />
+                                                        <div className="bg-amber-50 p-3 rounded-xl border border-amber-100">
+                                                            <div className="flex justify-between items-start">
+                                                                <p className="text-xs font-bold text-gray-800">{flow.sub_status}</p>
+                                                                <span className="text-[9px] font-bold text-amber-500 uppercase">{fIdx === 0 ? "Latest" : `#${service.process_flows!.length - fIdx}`}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <p className="text-[9px] text-gray-400">{new Date(flow.created_at).toLocaleString()}</p>
+                                                                {flow.staff && <p className="text-[9px] font-bold text-gray-400 uppercase">— {flow.staff.name}</p>}
+                                                            </div>
+                                                            {flow.notes && (
+                                                                <p className="mt-2 text-xs text-gray-600 italic leading-relaxed bg-white/70 p-2 rounded-lg border border-amber-100/50">"{flow.notes}"</p>
+                                                            )}
+                                                            {flow.voice_note && (
+                                                                <div className="mt-2">
+                                                                    <AudioPlayer
+                                                                        src={getMediaUrl(flow.voice_note_url ?? flow.voice_note)}
+                                                                        label="Status Update Audio"
+                                                                        className="!p-2 border-amber-200/50 bg-white/50"
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {service.resolved_at && (
+                                <div className="flex gap-4">
+                                    <div className="flex flex-col items-center">
+                                        <div className="w-8 h-8 rounded-full bg-green-100 border-2 border-green-200 flex items-center justify-center z-10">
+                                            <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                                        </div>
+                                        {service.billed_at && isAdmin && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
+                                    </div>
+                                    <div className="pb-5 flex-1">
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">Service Completed</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">{new Date(service.resolved_at).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {service.billed_at && isAdmin && (
+                                <div className="flex gap-4">
+                                    <div className="flex flex-col items-center">
+                                        <div className="w-8 h-8 rounded-full bg-emerald-100 border-2 border-emerald-200 flex items-center justify-center z-10">
+                                            <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                                        </div>
+                                    </div>
+                                    <div className="pb-1 flex-1">
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">Payment Received <span className="text-[10px] font-semibold text-emerald-600 ml-1">(Admin View)</span></p>
+                                        <p className="text-xs text-gray-500 mt-0.5">{new Date(service.billed_at).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
 
             <AudioRecorder
@@ -1534,6 +1503,19 @@ export function ServiceDetails() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <MinimalConfirmDialog
+                isOpen={showUnsavedConfirm}
+                title="Unsaved Changes"
+                message="You have unsaved updates. Discard and go back?"
+                confirmLabel="Discard"
+                cancelLabel="Stay"
+                onConfirm={() => {
+                    setShowUnsavedConfirm(false);
+                    navigateBackFromDetails();
+                }}
+                onCancel={() => setShowUnsavedConfirm(false)}
+            />
         </div>
     );
 }

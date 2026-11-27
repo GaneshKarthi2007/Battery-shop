@@ -97,8 +97,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const clearAll = () => {
-        setNotifications([]);
+    const clearAll = async () => {
+        try {
+            await apiClient.delete('/notifications');
+            setNotifications([]);
+        } catch (err) {
+            console.error("Failed to clear notifications", err);
+            setNotifications([]);
+        }
     };
 
     return (
